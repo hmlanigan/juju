@@ -169,92 +169,92 @@ func (s *relationResolverSuite) setupRelations(c *gc.C) relation.RelationStateTr
 //	c.Assert(r.GetInfo(), gc.HasLen, 0)
 //}
 
-func (s *relationResolverSuite) assertNewRelationsWithExistingRelations(c *gc.C, isLeader bool) {
-	unitTag := names.NewUnitTag("wordpress/0")
-	abort := make(chan struct{})
-	s.leadershipContextFunc = func(accessor context.LeadershipSettingsAccessor, tracker leadership.Tracker, unitName string) context.LeadershipContext {
-		return &stubLeadershipContext{isLeader: isLeader}
-	}
+//func (s *relationResolverSuite) assertNewRelationsWithExistingRelations(c *gc.C, isLeader bool) {
+//	unitTag := names.NewUnitTag("wordpress/0")
+//	abort := make(chan struct{})
+//	s.leadershipContextFunc = func(accessor context.LeadershipSettingsAccessor, tracker leadership.Tracker, unitName string) context.LeadershipContext {
+//		return &stubLeadershipContext{isLeader: isLeader}
+//	}
+//
+//	var numCalls int32
+//	unitEntity := params.Entities{Entities: []params.Entity{{Tag: "unit-wordpress-0"}}}
+//	relationUnits := params.RelationUnits{RelationUnits: []params.RelationUnit{
+//		{Relation: "relation-wordpress.db#mysql.db", Unit: "unit-wordpress-0"},
+//	}}
+//	relationResults := params.RelationResults{
+//		Results: []params.RelationResult{
+//			{
+//				Id:   1,
+//				Key:  "wordpress:db mysql:db",
+//				Life: life.Alive,
+//				Endpoint: params.Endpoint{
+//					ApplicationName: "wordpress",
+//					Relation:        params.CharmRelation{Name: "mysql", Role: string(charm.RoleProvider), Interface: "db"},
+//				}},
+//		},
+//	}
+//	relationStatus := params.RelationStatusArgs{Args: []params.RelationStatusArg{{
+//		UnitTag:    "unit-wordpress-0",
+//		RelationId: 1,
+//		Status:     params.Joined,
+//	}}}
+//	unitSetStateArgs := params.SetUnitStateArgs{
+//		Args: []params.SetUnitStateArg{{
+//			Tag:           "unit-wordpress-0",
+//			RelationState: &map[int]string{1: "id: 1\n"},
+//		},
+//		}}
+//	unitStateResults := params.UnitStateResults{Results: []params.UnitStateResult{{}}}
+//
+//	apiCalls := []apiCall{
+//		uniterAPICall("Refresh", unitEntity, params.UnitRefreshResults{Results: []params.UnitRefreshResult{{Life: life.Alive, Resolved: params.ResolvedNone}}}, nil),
+//		uniterAPICall("GetPrincipal", unitEntity, params.StringBoolResults{Results: []params.StringBoolResult{{Result: "", Ok: false}}}, nil),
+//		uniterAPICall("RelationsStatus", unitEntity, params.RelationUnitStatusResults{Results: []params.RelationUnitStatusResult{
+//			{RelationResults: []params.RelationUnitStatus{{RelationTag: "relation-wordpress:db mysql:db", InScope: true}}}}}, nil),
+//		uniterAPICall("State", unitEntity, unitStateResults, nil),
+//		uniterAPICall("Relation", relationUnits, relationResults, nil),
+//		uniterAPICall("Relation", relationUnits, relationResults, nil),
+//		uniterAPICall("Watch", unitEntity, params.NotifyWatchResults{Results: []params.NotifyWatchResult{{NotifyWatcherId: "1"}}}, nil),
+//		uniterAPICall("SetState", unitSetStateArgs, noErrorResult, nil),
+//		uniterAPICall("EnterScope", relationUnits, params.ErrorResults{Results: []params.ErrorResult{{}}}, nil),
+//	}
+//	if isLeader {
+//		apiCalls = append(apiCalls,
+//			uniterAPICall("SetRelationStatus", relationStatus, noErrorResult, nil),
+//		)
+//	}
+//	apiCaller := mockAPICaller(c, &numCalls, apiCalls...)
+//	st := uniter.NewState(apiCaller, unitTag)
+//	u, err := st.Unit(unitTag)
+//	c.Assert(err, jc.ErrorIsNil)
+//	r, err := relation.NewRelationStateTracker(
+//		relation.RelationStateTrackerConfig{
+//			State:                st,
+//			Unit:                 u,
+//			CharmDir:             s.charmDir,
+//			NewLeadershipContext: s.leadershipContextFunc,
+//			Abort:                abort,
+//		})
+//	c.Assert(err, jc.ErrorIsNil)
+//	assertNumCalls(c, &numCalls, int32(len(apiCalls)))
+//
+//	info := r.GetInfo()
+//	c.Assert(info, gc.HasLen, 1)
+//	oneInfo := info[1]
+//	c.Assert(oneInfo.RelationUnit.Relation().Tag(), gc.Equals, names.NewRelationTag("wordpress:db mysql:db"))
+//	c.Assert(oneInfo.RelationUnit.Endpoint(), jc.DeepEquals, uniter.Endpoint{
+//		Relation: charm.Relation{Name: "mysql", Role: "provider", Interface: "db", Optional: false, Limit: 0, Scope: ""},
+//	})
+//	c.Assert(oneInfo.MemberNames, gc.HasLen, 0)
+//}
 
-	var numCalls int32
-	unitEntity := params.Entities{Entities: []params.Entity{{Tag: "unit-wordpress-0"}}}
-	relationUnits := params.RelationUnits{RelationUnits: []params.RelationUnit{
-		{Relation: "relation-wordpress.db#mysql.db", Unit: "unit-wordpress-0"},
-	}}
-	relationResults := params.RelationResults{
-		Results: []params.RelationResult{
-			{
-				Id:   1,
-				Key:  "wordpress:db mysql:db",
-				Life: life.Alive,
-				Endpoint: params.Endpoint{
-					ApplicationName: "wordpress",
-					Relation:        params.CharmRelation{Name: "mysql", Role: string(charm.RoleProvider), Interface: "db"},
-				}},
-		},
-	}
-	relationStatus := params.RelationStatusArgs{Args: []params.RelationStatusArg{{
-		UnitTag:    "unit-wordpress-0",
-		RelationId: 1,
-		Status:     params.Joined,
-	}}}
-	unitSetStateArgs := params.SetUnitStateArgs{
-		Args: []params.SetUnitStateArg{{
-			Tag:           "unit-wordpress-0",
-			RelationState: &map[int]string{1: "id: 1\n"},
-		},
-		}}
-	unitStateResults := params.UnitStateResults{Results: []params.UnitStateResult{{}}}
-
-	apiCalls := []apiCall{
-		uniterAPICall("Refresh", unitEntity, params.UnitRefreshResults{Results: []params.UnitRefreshResult{{Life: life.Alive, Resolved: params.ResolvedNone}}}, nil),
-		uniterAPICall("GetPrincipal", unitEntity, params.StringBoolResults{Results: []params.StringBoolResult{{Result: "", Ok: false}}}, nil),
-		uniterAPICall("RelationsStatus", unitEntity, params.RelationUnitStatusResults{Results: []params.RelationUnitStatusResult{
-			{RelationResults: []params.RelationUnitStatus{{RelationTag: "relation-wordpress:db mysql:db", InScope: true}}}}}, nil),
-		uniterAPICall("State", unitEntity, unitStateResults, nil),
-		uniterAPICall("Relation", relationUnits, relationResults, nil),
-		uniterAPICall("Relation", relationUnits, relationResults, nil),
-		uniterAPICall("Watch", unitEntity, params.NotifyWatchResults{Results: []params.NotifyWatchResult{{NotifyWatcherId: "1"}}}, nil),
-		uniterAPICall("SetState", unitSetStateArgs, noErrorResult, nil),
-		uniterAPICall("EnterScope", relationUnits, params.ErrorResults{Results: []params.ErrorResult{{}}}, nil),
-	}
-	if isLeader {
-		apiCalls = append(apiCalls,
-			uniterAPICall("SetRelationStatus", relationStatus, noErrorResult, nil),
-		)
-	}
-	apiCaller := mockAPICaller(c, &numCalls, apiCalls...)
-	st := uniter.NewState(apiCaller, unitTag)
-	u, err := st.Unit(unitTag)
-	c.Assert(err, jc.ErrorIsNil)
-	r, err := relation.NewRelationStateTracker(
-		relation.RelationStateTrackerConfig{
-			State:                st,
-			Unit:                 u,
-			CharmDir:             s.charmDir,
-			NewLeadershipContext: s.leadershipContextFunc,
-			Abort:                abort,
-		})
-	c.Assert(err, jc.ErrorIsNil)
-	assertNumCalls(c, &numCalls, int32(len(apiCalls)))
-
-	info := r.GetInfo()
-	c.Assert(info, gc.HasLen, 1)
-	oneInfo := info[1]
-	c.Assert(oneInfo.RelationUnit.Relation().Tag(), gc.Equals, names.NewRelationTag("wordpress:db mysql:db"))
-	c.Assert(oneInfo.RelationUnit.Endpoint(), jc.DeepEquals, uniter.Endpoint{
-		Relation: charm.Relation{Name: "mysql", Role: "provider", Interface: "db", Optional: false, Limit: 0, Scope: ""},
-	})
-	c.Assert(oneInfo.MemberNames, gc.HasLen, 0)
-}
-
-func (s *relationResolverSuite) TestNewRelationsWithExistingRelationsLeader(c *gc.C) {
-	s.assertNewRelationsWithExistingRelations(c, true)
-}
-
-func (s *relationResolverSuite) TestNewRelationsWithExistingRelationsNotLeader(c *gc.C) {
-	s.assertNewRelationsWithExistingRelations(c, false)
-}
+//func (s *relationResolverSuite) TestNewRelationsWithExistingRelationsLeader(c *gc.C) {
+//	s.assertNewRelationsWithExistingRelations(c, true)
+//}
+//
+//func (s *relationResolverSuite) TestNewRelationsWithExistingRelationsNotLeader(c *gc.C) {
+//	s.assertNewRelationsWithExistingRelations(c, false)
+//}
 
 //func (s *relationResolverSuite) TestNextOpNothing(c *gc.C) {
 //	unitTag := names.NewUnitTag("wordpress/0")
@@ -368,15 +368,6 @@ func relationJoinedAndDepartedAPICalls() []apiCall {
 	return append(apiCalls, uniterAPICall("State", unitEntity, unitStateResults, nil))
 }
 
-func relationJoinedAndDepartedAPICallsEmptyState() []apiCall {
-	apiCalls := relationJoinedAndDepartedAPICallsNoState()
-	unitEntity := params.Entities{Entities: []params.Entity{{Tag: "unit-wordpress-0"}}}
-	unitStateResults := params.UnitStateResults{Results: []params.UnitStateResult{{
-		RelationState: map[int]string{},
-	}}}
-	return append(apiCalls, uniterAPICall("State", unitEntity, unitStateResults, nil))
-}
-
 func relationJoinedAndDepartedAPICallsNoState() []apiCall {
 	apiCalls := relationJoinedAPICalls()
 
@@ -410,61 +401,61 @@ func relationJoinedAndDepartedAPICallsNoState() []apiCall {
 	)
 }
 
-func (s *relationResolverSuite) assertHookRelationJoined(c *gc.C, numCalls *int32, apiCalls ...apiCall) relation.RelationStateTracker {
-	unitTag := names.NewUnitTag("wordpress/0")
-	abort := make(chan struct{})
-
-	apiCaller := mockAPICaller(c, numCalls, apiCalls...)
-	st := uniter.NewState(apiCaller, unitTag)
-	u, err := st.Unit(unitTag)
-	c.Assert(err, jc.ErrorIsNil)
-	r, err := relation.NewRelationStateTracker(
-		relation.RelationStateTrackerConfig{
-			State:                st,
-			Unit:                 u,
-			CharmDir:             s.charmDir,
-			NewLeadershipContext: s.leadershipContextFunc,
-			Abort:                abort,
-		})
-	c.Assert(err, jc.ErrorIsNil)
-	assertNumCalls(c, numCalls, 4)
-
-	localState := resolver.LocalState{
-		State: operation.State{
-			Kind: operation.Continue,
-		},
-	}
-	remoteState := remotestate.Snapshot{
-		Relations: map[int]remotestate.RelationSnapshot{
-			1: {
-				Life:      life.Alive,
-				Suspended: false,
-				Members: map[string]int64{
-					"wordpress/0": 1,
-				},
-				ApplicationMembers: map[string]int64{
-					"wordpress": 0,
-				},
-			},
-		},
-	}
-	relationsResolver := relation.NewRelationResolver(r, nil)
-	op, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
-	c.Assert(err, jc.ErrorIsNil)
-	assertNumCalls(c, numCalls, 11)
-	c.Assert(op.String(), gc.Equals, "run hook relation-joined on unit wordpress/0 with relation 1")
-
-	_, err = r.PrepareHook(op.(*mockOperation).hookInfo)
-	c.Assert(err, jc.ErrorIsNil)
-	err = r.CommitHook(op.(*mockOperation).hookInfo)
-	c.Assert(err, jc.ErrorIsNil)
-	return r
-}
-
-func (s *relationResolverSuite) TestHookRelationJoined(c *gc.C) {
-	var numCalls int32
-	s.assertHookRelationJoined(c, &numCalls, relationJoinedAPICalls()...)
-}
+//func (s *relationResolverSuite) assertHookRelationJoined(c *gc.C, numCalls *int32, apiCalls ...apiCall) relation.RelationStateTracker {
+//	unitTag := names.NewUnitTag("wordpress/0")
+//	abort := make(chan struct{})
+//
+//	apiCaller := mockAPICaller(c, numCalls, apiCalls...)
+//	st := uniter.NewState(apiCaller, unitTag)
+//	u, err := st.Unit(unitTag)
+//	c.Assert(err, jc.ErrorIsNil)
+//	r, err := relation.NewRelationStateTracker(
+//		relation.RelationStateTrackerConfig{
+//			State:                st,
+//			Unit:                 u,
+//			CharmDir:             s.charmDir,
+//			NewLeadershipContext: s.leadershipContextFunc,
+//			Abort:                abort,
+//		})
+//	c.Assert(err, jc.ErrorIsNil)
+//	assertNumCalls(c, numCalls, 4)
+//
+//	localState := resolver.LocalState{
+//		State: operation.State{
+//			Kind: operation.Continue,
+//		},
+//	}
+//	remoteState := remotestate.Snapshot{
+//		Relations: map[int]remotestate.RelationSnapshot{
+//			1: {
+//				Life:      life.Alive,
+//				Suspended: false,
+//				Members: map[string]int64{
+//					"wordpress/0": 1,
+//				},
+//				ApplicationMembers: map[string]int64{
+//					"wordpress": 0,
+//				},
+//			},
+//		},
+//	}
+//	relationsResolver := relation.NewRelationResolver(r, nil)
+//	op, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
+//	c.Assert(err, jc.ErrorIsNil)
+//	assertNumCalls(c, numCalls, 11)
+//	c.Assert(op.String(), gc.Equals, "run hook relation-joined on unit wordpress/0 with relation 1")
+//
+//	_, err = r.PrepareHook(op.(*mockOperation).hookInfo)
+//	c.Assert(err, jc.ErrorIsNil)
+//	err = r.CommitHook(op.(*mockOperation).hookInfo)
+//	c.Assert(err, jc.ErrorIsNil)
+//	return r
+//}
+//
+//func (s *relationResolverSuite) TestHookRelationJoined(c *gc.C) {
+//	var numCalls int32
+//	s.assertHookRelationJoined(c, &numCalls, relationJoinedAPICalls()...)
+//}
 
 func (s *relationResolverSuite) assertHookRelationChanged(
 	c *gc.C, r relation.RelationStateTracker,
@@ -548,49 +539,49 @@ func (s *relationResolverSuite) TestHookRelationChanged(c *gc.C) {
 	}, &numCalls)
 }
 
-func (s *relationResolverSuite) TestHookRelationChangedApplication(c *gc.C) {
-	var numCalls int32
-	apiCalls := relationJoinedAPICalls()
-	r := s.assertHookRelationJoined(c, &numCalls, apiCalls...)
-
-	// There will be an initial relation-changed regardless of
-	// members, due to the "changed pending" local persistent
-	// state.
-	s.assertHookRelationChanged(c, r, remotestate.RelationSnapshot{
-		Life:      life.Alive,
-		Suspended: false,
-	}, &numCalls)
-
-	// wordpress app starts at 0, changing to 1 should trigger a
-	// relation-changed hook for the app. We also leave wordpress/0 at 1 so that
-	// it doesn't trigger relation-departed or relation-changed.
-	numCallsBefore := numCalls
-	localState := resolver.LocalState{
-		State: operation.State{
-			Kind: operation.Continue,
-		},
-	}
-	remoteState := remotestate.Snapshot{
-		Relations: map[int]remotestate.RelationSnapshot{
-			1: {
-				Life:      life.Alive,
-				Suspended: false,
-				Members: map[string]int64{
-					"wordpress/0": 1,
-				},
-				ApplicationMembers: map[string]int64{
-					"wordpress": 1,
-				},
-			},
-		},
-	}
-	relationsResolver := relation.NewRelationResolver(r, nil)
-	op, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
-	c.Assert(err, jc.ErrorIsNil)
-	// No new calls
-	assertNumCalls(c, &numCalls, numCallsBefore)
-	c.Assert(op.String(), gc.Equals, "run hook relation-changed on app wordpress with relation 1")
-}
+//func (s *relationResolverSuite) TestHookRelationChangedApplication(c *gc.C) {
+//	var numCalls int32
+//	apiCalls := relationJoinedAPICalls()
+//	r := s.assertHookRelationJoined(c, &numCalls, apiCalls...)
+//
+//	// There will be an initial relation-changed regardless of
+//	// members, due to the "changed pending" local persistent
+//	// state.
+//	s.assertHookRelationChanged(c, r, remotestate.RelationSnapshot{
+//		Life:      life.Alive,
+//		Suspended: false,
+//	}, &numCalls)
+//
+//	// wordpress app starts at 0, changing to 1 should trigger a
+//	// relation-changed hook for the app. We also leave wordpress/0 at 1 so that
+//	// it doesn't trigger relation-departed or relation-changed.
+//	numCallsBefore := numCalls
+//	localState := resolver.LocalState{
+//		State: operation.State{
+//			Kind: operation.Continue,
+//		},
+//	}
+//	remoteState := remotestate.Snapshot{
+//		Relations: map[int]remotestate.RelationSnapshot{
+//			1: {
+//				Life:      life.Alive,
+//				Suspended: false,
+//				Members: map[string]int64{
+//					"wordpress/0": 1,
+//				},
+//				ApplicationMembers: map[string]int64{
+//					"wordpress": 1,
+//				},
+//			},
+//		},
+//	}
+//	relationsResolver := relation.NewRelationResolver(r, nil)
+//	op, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
+//	c.Assert(err, jc.ErrorIsNil)
+//	// No new calls
+//	assertNumCalls(c, &numCalls, numCallsBefore)
+//	c.Assert(op.String(), gc.Equals, "run hook relation-changed on app wordpress with relation 1")
+//}
 
 func (s *relationResolverSuite) TestHookRelationChangedSuspended(c *gc.C) {
 	var numCalls int32

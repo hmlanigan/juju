@@ -57,7 +57,3 @@ func (m *mockOperation) Commit(state operation.State) (*operation.State, error) 
 
 func (m *mockOperation) RemoteStateChanged(snapshot remotestate.Snapshot) {
 }
-
-func (m *mockOperation) HookInfo() hook.Info {
-	return m.hookInfo
-}
