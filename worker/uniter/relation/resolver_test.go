@@ -401,56 +401,57 @@ func relationJoinedAndDepartedAPICallsNoState() []apiCall {
 	)
 }
 
-//func (s *relationResolverSuite) assertHookRelationJoined(c *gc.C, numCalls *int32, apiCalls ...apiCall) relation.RelationStateTracker {
-//	unitTag := names.NewUnitTag("wordpress/0")
-//	abort := make(chan struct{})
-//
-//	apiCaller := mockAPICaller(c, numCalls, apiCalls...)
-//	st := uniter.NewState(apiCaller, unitTag)
-//	u, err := st.Unit(unitTag)
-//	c.Assert(err, jc.ErrorIsNil)
-//	r, err := relation.NewRelationStateTracker(
-//		relation.RelationStateTrackerConfig{
-//			State:                st,
-//			Unit:                 u,
-//			CharmDir:             s.charmDir,
-//			NewLeadershipContext: s.leadershipContextFunc,
-//			Abort:                abort,
-//		})
-//	c.Assert(err, jc.ErrorIsNil)
-//	assertNumCalls(c, numCalls, 4)
-//
-//	localState := resolver.LocalState{
-//		State: operation.State{
-//			Kind: operation.Continue,
-//		},
-//	}
-//	remoteState := remotestate.Snapshot{
-//		Relations: map[int]remotestate.RelationSnapshot{
-//			1: {
-//				Life:      life.Alive,
-//				Suspended: false,
-//				Members: map[string]int64{
-//					"wordpress/0": 1,
-//				},
-//				ApplicationMembers: map[string]int64{
-//					"wordpress": 0,
-//				},
-//			},
-//		},
-//	}
-//	relationsResolver := relation.NewRelationResolver(r, nil)
-//	op, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
-//	c.Assert(err, jc.ErrorIsNil)
-//	assertNumCalls(c, numCalls, 11)
-//	c.Assert(op.String(), gc.Equals, "run hook relation-joined on unit wordpress/0 with relation 1")
-//
-//	_, err = r.PrepareHook(op.(*mockOperation).hookInfo)
-//	c.Assert(err, jc.ErrorIsNil)
-//	err = r.CommitHook(op.(*mockOperation).hookInfo)
-//	c.Assert(err, jc.ErrorIsNil)
-//	return r
-//}
+func (s *relationResolverSuite) assertHookRelationJoined(c *gc.C, numCalls *int32, apiCalls ...apiCall) relation.RelationStateTracker {
+	unitTag := names.NewUnitTag("wordpress/0")
+	abort := make(chan struct{})
+
+	apiCaller := mockAPICaller(c, numCalls, apiCalls...)
+	st := uniter.NewState(apiCaller, unitTag)
+	u, err := st.Unit(unitTag)
+	c.Assert(err, jc.ErrorIsNil)
+	r, err := relation.NewRelationStateTracker(
+		relation.RelationStateTrackerConfig{
+			State:                st,
+			Unit:                 u,
+			CharmDir:             s.charmDir,
+			NewLeadershipContext: s.leadershipContextFunc,
+			Abort:                abort,
+		})
+	c.Assert(err, jc.ErrorIsNil)
+	assertNumCalls(c, numCalls, 4)
+
+	localState := resolver.LocalState{
+		State: operation.State{
+			Kind: operation.Continue,
+		},
+	}
+	remoteState := remotestate.Snapshot{
+		Relations: map[int]remotestate.RelationSnapshot{
+			1: {
+				Life:      life.Alive,
+				Suspended: false,
+				Members: map[string]int64{
+					"wordpress/0": 1,
+				},
+				ApplicationMembers: map[string]int64{
+					"wordpress": 0,
+				},
+			},
+		},
+	}
+	relationsResolver := relation.NewRelationResolver(r, nil)
+	op, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
+	c.Assert(err, jc.ErrorIsNil)
+	assertNumCalls(c, numCalls, 11)
+	c.Assert(op.String(), gc.Equals, "run hook relation-joined on unit wordpress/0 with relation 1")
+
+	_, err = r.PrepareHook(op.(*mockOperation).hookInfo)
+	c.Assert(err, jc.ErrorIsNil)
+	err = r.CommitHook(op.(*mockOperation).hookInfo)
+	c.Assert(err, jc.ErrorIsNil)
+	return r
+}
+
 //
 //func (s *relationResolverSuite) TestHookRelationJoined(c *gc.C) {
 //	var numCalls int32

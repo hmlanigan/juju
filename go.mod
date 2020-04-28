@@ -17,6 +17,7 @@ require (
 	github.com/bmizerany/pat v0.0.0-20160217103242-c068ca2f0aac
 	github.com/boltdb/bolt v1.3.1-0.20170131192018-e9cf4fae01b5 // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0-20200316104309-cb8b64719ae3
+	github.com/davecgh/go-spew v1.1.1
 	github.com/dnaeon/go-vcr v1.0.1 // indirect
 	github.com/docker/distribution v2.6.0-rc.1.0.20180522175653-f0cc92778478+incompatible
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
@@ -120,7 +121,7 @@ require (
 	gopkg.in/juju/environschema.v1 v1.0.0
 	gopkg.in/juju/idmclient.v1 v1.0.0-20180320161856-203d20774ce8
 	gopkg.in/juju/names.v2 v2.0.0-20190813004204-e057c73bd1be // indirect
-	gopkg.in/juju/names.v3 v3.0.0-20200331100531-2c9a102df211 // indirect
+	gopkg.in/juju/names.v3 v3.0.0-20200331100531-2c9a102df211
 	gopkg.in/juju/worker.v1 v1.0.0-20191018043616-19a698a7150f // indirect
 	gopkg.in/macaroon-bakery.v2 v2.1.1-0.20190613120608-6734dc66fe81
 	gopkg.in/macaroon.v2 v2.1.0
