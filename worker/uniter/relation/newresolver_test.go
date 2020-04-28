@@ -4,7 +4,6 @@
 package relation_test
 
 import (
-	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/mock/gomock"
 	"github.com/juju/errors"
 	"github.com/juju/juju/core/life"
@@ -87,21 +86,6 @@ func (s *newRelationResolverSuite) TestHookRelationJoined(c *gc.C) {
 }
 
 func (s *newRelationResolverSuite) TestHookRelationChangedApplication(c *gc.C) {
-	//var numCalls int32
-	//apiCalls := relationJoinedAPICalls()
-	//r := s.assertHookRelationJoined(c, &numCalls, apiCalls...)
-	//
-	//// There will be an initial relation-changed regardless of
-	//// members, due to the "changed pending" local persistent
-	//// state.
-	//s.assertHookRelationChanged(c, r, remotestate.RelationSnapshot{
-	//	Life:      life.Alive,
-	//	Suspended: false,
-	//}, &numCalls)
-
-	// wordpress app starts at 0, changing to 1 should trigger a
-	// relation-changed hook for the app. We also leave wordpress/0 at 1 so that
-	// it doesn't trigger relation-departed or relation-changed.
 	localState := resolver.LocalState{
 		State: operation.State{
 			Kind: operation.Continue,
@@ -133,7 +117,7 @@ func (s *newRelationResolverSuite) TestHookRelationChangedApplication(c *gc.C) {
 	}
 	defer s.setupMocks(c).Finish()
 	s.expectSyncScopes(remoteState)
-	s.expectIsKnownTrue(1)
+	s.expectIsKnown(1)
 	s.expectIsImplicitFalse(1)
 	s.expectState(relationState)
 	s.expectIsPeerRelationFalse(1)
@@ -142,7 +126,207 @@ func (s *newRelationResolverSuite) TestHookRelationChangedApplication(c *gc.C) {
 	op, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(op.String(), gc.Equals, "run hook relation-changed on app wordpress with relation 1")
-	c.Logf("%s", spew.Sdump(op.(*mockOperation).hookInfo))
+}
+
+func (s *newRelationResolverSuite) TestHookRelationChangedSuspended(c *gc.C) {
+	localState := resolver.LocalState{
+		State: operation.State{
+			Kind: operation.Continue,
+		},
+	}
+	remoteState := remotestate.Snapshot{
+		Relations: map[int]remotestate.RelationSnapshot{
+			1: {
+				Life:      life.Alive,
+				Suspended: true,
+			},
+		},
+	}
+	relationState := relation.State{
+		RelationId: 1,
+		Members: map[string]int64{
+			"wordpress/0": 0,
+		},
+		ApplicationMembers: map[string]int64{
+			"wordpress": 0,
+		},
+		ChangedPending: "",
+	}
+	defer s.setupMocks(c).Finish()
+	s.expectSyncScopes(remoteState)
+	s.expectIsKnown(1)
+	s.expectIsImplicitFalse(1)
+	s.expectState(relationState)
+	s.expectLocalUnitAndApplicationLife()
+
+	relationsResolver := relation.NewRelationResolver(s.mockRelStTracker, s.mockSupDestroyer)
+	op, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(op.String(), gc.Equals, "run hook relation-departed on unit wordpress/0 with relation 1")
+}
+
+func (s *newRelationResolverSuite) TestHookRelationDeparted(c *gc.C) {
+	localState := resolver.LocalState{
+		State: operation.State{
+			Kind: operation.Continue,
+		},
+	}
+	remoteState := remotestate.Snapshot{
+		Relations: map[int]remotestate.RelationSnapshot{
+			1: {
+				Life:      life.Alive,
+				Suspended: true,
+			},
+		},
+	}
+	relationState := relation.State{
+		RelationId: 1,
+		Members: map[string]int64{
+			"wordpress/0": 0,
+		},
+		ApplicationMembers: map[string]int64{
+			"wordpress": 0,
+		},
+		ChangedPending: "",
+	}
+	defer s.setupMocks(c).Finish()
+	s.expectSyncScopes(remoteState)
+	s.expectIsKnown(1)
+	s.expectIsImplicitFalse(1)
+	s.expectState(relationState)
+	s.expectLocalUnitAndApplicationLife()
+
+	relationsResolver := relation.NewRelationResolver(s.mockRelStTracker, s.mockSupDestroyer)
+	op, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(op.String(), gc.Equals, "run hook relation-departed on unit wordpress/0 with relation 1")
+}
+
+func (s *newRelationResolverSuite) TestHookRelationBroken(c *gc.C) {
+	localState := resolver.LocalState{
+		State: operation.State{
+			Kind: operation.Continue,
+		},
+	}
+	remoteState := remotestate.Snapshot{
+		Relations: map[int]remotestate.RelationSnapshot{
+			1: {
+				Life: life.Dying,
+			},
+		},
+	}
+	relationState := relation.State{
+		RelationId:         1,
+		Members:            map[string]int64{},
+		ApplicationMembers: map[string]int64{},
+		ChangedPending:     "",
+	}
+	defer s.setupMocks(c).Finish()
+	s.expectSyncScopes(remoteState)
+	s.expectIsKnown(1)
+	s.expectIsImplicitFalse(1)
+	s.expectState(relationState)
+	s.expectIsPeerRelationFalse(1)
+	s.expectStateFound(1)
+	s.expectRemoteApplication(1, "")
+
+	relationsResolver := relation.NewRelationResolver(s.mockRelStTracker, s.mockSupDestroyer)
+	op, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(op.String(), gc.Equals, "run hook relation-broken with relation 1")
+}
+
+func (s *newRelationResolverSuite) TestHookRelationBrokenWhenSuspended(c *gc.C) {
+	localState := resolver.LocalState{
+		State: operation.State{
+			Kind: operation.Continue,
+		},
+	}
+	remoteState := remotestate.Snapshot{
+		Relations: map[int]remotestate.RelationSnapshot{
+			1: {
+				Life:      life.Alive,
+				Suspended: true,
+			},
+		},
+	}
+	relationState := relation.State{
+		RelationId:         1,
+		Members:            map[string]int64{},
+		ApplicationMembers: map[string]int64{},
+		ChangedPending:     "",
+	}
+	defer s.setupMocks(c).Finish()
+	s.expectSyncScopes(remoteState)
+	s.expectIsKnown(1)
+	s.expectIsImplicitFalse(1)
+	s.expectState(relationState)
+	s.expectIsPeerRelationFalse(1)
+	s.expectStateFound(1)
+	s.expectRemoteApplication(1, "")
+
+	relationsResolver := relation.NewRelationResolver(s.mockRelStTracker, s.mockSupDestroyer)
+	op, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(op.String(), gc.Equals, "run hook relation-broken with relation 1")
+}
+
+func (s *newRelationResolverSuite) TestHookRelationBrokenOnlyOnce(c *gc.C) {
+	localState := resolver.LocalState{
+		State: operation.State{
+			Kind: operation.Continue,
+		},
+	}
+	remoteState := remotestate.Snapshot{
+		Relations: map[int]remotestate.RelationSnapshot{
+			1: {
+				Life: life.Dying,
+			},
+		},
+	}
+	relationState := relation.State{
+		RelationId:         1,
+		Members:            map[string]int64{},
+		ApplicationMembers: map[string]int64{},
+		ChangedPending:     "",
+	}
+	defer s.setupMocks(c).Finish()
+	s.expectSyncScopes(remoteState)
+	s.expectIsKnown(1)
+	s.expectIsImplicitFalse(1)
+	s.expectState(relationState)
+	s.expectIsPeerRelationFalse(1)
+	s.expectStateFoundFalse(1)
+
+	relationsResolver := relation.NewRelationResolver(s.mockRelStTracker, s.mockSupDestroyer)
+	_, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
+	c.Assert(errors.Cause(err), gc.Equals, resolver.ErrNoOperation)
+}
+
+func (s *newRelationResolverSuite) TestImplicitRelationNoHooks(c *gc.C) {
+	localState := resolver.LocalState{
+		State: operation.State{
+			Kind: operation.Continue,
+		},
+	}
+	remoteState := remotestate.Snapshot{
+		Relations: map[int]remotestate.RelationSnapshot{
+			1: {
+				Life: life.Alive,
+				Members: map[string]int64{
+					"wordpress": 1,
+				},
+			},
+		},
+	}
+	defer s.setupMocks(c).Finish()
+	s.expectSyncScopes(remoteState)
+	s.expectIsKnown(1)
+	s.expectIsImplicitFalse(1)
+
+	relationsResolver := relation.NewRelationResolver(s.mockRelStTracker, s.mockSupDestroyer)
+	_, err := relationsResolver.NextOp(localState, remoteState, &mockOperations{})
+	c.Assert(errors.Cause(err), gc.Equals, resolver.ErrNoOperation)
 }
 
 func (s *newRelationResolverSuite) setupMocks(c *gc.C) *gomock.Controller {
@@ -162,7 +346,7 @@ func (s *newRelationResolverSuite) expectSyncScopes(snapshot remotestate.Snapsho
 	exp.SynchronizeScopes(snapshot).Return(nil)
 }
 
-func (s *newRelationResolverSuite) expectIsKnownTrue(id int) {
+func (s *newRelationResolverSuite) expectIsKnown(id int) {
 	exp := s.mockRelStTracker.EXPECT()
 	exp.IsKnown(id).Return(true)
 }
@@ -172,22 +356,47 @@ func (s *newRelationResolverSuite) expectIsKnownFalse(id int) {
 	exp.IsKnown(id).Return(true)
 }
 
+func (s *newRelationResolverSuite) expectIsImplicit(id int) {
+	exp := s.mockRelStTracker.EXPECT()
+	exp.IsImplicit(id).Return(true, nil).AnyTimes()
+}
+
 func (s *newRelationResolverSuite) expectIsImplicitFalse(id int) {
 	exp := s.mockRelStTracker.EXPECT()
 	exp.IsImplicit(id).Return(false, nil).AnyTimes()
 }
 
-func (s newRelationResolverSuite) expectStateUnknown(id int) {
+func (s *newRelationResolverSuite) expectStateUnknown(id int) {
 	exp := s.mockRelStTracker.EXPECT()
 	exp.State(id).Return(nil, errors.Errorf("unknown relation: %d", id))
 }
 
-func (s newRelationResolverSuite) expectState(st relation.State) {
+func (s *newRelationResolverSuite) expectState(st relation.State) {
 	exp := s.mockRelStTracker.EXPECT()
 	exp.State(st.RelationId).Return(&st, nil)
 }
 
-func (s newRelationResolverSuite) expectIsPeerRelationFalse(id int) {
+func (s *newRelationResolverSuite) expectIsPeerRelationFalse(id int) {
 	exp := s.mockRelStTracker.EXPECT()
 	exp.IsPeerRelation(id).Return(false, nil)
+}
+
+func (s *newRelationResolverSuite) expectLocalUnitAndApplicationLife() {
+	exp := s.mockRelStTracker.EXPECT()
+	exp.LocalUnitAndApplicationLife().Return(life.Alive, life.Alive, nil)
+}
+
+func (s *newRelationResolverSuite) expectStateFound(id int) {
+	exp := s.mockRelStTracker.EXPECT()
+	exp.StateFound(id).Return(true)
+}
+
+func (s *newRelationResolverSuite) expectStateFoundFalse(id int) {
+	exp := s.mockRelStTracker.EXPECT()
+	exp.StateFound(id).Return(false)
+}
+
+func (s *newRelationResolverSuite) expectRemoteApplication(id int, app string) {
+	exp := s.mockRelStTracker.EXPECT()
+	exp.RemoteApplication(id).Return(app)
 }
