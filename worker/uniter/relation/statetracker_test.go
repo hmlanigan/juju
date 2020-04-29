@@ -19,13 +19,13 @@ import (
 	"github.com/juju/juju/worker/uniter/relation"
 )
 
-func (s *newRelationResolverSuite) TestNewRelationsNoRelations(c *gc.C) {
+func (s *mockRelationResolverSuite) TestNewRelationsNoRelations(c *gc.C) {
 	r := s.setupRelations(c)
 	//No relations created.
 	c.Assert(r.GetInfo(), gc.HasLen, 0)
 }
 
-func (s *newRelationResolverSuite) setupRelations(c *gc.C) relation.RelationStateTracker {
+func (s *mockRelationResolverSuite) setupRelations(c *gc.C) relation.RelationStateTracker {
 	unitTag := names.NewUnitTag("wordpress/0")
 	abort := make(chan struct{})
 
