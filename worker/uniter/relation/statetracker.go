@@ -76,6 +76,10 @@ func NewRelationStateTracker(cfg RelationStateTrackerConfig) (RelationStateTrack
 		isPeerRelation:  make(map[int]bool),
 		abort:           cfg.Abort,
 	}
+	r.stateMgr, err = NewStateManager(r.unit)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
 	if err := r.loadInitialState(); err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -86,11 +90,6 @@ func NewRelationStateTracker(cfg RelationStateTrackerConfig) (RelationStateTrack
 // state of the corresponding relations.
 func (r *relationStateTracker) loadInitialState() error {
 	relationStatus, err := r.unit.RelationsStatus()
-	if err != nil {
-		return errors.Trace(err)
-	}
-
-	r.stateMgr, err = NewStateManager(r.unit)
 	if err != nil {
 		return errors.Trace(err)
 	}

@@ -14,6 +14,7 @@ type StateTrackerForTestConfig struct {
 	Subordinate       bool
 	PrincipalName     string
 	CharmDir          string
+	StateManager      StateManager
 }
 
 func NewStateTrackerForTest(cfg StateTrackerForTestConfig) (RelationStateTracker, error) {
@@ -29,12 +30,7 @@ func NewStateTrackerForTest(cfg StateTrackerForTestConfig) (RelationStateTracker
 		remoteAppName:   make(map[int]string),
 		relationCreated: make(map[int]bool),
 		isPeerRelation:  make(map[int]bool),
+		stateMgr:        cfg.StateManager,
 	}
-	stateMgr, err := NewStateManager(cfg.Unit)
-	if err != nil {
-		return nil, err
-	}
-	rst.stateMgr = stateMgr
-
-	return rst, nil
+	return rst, rst.loadInitialState()
 }

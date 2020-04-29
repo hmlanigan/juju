@@ -85,6 +85,8 @@ type SubordinateDestroyer interface {
 	DestroyAllSubordinates() error
 }
 
+//go:generate go run github.com/golang/mock/mockgen -package mocks -destination mocks/mock_state_manager.go github.com/juju/juju/worker/uniter/relation StateManager
+
 // StateManager encapsulates methods required to handle relation
 // state.
 type StateManager interface {
