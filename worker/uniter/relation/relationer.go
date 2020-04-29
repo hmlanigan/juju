@@ -10,7 +10,6 @@ import (
 	"github.com/juju/errors"
 	"github.com/juju/worker/v2/dependency"
 
-	apiuniter "github.com/juju/juju/api/uniter"
 	"github.com/juju/juju/worker/uniter/hook"
 	"github.com/juju/juju/worker/uniter/runner/context"
 )
@@ -18,14 +17,14 @@ import (
 // Relationer manages a unit's presence in a relation.
 type Relationer struct {
 	relationId int
-	ru         *apiuniter.RelationUnit
+	ru         RelationUnit
 	stateMgr   StateManager
 	dying      bool
 }
 
 // NewRelationer creates a new Relationer. The unit will not join the
 // relation until explicitly requested.
-func NewRelationer(ru *apiuniter.RelationUnit, stateMgr StateManager) *Relationer {
+func NewRelationer(ru RelationUnit, stateMgr StateManager) *Relationer {
 	return &Relationer{
 		relationId: ru.Relation().Id(),
 		ru:         ru,
@@ -44,7 +43,7 @@ func (r *Relationer) ContextInfo() *context.RelationInfo {
 	for memberName := range members {
 		memberNames = append(memberNames, memberName)
 	}
-	return &context.RelationInfo{r.ru, memberNames}
+	return &context.RelationInfo{r.ru.unit(), memberNames}
 }
 
 // IsImplicit returns whether the local relation endpoint is implicit. Implicit
@@ -54,7 +53,7 @@ func (r *Relationer) IsImplicit() bool {
 }
 
 // RelationUnit returns the relation unit associated with this relationer instance.
-func (r *Relationer) RelationUnit() *apiuniter.RelationUnit {
+func (r *Relationer) RelationUnit() RelationUnit {
 	return r.ru
 }
 
