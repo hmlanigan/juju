@@ -15,14 +15,38 @@ import (
 	"github.com/juju/juju/worker/uniter/runner/jujuc"
 )
 
+type Relation interface {
+	Id() int
+	Tag() names.RelationTag
+	Suspended() bool
+	SetStatus(status relation.Status) error
+}
+
+type RelationUnit interface {
+	Relation() Relation
+	Endpoint() uniter.Endpoint
+	Settings() (*uniter.Settings, error)
+	ApplicationSettings() (*uniter.Settings, error)
+	ReadSettings(name string) (params.Settings, error)
+	UpdateRelationSettings(unit, application params.Settings) error
+}
+
+type RelationUnitShim struct {
+	*uniter.RelationUnit
+}
+
+func (r *RelationUnitShim) Relation() Relation {
+	return r.RelationUnit.Relation()
+}
+
 type RelationInfo struct {
-	RelationUnit *uniter.RelationUnit
+	RelationUnit RelationUnit
 	MemberNames  []string
 }
 
 // ContextRelation is the implementation of hooks.ContextRelation.
 type ContextRelation struct {
-	ru           *uniter.RelationUnit
+	ru           RelationUnit
 	relationId   int
 	endpointName string
 
@@ -38,7 +62,7 @@ type ContextRelation struct {
 
 // NewContextRelation creates a new context for the given relation unit.
 // The unit-name keys of members supplies the initial membership.
-func NewContextRelation(ru *uniter.RelationUnit, cache *RelationCache) *ContextRelation {
+func NewContextRelation(ru RelationUnit, cache *RelationCache) *ContextRelation {
 	return &ContextRelation{
 		ru:           ru,
 		relationId:   ru.Relation().Id(),

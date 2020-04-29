@@ -73,7 +73,7 @@ func (s *ContextRelationSuite) SetUpTest(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 	apiUnit, err := s.uniter.Unit(unit.Tag().(names.UnitTag))
 	c.Assert(err, jc.ErrorIsNil)
-	s.apiRelUnit, err = apiRel.Unit(apiUnit)
+	s.apiRelUnit, err = apiRel.Unit(apiUnit.Tag(), apiUnit.ApplicationTag())
 	c.Assert(err, jc.ErrorIsNil)
 }
 
@@ -91,7 +91,7 @@ func (s *ContextRelationSuite) TestMemberCaching(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 
 	cache := context.NewRelationCache(s.apiRelUnit.ReadSettings, []string{"u/1"})
-	ctx := context.NewContextRelation(s.apiRelUnit, cache)
+	ctx := context.NewContextRelation(&relUnitShim{s.apiRelUnit}, cache)
 
 	// Check that uncached settings are read from state.
 	m, err := ctx.ReadSettings("u/1")
@@ -123,7 +123,7 @@ func (s *ContextRelationSuite) TestNonMemberCaching(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 
 	cache := context.NewRelationCache(s.apiRelUnit.ReadSettings, nil)
-	ctx := context.NewContextRelation(s.apiRelUnit, cache)
+	ctx := context.NewContextRelation(&relUnitShim{s.apiRelUnit}, cache)
 
 	// Check that settings are read from state.
 	m, err := ctx.ReadSettings("u/1")
@@ -142,7 +142,7 @@ func (s *ContextRelationSuite) TestNonMemberCaching(c *gc.C) {
 }
 
 func (s *ContextRelationSuite) TestLocalSettings(c *gc.C) {
-	ctx := context.NewContextRelation(s.apiRelUnit, nil)
+	ctx := context.NewContextRelation(&relUnitShim{s.apiRelUnit}, nil)
 
 	// Change Settings...
 	node, err := ctx.Settings()
@@ -188,7 +188,7 @@ func (s *ContextRelationSuite) TestSuspended(c *gc.C) {
 	err = s.rel.SetSuspended(true, "")
 	c.Assert(err, jc.ErrorIsNil)
 
-	ctx := context.NewContextRelation(s.apiRelUnit, nil)
+	ctx := context.NewContextRelation(&relUnitShim{s.apiRelUnit}, nil)
 	err = s.apiRelUnit.Relation().Refresh()
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(ctx.Suspended(), jc.IsTrue)
@@ -202,10 +202,18 @@ func (s *ContextRelationSuite) TestSetStatus(c *gc.C) {
 	err = claimer.Claim("u", "u/0", time.Minute)
 	c.Assert(err, jc.ErrorIsNil)
 
-	ctx := context.NewContextRelation(s.apiRelUnit, nil)
+	ctx := context.NewContextRelation(&relUnitShim{s.apiRelUnit}, nil)
 	err = ctx.SetStatus(relation.Suspended)
 	c.Assert(err, jc.ErrorIsNil)
 	relStatus, err := s.rel.Status()
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(relStatus.Status, gc.Equals, status.Suspended)
+}
+
+type relUnitShim struct {
+	*apiuniter.RelationUnit
+}
+
+func (r *relUnitShim) Relation() context.Relation {
+	return r.RelationUnit.Relation()
 }
