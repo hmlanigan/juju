@@ -27,67 +27,64 @@ type stateTrackerSuite struct {
 	mockApp           *mocks.MockApplication
 	mockRelation      *mocks.MockRelation
 	mockRelationUnit  *mocks.MockRelationUnit
+	mockStateMgr      *mocks.MockStateManager
 	leadershipContext context.LeadershipContext
 }
 
 var _ = gc.Suite(&stateTrackerSuite{})
 
-func (s *stateTrackerSuite) SetUpTest(c *gc.C) {
+func (s *stateTrackerSuite) SetUpTest(_ *gc.C) {
 	s.leadershipContext = &stubLeadershipContext{isLeader: true}
 }
 
-func (s *stateTrackerSuite) setupMocks(c *gc.C) *gomock.Controller {
-	ctrl := gomock.NewController(c)
-	s.mockState = mocks.NewMockStateTrackerState(ctrl)
-	s.mockUnit = mocks.NewMockUnit(ctrl)
-	return ctrl
-}
+func (s *stateTrackerSuite) TestNewRelationsNoRelations(c *gc.C) {
+	defer s.setupMocks(c).Finish()
+	s.expectRelationStatusEmpty()
+	s.expectKnownIDsEmpty()
 
-func (s *stateTrackerSuite) newStateTracker(c *gc.C) relation.RelationStateTracker {
-	cfg := relation.StateTrackerForTestConfig{
-		St:                s.mockState,
-		Unit:              s.mockUnit,
-		LeadershipContext: s.leadershipContext,
-	}
-	rst, err := relation.NewStateTrackerForTest(cfg)
-	c.Assert(err, jc.ErrorIsNil)
-	return rst
-}
-
-func (s *mockRelationResolverSuite) TestNewRelationsNoRelations(c *gc.C) {
-	r := s.setupRelations(c)
+	r := s.newStateTracker(c)
 	//No relations created.
 	c.Assert(r.GetInfo(), gc.HasLen, 0)
 }
 
-func (s *mockRelationResolverSuite) setupRelations(c *gc.C) relation.RelationStateTracker {
-	unitTag := names.NewUnitTag("wordpress/0")
-	abort := make(chan struct{})
-
-	var numCalls int32
-	unitEntity := params.Entities{Entities: []params.Entity{{Tag: "unit-wordpress-0"}}}
-	unitStateResults := params.UnitStateResults{Results: []params.UnitStateResult{{}}}
-	apiCaller := mockAPICaller(c, &numCalls,
-		uniterAPICall("Refresh", unitEntity, params.UnitRefreshResults{Results: []params.UnitRefreshResult{{Life: life.Alive, Resolved: params.ResolvedNone}}}, nil),
-		uniterAPICall("GetPrincipal", unitEntity, params.StringBoolResults{Results: []params.StringBoolResult{{Result: "", Ok: false}}}, nil),
-		uniterAPICall("RelationsStatus", unitEntity, params.RelationUnitStatusResults{Results: []params.RelationUnitStatusResult{{RelationResults: []params.RelationUnitStatus{}}}}, nil),
-		uniterAPICall("State", unitEntity, unitStateResults, nil),
-	)
-	st := uniter.NewState(apiCaller, unitTag)
-	u, err := st.Unit(unitTag)
-	c.Assert(err, jc.ErrorIsNil)
-	r, err := relation.NewRelationStateTracker(
-		relation.RelationStateTrackerConfig{
-			State:                st,
-			Unit:                 u,
-			CharmDir:             s.charmDir,
-			NewLeadershipContext: s.leadershipContextFunc,
-			Abort:                abort,
-		})
-	c.Assert(err, jc.ErrorIsNil)
-	assertNumCalls(c, &numCalls, 4)
-	return r
+func (s *stateTrackerSuite) expectRelationStatusEmpty() {
+	s.mockUnit.EXPECT().RelationsStatus().Return([]uniter.RelationStatus{}, nil)
 }
+
+func (s *stateTrackerSuite) expectKnownIDsEmpty() {
+	s.mockUnit.EXPECT().RelationsStatus().Return([]int{})
+}
+
+func (s *stateTrackerSuite) expectRelationFound() {}
+
+//func (s *mockRelationResolverSuite) setupRelations(c *gc.C) relation.RelationStateTracker {
+//	unitTag := names.NewUnitTag("wordpress/0")
+//	abort := make(chan struct{})
+//
+//	var numCalls int32
+//	unitEntity := params.Entities{Entities: []params.Entity{{Tag: "unit-wordpress-0"}}}
+//	unitStateResults := params.UnitStateResults{Results: []params.UnitStateResult{{}}}
+//	apiCaller := mockAPICaller(c, &numCalls,
+//		uniterAPICall("Refresh", unitEntity, params.UnitRefreshResults{Results: []params.UnitRefreshResult{{Life: life.Alive, Resolved: params.ResolvedNone}}}, nil),
+//		uniterAPICall("GetPrincipal", unitEntity, params.StringBoolResults{Results: []params.StringBoolResult{{Result: "", Ok: false}}}, nil),
+//		uniterAPICall("RelationsStatus", unitEntity, params.RelationUnitStatusResults{Results: []params.RelationUnitStatusResult{{RelationResults: []params.RelationUnitStatus{}}}}, nil),
+//		uniterAPICall("State", unitEntity, unitStateResults, nil),
+//	)
+//	st := uniter.NewState(apiCaller, unitTag)
+//	u, err := st.Unit(unitTag)
+//	c.Assert(err, jc.ErrorIsNil)
+//	r, err := relation.NewRelationStateTracker(
+//		relation.RelationStateTrackerConfig{
+//			State:                st,
+//			Unit:                 u,
+//			CharmDir:             s.charmDir,
+//			NewLeadershipContext: s.leadershipContextFunc,
+//			Abort:                abort,
+//		})
+//	c.Assert(err, jc.ErrorIsNil)
+//	assertNumCalls(c, &numCalls, 4)
+//	return r
+//}
 
 func (s *relationResolverSuite) TestNewRelationsWithExistingRelationsLeader(c *gc.C) {
 	s.assertNewRelationsWithExistingRelations(c, true)
@@ -222,4 +219,24 @@ func (s *relationResolverSuite) TestCommitHook(c *gc.C) {
 		RelationId:        1,
 	})
 	c.Assert(err, jc.ErrorIsNil)
+}
+
+func (s *stateTrackerSuite) setupMocks(c *gc.C) *gomock.Controller {
+	ctrl := gomock.NewController(c)
+	s.mockState = mocks.NewMockStateTrackerState(ctrl)
+	s.mockUnit = mocks.NewMockUnit(ctrl)
+	s.mockStateMgr = mocks.NewMockStateManager(ctrl)
+	return ctrl
+}
+
+func (s *stateTrackerSuite) newStateTracker(c *gc.C) relation.RelationStateTracker {
+	cfg := relation.StateTrackerForTestConfig{
+		St:                s.mockState,
+		Unit:              s.mockUnit,
+		LeadershipContext: s.leadershipContext,
+		StateManager:      s.mockStateMgr,
+	}
+	rst, err := relation.NewStateTrackerForTest(cfg)
+	c.Assert(err, jc.ErrorIsNil)
+	return rst
 }

@@ -43,7 +43,7 @@ func (r *Relationer) ContextInfo() *context.RelationInfo {
 	for memberName := range members {
 		memberNames = append(memberNames, memberName)
 	}
-	sh, _ := r.ru.(*relationUnitShim)
+	sh, _ := r.ru.(*RelationUnitShim)
 	return &context.RelationInfo{
 		RelationUnit: &context.RelationUnitShim{sh.RelationUnit},
 		MemberNames:  memberNames,

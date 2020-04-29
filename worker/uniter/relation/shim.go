@@ -39,7 +39,7 @@ func (s *relationShim) Unit(uTag names.UnitTag, aTag names.ApplicationTag) (Rela
 	if err != nil {
 		return nil, err
 	}
-	return &relationUnitShim{u}, nil
+	return &RelationUnitShim{u}, nil
 }
 
 type unitShim struct {
@@ -58,10 +58,10 @@ type applicationShim struct {
 	*uniter.Application
 }
 
-type relationUnitShim struct {
+type RelationUnitShim struct {
 	*uniter.RelationUnit
 }
 
-func (r *relationUnitShim) Relation() Relation {
+func (r *RelationUnitShim) Relation() Relation {
 	return &relationShim{r.RelationUnit.Relation()}
 }
