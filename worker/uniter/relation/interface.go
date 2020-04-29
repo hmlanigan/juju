@@ -120,22 +120,28 @@ type UnitStateReadWriter interface {
 	State() (params.UnitStateResult, error)
 }
 
-//go:generate go run github.com/golang/mock/mockgen -package mocks -destination mocks/mock_state_tracker.go github.com/juju/juju/worker/uniter/relation StateTrackerState,StateTrackerUnit,StateTrackerApplication,StateTrackerRelation,RelationUnit
+//go:generate go run github.com/golang/mock/mockgen -package mocks -destination mocks/mock_state_tracker.go github.com/juju/juju/worker/uniter/relation StateTrackerState,Unit,Application,Relation,RelationUnit
 
 // StateTrackerState encapsulates the methods from state
 // required by a relationStateTracker.
 type StateTrackerState interface {
 	// Relation returns the existing relation with the given tag.
-	Relation(tag names.RelationTag) (StateTrackerRelation, error)
+	Relation(tag names.RelationTag) (Relation, error)
 
 	// RelationById returns the existing relation with the given id.
-	RelationById(int) (StateTrackerRelation, error)
+	RelationById(int) (Relation, error)
 }
 
-// StateTrackerUnit encapsulates the methods from state.Unit
+// Unit encapsulates the methods from state.Unit
 // required by a relationStateTracker.
-type StateTrackerUnit interface {
+type Unit interface {
 	UnitStateReadWriter
+
+	// Tag returns the tag for this unit.
+	Tag() names.UnitTag
+
+	// ApplicationTag returns the tag for this unit's application.
+	ApplicationTag() names.ApplicationTag
 
 	// RelationsStatus returns the tags of the relations the unit has joined
 	// and entered scope, or the relation is suspended.
@@ -158,23 +164,21 @@ type StateTrackerUnit interface {
 	Refresh() error
 
 	// Application returns the unit's application.
-	Application() (StateTrackerApplication, error)
+	Application() (Application, error)
 
 	// Life returns the unit's lifecycle value.
 	Life() life.Value
-
-	unit() *uniter.Unit
 }
 
-// StateTrackerApplication encapsulates the methods from
+// Application encapsulates the methods from
 // state.Application required by a relationStateTracker.
-type StateTrackerApplication interface {
+type Application interface {
 	Life() life.Value
 }
 
-// StateTrackerRelation encapsulates the methods from
+// Relation encapsulates the methods from
 // state.Relation required by a relationStateTracker.
-type StateTrackerRelation interface {
+type Relation interface {
 	// Endpoint returns the endpoint of the relation for the application the
 	// uniter's managed unit belongs to.
 	Endpoint() (*uniter.Endpoint, error)
@@ -210,7 +214,7 @@ type StateTrackerRelation interface {
 	Tag() names.RelationTag
 
 	// Unit returns a uniter.RelationUnit for the supplied unit.
-	Unit(StateTrackerUnit) (RelationUnit, error)
+	Unit(names.UnitTag, names.ApplicationTag) (RelationUnit, error)
 
 	// UpdateSuspended updates the in memory value of the
 	// relation's suspended attribute.
@@ -220,13 +224,18 @@ type StateTrackerRelation interface {
 // RelationUnit encapsulates the methods from
 // state.RelationUnit required by a relationer.
 type RelationUnit interface {
+	// ApplicationSettings returns a Settings which allows access to this
+	// unit's application settings within the relation. This can only be
+	// used from the leader unit.
+	ApplicationSettings() (*uniter.Settings, error)
+
 	// Endpoint returns the endpoint of the relation for the application the
 	// uniter's managed unit belongs to.
 	Endpoint() uniter.Endpoint
 
 	// EnterScope ensures that the unit has entered its scope in the relation.
-	// When the unit has already entered its relation scope, EnterScope will report
-	// success but make no changes to state.
+	// When the unit has already entered its relation scope, EnterScope will
+	// report success but make no changes to state.
 	EnterScope() error
 
 	// LeaveScope signals that the unit has left its scope in the relation.
@@ -235,7 +244,18 @@ type RelationUnit interface {
 	LeaveScope() error
 
 	// Relation returns the relation associated with the unit.
-	Relation() StateTrackerRelation
+	Relation() Relation
 
-	unit() *uniter.RelationUnit
+	// ReadSettings returns a map holding the settings of the unit with the
+	// supplied name within this relation.
+	ReadSettings(name string) (params.Settings, error)
+
+	// Settings returns a Settings which allows access to the unit's settings
+	// within the relation.
+	Settings() (*uniter.Settings, error)
+
+	// UpdateRelationSettings is used to record any changes to settings for
+	// this unit and application. It is only valid to update application
+	// settings if this unit is the leader.
+	UpdateRelationSettings(unit, application params.Settings) error
 }

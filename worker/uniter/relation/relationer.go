@@ -43,7 +43,11 @@ func (r *Relationer) ContextInfo() *context.RelationInfo {
 	for memberName := range members {
 		memberNames = append(memberNames, memberName)
 	}
-	return &context.RelationInfo{r.ru.unit(), memberNames}
+	sh, _ := r.ru.(*relationUnitShim)
+	return &context.RelationInfo{
+		RelationUnit: &context.RelationUnitShim{sh.RelationUnit},
+		MemberNames:  memberNames,
+	}
 }
 
 // IsImplicit returns whether the local relation endpoint is implicit. Implicit

@@ -38,7 +38,7 @@ type RelationStateTrackerConfig struct {
 // relationStateTracker implements RelationStateTracker.
 type relationStateTracker struct {
 	st              StateTrackerState
-	unit            StateTrackerUnit
+	unit            Unit
 	leaderCtx       context.LeadershipContext
 	abort           <-chan struct{}
 	subordinate     bool
@@ -65,7 +65,7 @@ func NewRelationStateTracker(cfg RelationStateTrackerConfig) (RelationStateTrack
 
 	r := &relationStateTracker{
 		st:              &stateTrackerStateShim{cfg.State},
-		unit:            &stateTrackerUnitShim{cfg.Unit},
+		unit:            &unitShim{cfg.Unit},
 		leaderCtx:       leadershipContext,
 		subordinate:     subordinate,
 		principalName:   principalName,
@@ -97,7 +97,7 @@ func (r *relationStateTracker) loadInitialState() error {
 
 	// Keep the relations ordered for reliable testing.
 	var orderedIds []int
-	activeRelations := make(map[int]StateTrackerRelation)
+	activeRelations := make(map[int]Relation)
 	relationSuspended := make(map[int]bool)
 	for _, rs := range relationStatus {
 		if !rs.InScope {
@@ -149,9 +149,9 @@ func (r *relationStateTracker) loadInitialState() error {
 // store persistent state. It will block until the
 // operation succeeds or fails; or until the abort chan is closed, in which
 // case it will return resolver.ErrLoopAborted.
-func (r *relationStateTracker) joinRelation(rel StateTrackerRelation) (err error) {
+func (r *relationStateTracker) joinRelation(rel Relation) (err error) {
 	logger.Infof("joining relation %q", rel)
-	ru, err := rel.Unit(r.unit)
+	ru, err := rel.Unit(r.unit.Tag(), r.unit.ApplicationTag())
 	if err != nil {
 		return errors.Trace(err)
 	}

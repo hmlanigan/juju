@@ -57,6 +57,7 @@ type relationResolverSuite struct {
 var (
 	_ = gc.Suite(&relationResolverSuite{})
 	_ = gc.Suite(&relationCreatedResolverSuite{})
+	_ = gc.Suite(&mockRelationResolverSuite{})
 )
 
 type apiCall struct {
@@ -691,19 +692,8 @@ func (s *relationCreatedResolverSuite) expectRelationCreatedFalse(remoteState re
 }
 
 type mockRelationResolverSuite struct {
-	charmDir              string
-	leadershipContextFunc relation.LeadershipContextFunc
-
 	mockRelStTracker *mocks.MockRelationStateTracker
 	mockSupDestroyer *mocks.MockSubordinateDestroyer
-}
-
-var _ = gc.Suite(&mockRelationResolverSuite{})
-
-func (s *mockRelationResolverSuite) SetUpTest(_ *gc.C) {
-	s.leadershipContextFunc = func(accessor context.LeadershipSettingsAccessor, tracker leadership.Tracker, unitName string) context.LeadershipContext {
-		return &stubLeadershipContext{isLeader: true}
-	}
 }
 
 func (s *mockRelationResolverSuite) TestNextOpNothing(c *gc.C) {

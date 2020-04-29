@@ -4,9 +4,11 @@
 package relation_test
 
 import (
+	"github.com/golang/mock/gomock"
 	"github.com/juju/charm/v7"
 	"github.com/juju/charm/v7/hooks"
 	"github.com/juju/juju/worker/uniter/hook"
+	"github.com/juju/juju/worker/uniter/relation/mocks"
 	"github.com/juju/juju/worker/uniter/runner/context"
 	"github.com/juju/names/v4"
 	jc "github.com/juju/testing/checkers"
@@ -18,6 +20,39 @@ import (
 	"github.com/juju/juju/core/life"
 	"github.com/juju/juju/worker/uniter/relation"
 )
+
+type stateTrackerSuite struct {
+	mockState         *mocks.MockStateTrackerState
+	mockUnit          *mocks.MockUnit
+	mockApp           *mocks.MockApplication
+	mockRelation      *mocks.MockRelation
+	mockRelationUnit  *mocks.MockRelationUnit
+	leadershipContext context.LeadershipContext
+}
+
+var _ = gc.Suite(&stateTrackerSuite{})
+
+func (s *stateTrackerSuite) SetUpTest(c *gc.C) {
+	s.leadershipContext = &stubLeadershipContext{isLeader: true}
+}
+
+func (s *stateTrackerSuite) setupMocks(c *gc.C) *gomock.Controller {
+	ctrl := gomock.NewController(c)
+	s.mockState = mocks.NewMockStateTrackerState(ctrl)
+	s.mockUnit = mocks.NewMockUnit(ctrl)
+	return ctrl
+}
+
+func (s *stateTrackerSuite) newStateTracker(c *gc.C) relation.RelationStateTracker {
+	cfg := relation.StateTrackerForTestConfig{
+		St:                s.mockState,
+		Unit:              s.mockUnit,
+		LeadershipContext: s.leadershipContext,
+	}
+	rst, err := relation.NewStateTrackerForTest(cfg)
+	c.Assert(err, jc.ErrorIsNil)
+	return rst
+}
 
 func (s *mockRelationResolverSuite) TestNewRelationsNoRelations(c *gc.C) {
 	r := s.setupRelations(c)
