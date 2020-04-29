@@ -5,6 +5,8 @@ package relation_test
 
 import (
 	"github.com/juju/charm/v7"
+	"github.com/juju/charm/v7/hooks"
+	"github.com/juju/juju/worker/uniter/hook"
 	"github.com/juju/juju/worker/uniter/runner/context"
 	"github.com/juju/names/v4"
 	jc "github.com/juju/testing/checkers"
@@ -137,4 +139,52 @@ func (s *relationResolverSuite) assertNewRelationsWithExistingRelations(c *gc.C,
 		Relation: charm.Relation{Name: "mysql", Role: "provider", Interface: "db", Optional: false, Limit: 0, Scope: ""},
 	})
 	c.Assert(oneInfo.MemberNames, gc.HasLen, 0)
+}
+
+func (s *relationResolverSuite) TestCommitHook(c *gc.C) {
+	var numCalls int32
+	apiCalls := relationJoinedAPICalls2SetState()
+	relationUnits := params.RelationUnits{RelationUnits: []params.RelationUnit{
+		{Relation: "relation-wordpress.db#mysql.db", Unit: "unit-wordpress-0"},
+	}}
+	unitSetStateArgs := params.SetUnitStateArgs{
+		Args: []params.SetUnitStateArg{{
+			Tag:           "unit-wordpress-0",
+			RelationState: &map[int]string{1: "id: 1\nmembers:\n  wordpress/0: 2\n"},
+		}}}
+	unitSetStateArgs2 := params.SetUnitStateArgs{
+		Args: []params.SetUnitStateArg{{
+			Tag:           "unit-wordpress-0",
+			RelationState: &map[int]string{1: "id: 1\n"},
+		}}}
+	// ops.Remove() via die()
+	unitSetStateArgs3 := params.SetUnitStateArgs{
+		Args: []params.SetUnitStateArg{{
+			Tag:           "unit-wordpress-0",
+			RelationState: &map[int]string{1: ""},
+		}}}
+	apiCalls = append(apiCalls,
+		uniterAPICall("SetState", unitSetStateArgs, noErrorResult, nil),
+		uniterAPICall("SetState", unitSetStateArgs2, noErrorResult, nil),
+		uniterAPICall("LeaveScope", relationUnits, params.ErrorResults{Results: []params.ErrorResult{{}}}, nil),
+		uniterAPICall("SetState", unitSetStateArgs3, noErrorResult, nil),
+	)
+	r := s.assertHookRelationJoined(c, &numCalls, apiCalls...)
+
+	err := r.CommitHook(hook.Info{
+		Kind:              hooks.RelationChanged,
+		RemoteUnit:        "wordpress/0",
+		RemoteApplication: "wordpress",
+		RelationId:        1,
+		ChangeVersion:     2,
+	})
+	c.Assert(err, jc.ErrorIsNil)
+
+	err = r.CommitHook(hook.Info{
+		Kind:              hooks.RelationDeparted,
+		RemoteUnit:        "wordpress/0",
+		RemoteApplication: "wordpress",
+		RelationId:        1,
+	})
+	c.Assert(err, jc.ErrorIsNil)
 }

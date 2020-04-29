@@ -4,6 +4,7 @@
 package relation
 
 import (
+	"github.com/davecgh/go-spew/spew"
 	"github.com/juju/charm/v7/hooks"
 	"github.com/juju/collections/set"
 	"github.com/juju/errors"
@@ -43,6 +44,7 @@ type relationsResolver struct {
 
 // NextOp implements resolver.Resolver.
 func (r *relationsResolver) NextOp(localState resolver.LocalState, remoteState remotestate.Snapshot, opFactory operation.Factory) (operation.Operation, error) {
+	logger.Criticalf("NextOp(%s, %s)", spew.Sdump(localState), spew.Sdump(remoteState))
 	if err := r.maybeDestroySubordinates(remoteState); err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -121,6 +123,7 @@ func (r *relationsResolver) maybeDestroySubordinates(remoteState remotestate.Sna
 
 func (r *relationsResolver) nextHookForRelation(localState *State, remote remotestate.RelationSnapshot, remoteBroken bool) (hook.Info, error) {
 	// If there's a guaranteed next hook, return that.
+	logger.Criticalf("nextHookForRelation(%s, %s)", spew.Sdump(localState), spew.Sdump(remote))
 	relationId := localState.RelationId
 	if localState.ChangedPending != "" {
 		// ChangedPending should only happen for a unit (not an app). It is a side effect that if we call 'relation-joined'
@@ -208,16 +211,19 @@ func (r *relationsResolver) nextHookForRelation(localState *State, remote remote
 	// peer relations we can safely ignore this hook.
 	isPeer, _ := r.stateTracker.IsPeerRelation(relationId)
 	if remoteBroken && !isPeer {
+		logger.Criticalf("calling StateFound(%d)", relationId)
 		if !r.stateTracker.StateFound(relationId) {
 			// The relation may have been suspended and then
 			// removed, so we don't want to run the hook twice.
 			return hook.Info{}, resolver.ErrNoOperation
 		}
 
+		rApp := r.stateTracker.RemoteApplication(relationId)
+		logger.Criticalf("calling RemoteApplication(%d) received %q", relationId, rApp)
 		return hook.Info{
 			Kind:              hooks.RelationBroken,
 			RelationId:        relationId,
-			RemoteApplication: r.stateTracker.RemoteApplication(relationId),
+			RemoteApplication: rApp,
 		}, nil
 	}
 
