@@ -4,10 +4,6 @@
 package charmrevisionupdater_test
 
 import (
-	"context"
-	"fmt"
-	"time"
-
 	"github.com/golang/mock/gomock"
 	"github.com/juju/charm/v8"
 	"github.com/juju/charm/v8/resource"
@@ -20,10 +16,7 @@ import (
 
 	"github.com/juju/juju/apiserver/facade"
 	"github.com/juju/juju/apiserver/facades/controller/charmrevisionupdater"
-	"github.com/juju/juju/charmhub"
-	"github.com/juju/juju/charmhub/transport"
 	"github.com/juju/juju/charmstore"
-	"github.com/juju/juju/cloud"
 	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/state"
 	statemocks "github.com/juju/juju/state/mocks"
@@ -81,18 +74,13 @@ func makeModel(c *gc.C, ctrl *gomock.Controller) charmrevisionupdater.Model {
 	return model
 }
 
-func makeState(c *gc.C, ctrl *gomock.Controller, resources state.Resources) *MockState {
+func (s *updaterSuite) makeState(c *gc.C, ctrl *gomock.Controller, resources state.Resources) {
 	if resources == nil {
 		r := statemocks.NewMockResources(ctrl)
 		r.EXPECT().SetCharmStoreResources(gomock.Any(), gomock.Len(0), gomock.Any()).Return(nil).AnyTimes()
 		resources = r
 	}
-	state := NewMockState(ctrl)
-	state.EXPECT().Cloud(gomock.Any()).Return(cloud.Cloud{Type: "cloud"}, nil).AnyTimes()
-	state.EXPECT().ControllerUUID().Return("controller-1").AnyTimes()
-	state.EXPECT().Model().Return(makeModel(c, ctrl), nil).AnyTimes()
-	state.EXPECT().Resources().Return(resources, nil).AnyTimes()
-	return state
+
 }
 
 func makeResource(c *gc.C, name string, revision, size int, hexFingerprint string) resource.Resource {
@@ -108,96 +96,6 @@ func makeResource(c *gc.C, name string, revision, size int, hexFingerprint strin
 		Fingerprint: fingerprint,
 		Size:        int64(size),
 	}
-}
-
-func newFakeCharmhubClient(st charmrevisionupdater.State, metadata map[string]string) (charmrevisionupdater.CharmhubRefreshClient, error) {
-	resources := []transport.ResourceRevision{
-		{
-			Download: transport.ResourceDownload{
-				HashSHA384: "59e1748777448c69de6b800d7a33bbfb9ff1b463e44354c3553bcdb9c666fa90125a3c79f90397bdf5f6a13de828684f",
-				Size:       5,
-			},
-			Name:     "reza",
-			Revision: 7,
-			Type:     "file",
-		},
-		{
-			Download: transport.ResourceDownload{
-				HashSHA384: "03130092073c5ac523ecb21f548b9ad6e1387d1cb05f3cb892fcc26029d01428afbe74025b6c567b6564a3168a47179a",
-				Size:       6,
-			},
-			Name:     "rezb",
-			Revision: 1,
-			Type:     "file",
-		},
-	}
-	charms := map[string]charmhubCharm{
-		"charm-1": {id: "charm-1", name: "mysql", revision: 23},
-		"charm-2": {id: "charm-2", name: "postgresql", revision: 42},
-		"charm-3": {id: "charm-3", name: "resourcey", revision: 1, resources: resources},
-	}
-	return &fakeCharmhubClient{charms: charms, metadata: metadata}, nil
-}
-
-type charmhubCharm struct {
-	id        string
-	name      string
-	revision  int
-	resources []transport.ResourceRevision
-	version   string
-}
-
-type fakeCharmhubClient struct {
-	charms   map[string]charmhubCharm
-	metadata map[string]string
-}
-
-func (c *fakeCharmhubClient) Refresh(_ context.Context, config charmhub.RefreshConfig) ([]transport.RefreshResponse, error) {
-	// Sanity check that metadata headers are present
-	if c.metadata["model_uuid"] == "" {
-		return nil, errors.Errorf("model metadata not present")
-	}
-
-	request, _, err := config.Build()
-	if err != nil {
-		return nil, err
-	}
-	responses := make([]transport.RefreshResponse, len(request.Context))
-	for i, context := range request.Context {
-		action := request.Actions[i]
-		if action.Action != "refresh" {
-			return nil, errors.Errorf("unexpected action %q", action.Action)
-		}
-		if *action.ID != context.ID {
-			return nil, errors.Errorf("action ID %q doesn't match context ID %q", *action.ID, context.ID)
-		}
-		charm, ok := c.charms[context.ID]
-		if !ok {
-			responses[i] = transport.RefreshResponse{
-				Error: &transport.APIError{
-					Code:    "not-found",
-					Message: fmt.Sprintf("charm ID %q not found", context.ID),
-				},
-			}
-			continue
-		}
-		response := transport.RefreshResponse{
-			Entity: transport.RefreshEntity{
-				CreatedAt: time.Now(),
-				ID:        context.ID,
-				Name:      charm.name,
-				Resources: charm.resources,
-				Revision:  charm.revision,
-			},
-			EffectiveChannel: context.TrackingChannel,
-			ID:               context.ID,
-			InstanceKey:      context.InstanceKey,
-			Name:             charm.name,
-			Result:           "refresh",
-		}
-		responses[i] = response
-	}
-	return responses, nil
 }
 
 func newFakeCharmstoreClient(st charmrevisionupdater.State) (charmstore.Client, error) {

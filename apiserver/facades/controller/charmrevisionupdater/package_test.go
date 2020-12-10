@@ -10,6 +10,7 @@ import (
 )
 
 //go:generate go run github.com/golang/mock/mockgen -package charmrevisionupdater_test -destination interface_mock_test.go github.com/juju/juju/apiserver/facades/controller/charmrevisionupdater Application,Model,State
+//go:generate go run github.com/golang/mock/mockgen -package mocks -destination mocks/charmhubclient_mock.go github.com/juju/juju/apiserver/facades/controller/charmrevisionupdater CharmhubRefreshClient
 
 func TestAll(t *stdtesting.T) {
 	testing.MgoTestPackage(t)
