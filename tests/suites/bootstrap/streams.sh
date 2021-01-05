@@ -20,7 +20,7 @@ run_simplestream_metadata() {
     name="test-bootstrap-stream"
 
     file="${TEST_DIR}/test-bootstrap-stream.log"
-    juju bootstrap "lxd" "${name}" \
+    juju bootstrap "${BOOTSTRAP_PROVIDER}" "${name}" \
         --config agent-metadata-url="http://${ip_address}:8000/" \
         --config test-mode=true \
         --agent-version="${JUJUD_VERSION}" 2>&1 | OUTPUT "${file}"
