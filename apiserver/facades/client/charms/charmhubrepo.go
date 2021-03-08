@@ -55,10 +55,6 @@ type chRepo struct {
 func (c *chRepo) ResolveWithPreferredChannel(curl *charm.URL, origin corecharm.Origin) (*charm.URL, corecharm.Origin, []string, error) {
 	logger.Tracef("Resolving CharmHub charm %q with origin %v", curl, origin)
 
-	if curl.Revision != -1 {
-		return nil, corecharm.Origin{}, nil, errors.Errorf("specifying a revision is not supported, please use a channel.")
-	}
-
 	input := origin
 
 	res, err := c.refreshOne(curl, input)

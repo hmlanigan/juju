@@ -323,7 +323,7 @@ func (h *bundleHandler) resolveCharmsAndEndpoints() error {
 			continue
 		}
 
-		ch, err := resolveAndValidateCharmURL(spec.Charm)
+		ch, err := resolveCharmURL(spec.Charm)
 		if err != nil {
 			return errors.Trace(err)
 		}
@@ -387,7 +387,7 @@ func (h *bundleHandler) resolveCharmChannelAndRevision(charmURL, charmSeries, ch
 	}
 
 	// Resolve and validate a charm URL based on passed in charm.
-	ch, err := resolveAndValidateCharmURL(charmURL)
+	ch, err := resolveCharmURL(charmURL)
 	if err != nil {
 		return "", -1, errors.Trace(err)
 	}
@@ -613,7 +613,7 @@ func (h *bundleHandler) addCharm(change *bundlechanges.AddCharmChange) error {
 	}
 
 	// Not a local charm, so grab from the store.
-	ch, err := resolveAndValidateCharmURL(chParams.Charm)
+	ch, err := resolveCharmURL(chParams.Charm)
 	if err != nil {
 		return errors.Trace(err)
 	}

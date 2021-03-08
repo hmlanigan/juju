@@ -390,7 +390,7 @@ func (d *factory) maybeReadLocalCharm(getter ModelConfigGetter) (Deployer, error
 }
 
 func (d *factory) maybeReadRepositoryBundle(resolver Resolver) (Deployer, error) {
-	curl, err := resolveAndValidateCharmURL(d.charmOrBundle)
+	curl, err := resolveCharmURL(d.charmOrBundle)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -450,7 +450,7 @@ func (d *factory) maybeReadRepositoryBundle(resolver Resolver) (Deployer, error)
 
 func (d *factory) repositoryCharm() (Deployer, error) {
 	// Validate we have a charm store change.
-	userRequestedURL, err := resolveAndValidateCharmURL(d.charmOrBundle)
+	userRequestedURL, err := resolveCharmURL(d.charmOrBundle)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -479,20 +479,6 @@ func resolveCharmURL(path string) (*charm.URL, error) {
 		return nil, errors.Trace(err)
 	}
 	return charm.ParseURL(path)
-}
-
-func resolveAndValidateCharmURL(path string) (*charm.URL, error) {
-	curl, err := resolveCharmURL(path)
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-
-	// Deploy by revision is not supported with CharmHub charms,
-	// check now.
-	if charm.CharmHub.Matches(curl.Schema) && curl.Revision > -1 {
-		return nil, errors.Errorf("specifying a revision for %s is not supported, please use a channel.", curl.Name)
-	}
-	return curl, nil
 }
 
 func isLocalSchema(u string) bool {
