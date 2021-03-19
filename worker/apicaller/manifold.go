@@ -60,6 +60,8 @@ type ManifoldConfig struct {
 
 	// Logger is used to write logging statements for the worker.
 	Logger Logger
+
+	APIServerGateName string
 }
 
 // Manifold returns a manifold whose worker wraps an API connection
@@ -72,6 +74,21 @@ func Manifold(config ManifoldConfig) dependency.Manifold {
 		// It will be empty for model manifolds.
 		inputs = append(inputs, config.APIConfigWatcherName)
 	}
+	if config.APIServerGateName != "" {
+		inputs = append(inputs, config.APIServerGateName)
+	}
+	// Confirm we're running in a state server by asking the
+	// stateconfigwatcher manifold.
+	//var haveStateConfig bool
+	//if err := context.Get(config.StateConfigWatcherName, &haveStateConfig); err != nil {
+	//	config.Logger.Tracef("state config watcher not available")
+	//	return nil, err
+	//}
+	//if !haveStateConfig {
+	//	config.Logger.Tracef("not a state server, not needed")
+	//	config.Recorder.Disable()
+	//	return nil, dependency.ErrMissing
+	//}
 	return dependency.Manifold{
 		Inputs: inputs,
 		Output: outputFunc,

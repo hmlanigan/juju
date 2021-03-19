@@ -145,6 +145,8 @@ type ManifoldsConfig struct {
 	// upgrader worker completes it's first check.
 	UpgradeCheckLock gate.Lock
 
+	APIServerLock gate.Lock
+
 	// OpenController is function used by the controller manifold to
 	// create a *state.Controller.
 	OpenController func(coreagent.Config) (*state.Controller, error)
@@ -443,6 +445,13 @@ func commonManifolds(config ManifoldsConfig) dependency.Manifolds {
 			AgentName: agentName,
 		})),
 
+		apiServerInitializedGateName: ifController(gate.Manifold()),
+		//apiServerInitializedGateName: ifController(gate.ManifoldEx(config.APIServerLock)),
+		apiServerInitializedFlagName: ifController(gate.FlagManifold(gate.FlagManifoldConfig{
+			GateName:  apiServerInitializedGateName,
+			NewWorker: gate.NewFlagWorker,
+		})),
+
 		// The api caller is a thin concurrent wrapper around a connection
 		// to some API server. It's used by many other manifolds, which all
 		// select their own desired facades. It will be interesting to see
@@ -455,6 +464,7 @@ func commonManifolds(config ManifoldsConfig) dependency.Manifolds {
 			NewConnection:        apicaller.ScaryConnect,
 			Filter:               connectFilter,
 			Logger:               loggo.GetLogger("juju.worker.apicaller"),
+			//APIServerGateName:    apiServerInitializedGateName,
 		}),
 
 		// The upgrade database gate is used to coordinate workers that should
@@ -695,6 +705,7 @@ func commonManifolds(config ManifoldsConfig) dependency.Manifolds {
 			MuxName:                httpServerArgsName,
 			LeaseManagerName:       leaseManagerName,
 			UpgradeGateName:        upgradeStepsGateName,
+			APIServerGateName:      apiServerInitializedGateName,
 			RestoreStatusName:      restoreWatcherName,
 			AuditConfigUpdaterName: auditConfigUpdaterName,
 			// Synthetic dependency - if raft-transport bounces we
@@ -1070,6 +1081,12 @@ var ifModelCacheInitialized = engine.Housing{
 	},
 }.Decorate
 
+var ifAPIServerInitialized = engine.Housing{
+	Flags: []string{
+		apiServerInitializedFlagName,
+	},
+}.Decorate
+
 var ifDatabaseUpgradeComplete = engine.Housing{
 	Flags: []string{
 		upgradeDatabaseFlagName,
@@ -1132,6 +1149,8 @@ const (
 	modelCacheName                = "model-cache"
 	modelCacheInitializedFlagName = "model-cache-initialized-flag"
 	modelCacheInitializedGateName = "model-cache-initialized-gate"
+	apiServerInitializedFlagName  = "api-server-initialized-flag"
+	apiServerInitializedGateName  = "api-server-initialized-gate"
 	modelWorkerManagerName        = "model-worker-manager"
 	multiwatcherName              = "multiwatcher"
 	peergrouperName               = "peer-grouper"

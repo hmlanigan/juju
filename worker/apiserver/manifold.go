@@ -55,6 +55,7 @@ type ManifoldConfig struct {
 
 	NewWorker           func(Config) (worker.Worker, error)
 	NewMetricsCollector func() *apiserver.Collector
+	APIServerGateName   string
 }
 
 // Validate validates the manifold configuration.
@@ -134,6 +135,7 @@ func Manifold(config ManifoldConfig) dependency.Manifold {
 			config.AuditConfigUpdaterName,
 			config.LeaseManagerName,
 			config.RaftTransportName,
+			config.APIServerGateName,
 		},
 		Start: config.start,
 	}
@@ -190,6 +192,20 @@ func (config ManifoldConfig) start(context dependency.Context) (worker.Worker, e
 		return nil, errors.Trace(err)
 	}
 
+	//var initialCheckUnlocker gate.Unlocker
+	//if config.UpgradeCheckGateName == "" {
+	//	initialCheckUnlocker = gate.NewLock()
+	//} else {
+	//	if err := context.Get(config.UpgradeCheckGateName, &initialCheckUnlocker); err != nil {
+	//		return nil, err
+	//	}
+	//}
+	logger.Criticalf("Calling get on %+v", config.APIServerGateName)
+	var apiServerUnlocker gate.Unlocker
+	if err := context.Get(config.APIServerGateName, &apiServerUnlocker); err != nil {
+		return nil, err
+	}
+
 	var getAuditConfig func() auditlog.Config
 	if err := context.Get(config.AuditConfigUpdaterName, &getAuditConfig); err != nil {
 		return nil, errors.Trace(err)
@@ -243,6 +259,7 @@ func (config ManifoldConfig) start(context dependency.Context) (worker.Worker, e
 		NewServer:                         newServerShim,
 		MetricsCollector:                  metricsCollector,
 		EmbeddedCommand:                   execEmbeddedCommand,
+		InitializedGate:                   apiServerUnlocker,
 	})
 	if err != nil {
 		_ = stTracker.Done()

@@ -4,6 +4,7 @@
 package apiserver
 
 import (
+	"github.com/juju/loggo"
 	"net/http"
 
 	"github.com/juju/clock"
@@ -22,6 +23,11 @@ import (
 	"github.com/juju/juju/core/presence"
 	"github.com/juju/juju/state"
 )
+
+// Unlocker is used to indicate that the api server is ready to be used.
+type Unlocker interface {
+	Unlock()
+}
 
 // Config is the configuration required for running an API server worker.
 type Config struct {
@@ -42,6 +48,7 @@ type Config struct {
 	NewServer                         NewServerFunc
 	MetricsCollector                  *apiserver.Collector
 	EmbeddedCommand                   apiserver.ExecEmbeddedCommandFunc
+	InitializedGate                   Unlocker
 }
 
 // NewServerFunc is the type of function that will be used
@@ -95,8 +102,13 @@ func (config Config) Validate() error {
 	if config.MetricsCollector == nil {
 		return errors.NotValidf("nil MetricsCollector")
 	}
+	if config.InitializedGate == nil {
+		return errors.NotValidf("missing initialized gate")
+	}
 	return nil
 }
+
+var logger = loggo.GetLogger("juju.worker.apiserver")
 
 // NewWorker returns a new API server worker, with the given configuration.
 func NewWorker(config Config) (worker.Worker, error) {
@@ -149,7 +161,16 @@ func NewWorker(config Config) (worker.Worker, error) {
 		LeaseManager:                  config.LeaseManager,
 		ExecEmbeddedCommand:           config.EmbeddedCommand,
 	}
-	return config.NewServer(serverConfig)
+
+	worker, err := config.NewServer(serverConfig)
+	if err != nil {
+
+	}
+
+	logger.Criticalf("Calling unlock on %+v", config.InitializedGate)
+	// Indicate that the api-server is now ready to be used.
+	config.InitializedGate.Unlock()
+	return worker, nil
 }
 
 func newServerShim(config apiserver.ServerConfig) (worker.Worker, error) {
