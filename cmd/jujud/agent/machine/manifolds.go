@@ -145,7 +145,7 @@ type ManifoldsConfig struct {
 	// upgrader worker completes it's first check.
 	UpgradeCheckLock gate.Lock
 
-	APIServerLock gate.Lock
+	//APIServerLock gate.Lock
 
 	// OpenController is function used by the controller manifold to
 	// create a *state.Controller.
@@ -457,15 +457,17 @@ func commonManifolds(config ManifoldsConfig) dependency.Manifolds {
 		// select their own desired facades. It will be interesting to see
 		// how this works when we consolidate the agents; might be best to
 		// handle the auth changes server-side..?
-		apiCallerName: ifAPIServerInitialized(apicaller.Manifold(apicaller.ManifoldConfig{
+		//apiCallerName: ifAPIServerInitialized(apicaller.Manifold(apicaller.ManifoldConfig{
+		apiCallerName: apicaller.Manifold(apicaller.ManifoldConfig{
 			AgentName:            agentName,
 			APIConfigWatcherName: apiConfigWatcherName,
 			APIOpen:              api.Open,
 			NewConnection:        apicaller.ScaryConnect,
 			Filter:               connectFilter,
 			Logger:               loggo.GetLogger("juju.worker.apicaller"),
-			//APIServerFlagName:    apiServerInitializedFlagName,
-		})),
+			APIServerFlagName:    apiServerInitializedFlagName,
+			IsControllerFlagName: isControllerFlagName,
+		}),
 
 		// The upgrade database gate is used to coordinate workers that should
 		// not do anything until the upgrade-database worker has finished

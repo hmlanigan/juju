@@ -4,7 +4,9 @@
 package apicaller
 
 import (
+	"fmt"
 	"github.com/juju/errors"
+	"github.com/juju/juju/cmd/jujud/agent/engine"
 	"github.com/juju/worker/v2"
 	"github.com/juju/worker/v2/dependency"
 
@@ -61,7 +63,8 @@ type ManifoldConfig struct {
 	// Logger is used to write logging statements for the worker.
 	Logger Logger
 
-	APIServerFlagName string
+	APIServerFlagName    string
+	IsControllerFlagName string
 }
 
 // Manifold returns a manifold whose worker wraps an API connection
@@ -101,9 +104,76 @@ func Manifold(config ManifoldConfig) dependency.Manifold {
 // supplied manifold config and wraps it in a worker.
 func (config ManifoldConfig) startFunc() dependency.StartFunc {
 	return func(context dependency.Context) (worker.Worker, error) {
+
+		//var isController bool
+		//if err := context.Get("state", nil); err == nil {
+		//	isController = true
+		//}
+		//
+		//var waiter gate.Waiter
+		//if isController && config.APIServerFlagName != "" {
+		//	if err := context.Get(config.APIServerFlagName, &waiter); err != nil {
+		//		return nil, err
+
+		//	}
+		//	if !waiter.IsUnlocked() {
+		//		config.Logger.Debugf("controller, but api-server not running")
+		//		return nil, dependency.ErrMissing
+		//	}
+		//}
+
+		var isControllerFlag engine.Flag
+		if err := context.Get(config.IsControllerFlagName, &isControllerFlag); err != nil {
+			//return nil, err
+			config.Logger.Debugf("get IsControllerFlagName err %s", err)
+		}
+
+		if isControllerFlag != nil && !isControllerFlag.Check() {
+			config.Logger.Debugf("IsNotController")
+		} else if isControllerFlag != nil && isControllerFlag.Check() {
+			config.Logger.Debugf("IsController")
+		}
+
+		var isAPIServerInitializedFlag engine.Flag
+		var apiErr error
+		if apiErr = context.Get(config.APIServerFlagName, &isAPIServerInitializedFlag); apiErr != nil {
+			//return nil, err
+			config.Logger.Debugf("get APIServerFlagName err %s", apiErr)
+		}
+		if isAPIServerInitializedFlag != nil && !isAPIServerInitializedFlag.Check() {
+			config.Logger.Debugf("%q not set", config.APIServerFlagName)
+			//return nil, errors.Annotatef(dependency.ErrMissing, "isController and %q not set", config.APIServerFlagName)
+		} else if isAPIServerInitializedFlag != nil && isAPIServerInitializedFlag.Check() {
+			config.Logger.Debugf("%q set", config.APIServerFlagName)
+		}
+
+		//var isControllerFlag Flag
+		//if err := context.Get(name, &isControllerFlag); err != nil {
+		//	return nil, errors.Trace(err)
+		//}
+		//if !isControllerFlag.Check() {
+		//	return nil, errors.Annotatef(dependency.ErrMissing, "%q not set", name)
+		//}
+
 		var agent agent.Agent
 		if err := context.Get(config.AgentName, &agent); err != nil {
 			return nil, err
+		}
+
+		agentConfig := agent.CurrentConfig()
+		info, ok := agentConfig.APIInfo()
+		if !ok {
+			return nil, errors.New("API info not available")
+		}
+		config.Logger.Debugf("addresses are: %v ", info.Addrs)
+		config.Logger.Debugf("ports are: %v ", info.Ports())
+
+		one := fmt.Sprintf("localhost:%d", info.Ports()[0])
+		if info.Addrs[0] == one {
+			if apiErr != nil || (isAPIServerInitializedFlag != nil && !isAPIServerInitializedFlag.Check()) {
+				//config.Logger.Debugf("should dependency.ErrMissing: want connect to %s but %q not set", one, config.APIServerFlagName)
+				return nil, errors.Annotatef(dependency.ErrMissing, "want connect to %s but %q not set", one, config.APIServerFlagName)
+			}
 		}
 
 		conn, err := config.NewConnection(agent, config.APIOpen, config.Logger)
