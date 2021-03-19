@@ -457,15 +457,15 @@ func commonManifolds(config ManifoldsConfig) dependency.Manifolds {
 		// select their own desired facades. It will be interesting to see
 		// how this works when we consolidate the agents; might be best to
 		// handle the auth changes server-side..?
-		apiCallerName: apicaller.Manifold(apicaller.ManifoldConfig{
+		apiCallerName: ifAPIServerInitialized(apicaller.Manifold(apicaller.ManifoldConfig{
 			AgentName:            agentName,
 			APIConfigWatcherName: apiConfigWatcherName,
 			APIOpen:              api.Open,
 			NewConnection:        apicaller.ScaryConnect,
 			Filter:               connectFilter,
 			Logger:               loggo.GetLogger("juju.worker.apicaller"),
-			//APIServerGateName:    apiServerInitializedGateName,
-		}),
+			//APIServerFlagName:    apiServerInitializedFlagName,
+		})),
 
 		// The upgrade database gate is used to coordinate workers that should
 		// not do anything until the upgrade-database worker has finished
