@@ -445,28 +445,19 @@ func commonManifolds(config ManifoldsConfig) dependency.Manifolds {
 			AgentName: agentName,
 		})),
 
-		apiServerInitializedGateName: ifController(gate.Manifold()),
-		//apiServerInitializedGateName: ifController(gate.ManifoldEx(config.APIServerLock)),
-		apiServerInitializedFlagName: ifController(gate.FlagManifold(gate.FlagManifoldConfig{
-			GateName:  apiServerInitializedGateName,
-			NewWorker: gate.NewFlagWorker,
-		})),
-
 		// The api caller is a thin concurrent wrapper around a connection
 		// to some API server. It's used by many other manifolds, which all
 		// select their own desired facades. It will be interesting to see
 		// how this works when we consolidate the agents; might be best to
 		// handle the auth changes server-side..?
-		//apiCallerName: ifAPIServerInitialized(apicaller.Manifold(apicaller.ManifoldConfig{
 		apiCallerName: apicaller.Manifold(apicaller.ManifoldConfig{
-			AgentName:            agentName,
-			APIConfigWatcherName: apiConfigWatcherName,
-			APIOpen:              api.Open,
-			NewConnection:        apicaller.ScaryConnect,
-			Filter:               connectFilter,
-			Logger:               loggo.GetLogger("juju.worker.apicaller"),
-			APIServerFlagName:    apiServerInitializedFlagName,
-			IsControllerFlagName: isControllerFlagName,
+			AgentName:                    agentName,
+			APIConfigWatcherName:         apiConfigWatcherName,
+			APIOpen:                      api.Open,
+			NewConnection:                apicaller.ScaryConnect,
+			Filter:                       connectFilter,
+			Logger:                       loggo.GetLogger("juju.worker.apicaller"),
+			APIServerInitializedFlagName: apiServerInitializedFlagName,
 		}),
 
 		// The upgrade database gate is used to coordinate workers that should
@@ -696,6 +687,15 @@ func commonManifolds(config ManifoldsConfig) dependency.Manifolds {
 			NewTLSConfig:         httpserver.NewTLSConfig,
 			NewWorker:            httpserver.NewWorkerShim,
 		}),
+
+		// The api server initialized gate is used to make sure the api caller
+		// isn't created before the api server has been initialized if this is a
+		// controller.
+		apiServerInitializedGateName: ifController(gate.Manifold()),
+		apiServerInitializedFlagName: ifController(gate.FlagManifold(gate.FlagManifoldConfig{
+			GateName:  apiServerInitializedGateName,
+			NewWorker: gate.NewFlagWorker,
+		})),
 
 		apiServerName: ifModelCacheInitialized(apiserver.Manifold(apiserver.ManifoldConfig{
 			AgentName:              agentName,
@@ -1080,12 +1080,6 @@ var ifCredentialValid = engine.Housing{
 var ifModelCacheInitialized = engine.Housing{
 	Flags: []string{
 		modelCacheInitializedFlagName,
-	},
-}.Decorate
-
-var ifAPIServerInitialized = engine.Housing{
-	Flags: []string{
-		apiServerInitializedFlagName,
 	},
 }.Decorate
 
