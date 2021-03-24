@@ -76,6 +76,7 @@ func Manifold(config ManifoldConfig) dependency.Manifold {
 		// It will be empty for model manifolds.
 		inputs = append(inputs, config.APIConfigWatcherName)
 	}
+	config.Logger.Debugf("Manifold with %v", inputs)
 
 	return dependency.Manifold{
 		Inputs: inputs,
@@ -89,6 +90,7 @@ func Manifold(config ManifoldConfig) dependency.Manifold {
 // supplied manifold config and wraps it in a worker.
 func (config ManifoldConfig) startFunc() dependency.StartFunc {
 	return func(context dependency.Context) (worker.Worker, error) {
+		config.Logger.Debugf("startFunc")
 		var agent agent.Agent
 		if err := context.Get(config.AgentName, &agent); err != nil {
 			return nil, err
@@ -101,6 +103,7 @@ func (config ManifoldConfig) startFunc() dependency.StartFunc {
 		}
 
 		if connectToLocalhost(info.Addrs) {
+			config.Logger.Debugf("addr is localhost")
 			// If the address is "localhost", this is a controller.  Wait
 			// for the api-server worker to start before trying to connect.
 			// Ideally this would be handled by the dependency engine, however
@@ -109,6 +112,8 @@ func (config ManifoldConfig) startFunc() dependency.StartFunc {
 			if err := apiserverInitialized(context, config.APIServerInitializedFlagName, config.Logger); err != nil {
 				return nil, errors.Annotatef(err, "want connection to localhost but %q not available", config.APIServerInitializedFlagName)
 			}
+		} else {
+			config.Logger.Debugf("addr is not localhost: %v", info.Addrs)
 		}
 
 		conn, err := config.NewConnection(agent, config.APIOpen, config.Logger)
@@ -135,14 +140,16 @@ func connectToLocalhost(addrs []string) bool {
 func apiserverInitialized(context dependency.Context, apiServerInitializedFlagName string, logger Logger) error {
 	var isAPIServerInitializedFlag engine.Flag
 	if apiErr := context.Get(apiServerInitializedFlagName, &isAPIServerInitializedFlag); apiErr != nil {
-		logger.Debugf("%s", apiErr)
+		logger.Debugf("error with get apiServerInitializedFlagName %s", apiErr)
 		//return dependency.ErrMissing
 		return apiErr
 	}
 
 	if isAPIServerInitializedFlag.Check() {
+		logger.Debugf("api-server is initialized")
 		return nil
 	}
+	logger.Debugf("api-server is NOT initialized")
 	return dependency.ErrMissing
 }
 
