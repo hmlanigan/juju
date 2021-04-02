@@ -9,6 +9,7 @@ import (
 
 	"github.com/juju/charm/v8"
 	"github.com/juju/errors"
+
 	"github.com/juju/juju/core/series"
 )
 
@@ -19,12 +20,19 @@ func CharmURLSeriesToBase(url *charm.URL) (*charm.URL, error) {
 		return url, nil
 	}
 
-	baseNameType, err := series.GetOSFromSeries(url.Series)
+	// Kubernetes is not a valid series for a base.  Instead use the latest
+	// LTS version of ubuntu.
+	urlSeries := url.Series
+	if urlSeries == "kubernetes" {
+		urlSeries = series.LatestLts()
+	}
+
+	baseNameType, err := series.GetOSFromSeries(urlSeries)
 	if err != nil {
 		return nil, errors.Annotatef(err, "os name invalid")
 	}
 
-	baseVersion, err := series.SeriesVersion(url.Series)
+	baseVersion, err := series.SeriesVersion(urlSeries)
 	if err != nil {
 		return nil, errors.Annotatef(err, "version invalid")
 	}

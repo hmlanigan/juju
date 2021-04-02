@@ -4,10 +4,11 @@
 package charm
 
 import (
-	"github.com/juju/charm/v8"
-	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
+
+	"github.com/juju/charm/v8"
+	"github.com/juju/testing"
 )
 
 type urlSuite struct {
@@ -33,6 +34,9 @@ func (s urlSuite) TestCharmURLSeriesToBase(c *gc.C) {
 	}, {
 		input:  &charm.URL{Schema: "ch", Architecture: "amd64", Series: "centos7", Name: "foo", Revision: 42},
 		output: charm.MustParseURL("ch:amd64/centos:centos7/foo-42"),
+	}, {
+		input:  &charm.URL{Schema: "ch", Architecture: "amd64", Series: "kubernetes", Name: "foo", Revision: 42},
+		output: charm.MustParseURL("ch:amd64/ubuntu:20.04/foo-42"),
 	}, {
 		input: &charm.URL{Schema: "ch", Architecture: "amd64", Series: "meshuggah", Name: "foo", Revision: 42},
 		err:   `os name invalid: unknown OS for series: "meshuggah"`,
