@@ -334,10 +334,10 @@ func (s *charmHubRepositoriesSuite) expectedRefreshInvalidPlatformError(c *gc.C)
 				Code:    transport.ErrorCodeInvalidCharmPlatform,
 				Message: "invalid charm platform",
 				Extra: transport.APIErrorExtra{
-					DefaultPlatforms: []transport.Platform{{
+					DefaultBases: []transport.Base{{
 						Architecture: "amd64",
-						OS:           "ubuntu",
-						Series:       "focal",
+						Name:         "ubuntu",
+						Channel:      "20.04",
 					}},
 				},
 			},
@@ -357,10 +357,10 @@ func (s *charmHubRepositoriesSuite) expectedRefreshRevisionNotFoundError(c *gc.C
 				Message: "revision not found",
 				Extra: transport.APIErrorExtra{
 					Releases: []transport.Release{{
-						Platform: transport.Platform{
+						Base: transport.Base{
 							Architecture: "amd64",
-							OS:           "ubuntu",
-							Series:       "focal",
+							Name:         "ubuntu",
+							Channel:      "20.04",
 						},
 						Channel: "stable",
 					}},
@@ -440,9 +440,9 @@ func (refreshConfigSuite) TestRefreshByChannel(c *gc.C) {
 			InstanceKey: instanceKey,
 			Name:        &curl.Name,
 			Channel:     &ch,
-			Platform: &transport.Platform{
-				OS:           "ubuntu",
-				Series:       "focal",
+			Base: &transport.Base{
+				Name:         "ubuntu",
+				Channel:      "20.04",
 				Architecture: "amd64",
 			},
 		}},
@@ -472,9 +472,9 @@ func (refreshConfigSuite) TestRefreshByRevision(c *gc.C) {
 			InstanceKey: instanceKey,
 			Name:        &curl.Name,
 			Revision:    &revision,
-			Platform: &transport.Platform{
-				OS:           "ubuntu",
-				Series:       "focal",
+			Base: &transport.Base{
+				Name:         "ubuntu",
+				Channel:      "20.04",
 				Architecture: "amd64",
 			},
 		}},
@@ -510,9 +510,9 @@ func (refreshConfigSuite) TestRefreshByID(c *gc.C) {
 			InstanceKey: instanceKey,
 			ID:          id,
 			Revision:    revision,
-			Platform: transport.Platform{
-				OS:           "ubuntu",
-				Series:       "focal",
+			Base: transport.Base{
+				Name:         "ubuntu",
+				Channel:      "20.04",
 				Architecture: "amd64",
 			},
 		}},
@@ -532,9 +532,9 @@ func (composeSuggestionsSuite) TestNoReleases(c *gc.C) {
 
 func (composeSuggestionsSuite) TestNoMatchingArch(c *gc.C) {
 	suggestions := composeSuggestions([]transport.Release{{
-		Platform: transport.Platform{
-			OS:           "os",
-			Series:       "series",
+		Base: transport.Base{
+			Name:         "os",
+			Channel:      "series",
 			Architecture: "arch",
 		},
 		Channel: "stable",
@@ -544,9 +544,9 @@ func (composeSuggestionsSuite) TestNoMatchingArch(c *gc.C) {
 
 func (composeSuggestionsSuite) TestSuggestion(c *gc.C) {
 	suggestions := composeSuggestions([]transport.Release{{
-		Platform: transport.Platform{
-			OS:           "os",
-			Series:       "series",
+		Base: transport.Base{
+			Name:         "os",
+			Channel:      "series",
 			Architecture: "arch",
 		},
 		Channel: "stable",
@@ -562,30 +562,30 @@ func (composeSuggestionsSuite) TestSuggestion(c *gc.C) {
 
 func (composeSuggestionsSuite) TestMultipleSuggestion(c *gc.C) {
 	suggestions := composeSuggestions([]transport.Release{{
-		Platform: transport.Platform{
-			OS:           "a",
-			Series:       "b",
+		Base: transport.Base{
+			Name:         "a",
+			Channel:      "b",
 			Architecture: "c",
 		},
 		Channel: "stable",
 	}, {
-		Platform: transport.Platform{
-			OS:           "a",
-			Series:       "d",
+		Base: transport.Base{
+			Name:         "a",
+			Channel:      "d",
 			Architecture: "c",
 		},
 		Channel: "stable",
 	}, {
-		Platform: transport.Platform{
-			OS:           "e",
-			Series:       "f",
+		Base: transport.Base{
+			Name:         "e",
+			Channel:      "f",
 			Architecture: "all",
 		},
 		Channel: "2.0/stable",
 	}, {
-		Platform: transport.Platform{
-			OS:           "g",
-			Series:       "h",
+		Base: transport.Base{
+			Name:         "g",
+			Channel:      "h",
 			Architecture: "i",
 		},
 		Channel: "stable",
@@ -613,9 +613,9 @@ func (selectReleaseByChannelSuite) TestNoReleases(c *gc.C) {
 
 func (selectReleaseByChannelSuite) TestInvalidChannel(c *gc.C) {
 	_, err := selectReleaseByArchAndChannel([]transport.Release{{
-		Platform: transport.Platform{
-			OS:           "os",
-			Series:       "series",
+		Base: transport.Base{
+			Name:         "os",
+			Channel:      "series",
 			Architecture: "arch",
 		},
 		Channel: "",
@@ -625,9 +625,9 @@ func (selectReleaseByChannelSuite) TestInvalidChannel(c *gc.C) {
 
 func (selectReleaseByChannelSuite) TestSelection(c *gc.C) {
 	release, err := selectReleaseByArchAndChannel([]transport.Release{{
-		Platform: transport.Platform{
-			OS:           "os",
-			Series:       "series",
+		Base: transport.Base{
+			Name:         "os",
+			Channel:      "series",
 			Architecture: "arch",
 		},
 		Channel: "stable",
@@ -648,9 +648,9 @@ func (selectReleaseByChannelSuite) TestSelection(c *gc.C) {
 
 func (selectReleaseByChannelSuite) TestAllSelection(c *gc.C) {
 	release, err := selectReleaseByArchAndChannel([]transport.Release{{
-		Platform: transport.Platform{
-			OS:           "os",
-			Series:       "series",
+		Base: transport.Base{
+			Name:         "os",
+			Channel:      "series",
 			Architecture: "all",
 		},
 		Channel: "stable",
@@ -671,23 +671,23 @@ func (selectReleaseByChannelSuite) TestAllSelection(c *gc.C) {
 
 func (selectReleaseByChannelSuite) TestMultipleSelection(c *gc.C) {
 	release, err := selectReleaseByArchAndChannel([]transport.Release{{
-		Platform: transport.Platform{
-			OS:           "a",
-			Series:       "b",
+		Base: transport.Base{
+			Name:         "a",
+			Channel:      "b",
 			Architecture: "c",
 		},
 		Channel: "1.0/edge",
 	}, {
-		Platform: transport.Platform{
-			OS:           "d",
-			Series:       "e",
+		Base: transport.Base{
+			Name:         "d",
+			Channel:      "e",
 			Architecture: "all",
 		},
 		Channel: "2.0/stable",
 	}, {
-		Platform: transport.Platform{
-			OS:           "f",
-			Series:       "g",
+		Base: transport.Base{
+			Name:         "f",
+			Channel:      "g",
 			Architecture: "h",
 		},
 		Channel: "3.0/stable",

@@ -172,7 +172,7 @@ func getCharmHubFindResponses() []transport.FindResponse {
 		DefaultRelease: transport.FindChannelMap{
 			Channel: transport.Channel{
 				Name: "latest/stable",
-				Platform: transport.Platform{
+				Base: transport.Base{
 					Architecture: "all",
 					OS:           "ubuntu",
 					Series:       "bionic",
@@ -188,7 +188,7 @@ func getCharmHubFindResponses() []transport.FindResponse {
 					Size:       12042240,
 					URL:        "https://api.snapcraft.io/api/v1/snaps/download/QLLfVfIKfcnTZiPFnmGcigB2vB605ZY7_16.snap",
 				},
-				Platforms: []transport.Platform{{
+				Platforms: []transport.Base{{
 					Architecture: "all",
 					OS:           "ubuntu",
 					Series:       "bionic",
@@ -212,7 +212,7 @@ func getCharmHubInfoResponse() transport.InfoResponse {
 		ChannelMap: []transport.InfoChannelMap{{
 			Channel: transport.Channel{
 				Name: "latest/stable",
-				Platform: transport.Platform{
+				Base: transport.Base{
 					Architecture: "all",
 					OS:           "ubuntu",
 					Series:       "bionic",
@@ -230,7 +230,7 @@ func getCharmHubInfoResponse() transport.InfoResponse {
 					URL:        "https://api.snapcraft.io/api/v1/snaps/download/QLLfVfIKfcnTZiPFnmGcigB2vB605ZY7_16.snap",
 				},
 				MetadataYAML: "name: myname\nversion: 1.0.3\nsummary: A charm or bundle.\ndescription: |\n  This will install and setup services optimized to run in the cloud.\n  By default it will place Ngnix configured to scale horizontally\n  with Nginx's reverse proxy.\n",
-				Platforms: []transport.Platform{{
+				Platforms: []transport.Base{{
 					Architecture: "all",
 					OS:           "ubuntu",
 					Series:       "bionic",
@@ -260,7 +260,7 @@ func getCharmHubInfoResponse() transport.InfoResponse {
 		DefaultRelease: transport.InfoChannelMap{
 			Channel: transport.Channel{
 				Name: "latest/stable",
-				Platform: transport.Platform{
+				Base: transport.Base{
 					Architecture: "all",
 					OS:           "ubuntu",
 					Series:       "bionic",
@@ -278,7 +278,7 @@ func getCharmHubInfoResponse() transport.InfoResponse {
 					URL:        "https://api.snapcraft.io/api/v1/snaps/download/QLLfVfIKfcnTZiPFnmGcigB2vB605ZY7_16.snap",
 				},
 				MetadataYAML: entityMeta,
-				Platforms: []transport.Platform{{
+				Platforms: []transport.Base{{
 					Architecture: "all",
 					OS:           "ubuntu",
 					Series:       "bionic",
