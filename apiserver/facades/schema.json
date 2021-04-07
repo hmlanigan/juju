@@ -12363,6 +12363,26 @@
                 }
             },
             "definitions": {
+                "Base": {
+                    "type": "object",
+                    "properties": {
+                        "architecture": {
+                            "type": "string"
+                        },
+                        "channel": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                        "architecture",
+                        "name",
+                        "channel"
+                    ]
+                },
                 "BundleCharm": {
                     "type": "object",
                     "properties": {
@@ -12382,10 +12402,10 @@
                 "Channel": {
                     "type": "object",
                     "properties": {
-                        "platforms": {
+                        "bases": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/Platform"
+                                "$ref": "#/definitions/Base"
                             }
                         },
                         "released-at": {
@@ -12415,7 +12435,7 @@
                         "revision",
                         "size",
                         "version",
-                        "platforms"
+                        "bases"
                     ]
                 },
                 "CharmHubBundle": {
@@ -12698,36 +12718,16 @@
                         "tracks"
                     ]
                 },
-                "Platform": {
-                    "type": "object",
-                    "properties": {
-                        "architecture": {
-                            "type": "string"
-                        },
-                        "os": {
-                            "type": "string"
-                        },
-                        "series": {
-                            "type": "string"
-                        }
-                    },
-                    "additionalProperties": false,
-                    "required": [
-                        "architecture",
-                        "os",
-                        "series"
-                    ]
-                },
                 "Query": {
                     "type": "object",
                     "properties": {
+                        "bases": {
+                            "type": "string"
+                        },
                         "category": {
                             "type": "string"
                         },
                         "channel": {
-                            "type": "string"
-                        },
-                        "platforms": {
                             "type": "string"
                         },
                         "publisher": {

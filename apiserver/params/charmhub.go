@@ -10,7 +10,7 @@ type Query struct {
 	Category         string `json:"category,omitempty"`
 	Channel          string `json:"channel,omitempty"`
 	CharmType        string `json:"type,omitempty"`
-	Platforms        string `json:"platforms,omitempty"`
+	Bases            string `json:"bases,omitempty"`
 	Publisher        string `json:"publisher,omitempty"`
 	RelationRequires string `json:"relation-requires,omitempty"`
 	RelationProvides string `json:"relation-provides,omitempty"`
@@ -62,19 +62,19 @@ type FindResponse struct {
 }
 
 type Channel struct {
-	ReleasedAt string     `json:"released-at"`
-	Track      string     `json:"track"`
-	Risk       string     `json:"risk"`
-	Revision   int        `json:"revision"`
-	Size       int        `json:"size"`
-	Version    string     `json:"version"`
-	Platforms  []Platform `json:"platforms"`
+	ReleasedAt string `json:"released-at"`
+	Track      string `json:"track"`
+	Risk       string `json:"risk"`
+	Revision   int    `json:"revision"`
+	Size       int    `json:"size"`
+	Version    string `json:"version"`
+	Bases      []Base `json:"bases"`
 }
 
-type Platform struct {
+type Base struct {
 	Architecture string `json:"architecture"`
-	OS           string `json:"os"`
-	Series       string `json:"series"`
+	Name         string `json:"name"`
+	Channel      string `json:"channel"`
 }
 
 type CharmHubCharm struct {

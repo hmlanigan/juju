@@ -5,14 +5,20 @@ package charmhub
 
 import (
 	"github.com/juju/charm/v8"
+	"github.com/juju/errors"
 	"github.com/juju/loggo"
 
 	"github.com/juju/juju/apiserver/params"
+	coreseries "github.com/juju/juju/core/series"
 )
 
 var logger = loggo.GetLogger("juju.api.charmhub")
 
-func convertCharmInfoResult(info params.InfoResponse) InfoResponse {
+func convertCharmInfoResult(info params.InfoResponse) (InfoResponse, error) {
+	channels, err := convertChannels(info.Channels)
+	if err != nil {
+		return InfoResponse{}, errors.Trace(err)
+	}
 	ir := InfoResponse{
 		Type:        info.Type,
 		ID:          info.ID,
@@ -23,7 +29,7 @@ func convertCharmInfoResult(info params.InfoResponse) InfoResponse {
 		Series:      info.Series,
 		StoreURL:    info.StoreURL,
 		Tags:        info.Tags,
-		Channels:    convertChannels(info.Channels),
+		Channels:    channels,
 		Tracks:      info.Tracks,
 	}
 	switch ir.Type {
@@ -32,7 +38,7 @@ func convertCharmInfoResult(info params.InfoResponse) InfoResponse {
 	case "charm":
 		ir.Charm = convertCharm(info.Charm)
 	}
-	return ir
+	return ir, nil
 }
 
 func convertCharmFindResults(responses []params.FindResponse) []FindResponse {
@@ -95,9 +101,13 @@ func convertCharm(in interface{}) *Charm {
 	}
 }
 
-func convertChannels(in map[string]params.Channel) map[string]Channel {
+func convertChannels(in map[string]params.Channel) (map[string]Channel, error) {
 	out := make(map[string]Channel, len(in))
 	for k, v := range in {
+		platforms, err := convertBases(v.Bases)
+		if err != nil {
+			return nil, errors.Trace(err)
+		}
 		out[k] = Channel{
 			ReleasedAt: v.ReleasedAt,
 			Track:      v.Track,
@@ -105,18 +115,26 @@ func convertChannels(in map[string]params.Channel) map[string]Channel {
 			Revision:   v.Revision,
 			Size:       v.Size,
 			Version:    v.Version,
-			Platforms:  convertPlatforms(v.Platforms),
+			Platforms:  platforms,
 		}
 	}
-	return out
+	return out, nil
 }
 
-func convertPlatforms(in []params.Platform) []Platform {
+func convertBases(in []params.Base) ([]Platform, error) {
 	out := make([]Platform, len(in))
 	for i, v := range in {
-		out[i] = Platform(v)
+		series, err := coreseries.VersionSeries(v.Channel)
+		if err != nil {
+			return nil, errors.Trace(err)
+		}
+		out[i] = Platform{
+			Architecture: v.Architecture,
+			OS:           v.Name,
+			Series:       series,
+		}
 	}
-	return out
+	return out, nil
 }
 
 // Although InfoResponse or FindResponse are similar, they will change once the

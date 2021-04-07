@@ -135,7 +135,7 @@ func transformInfoChannelMap(channelMap []transport.InfoChannelMap, isKub bool) 
 			Track:      ch.Track,
 			Size:       cm.Revision.Download.Size,
 			Version:    cm.Revision.Version,
-			Platforms:  convertBasesToPlatforms(cm.Revision.Bases, isKub),
+			Bases:      convertBasesToPlatforms(cm.Revision.Bases, isKub),
 		}
 		if !seen.Contains(ch.Track) {
 			seen.Add(ch.Track)
@@ -149,8 +149,8 @@ func transformInfoChannelMap(channelMap []transport.InfoChannelMap, isKub bool) 
 // convertBasesToPlatforms converts a base to a platform.  Is mean to be a short
 // term solution due to schedule.  It should be removed once platforms are
 // replaced with bases through out the code.
-func convertBasesToPlatforms(in []transport.Base, isKub bool) []params.Platform {
-	out := make([]params.Platform, len(in))
+func convertBasesToPlatforms(in []transport.Base, isKub bool) []params.Base {
+	out := make([]params.Base, len(in))
 	for i, v := range in {
 		channel := v.Channel
 		if isKub {
@@ -159,10 +159,10 @@ func convertBasesToPlatforms(in []transport.Base, isKub bool) []params.Platform 
 			channel = coreseries.LatestLts()
 		}
 		series, _ := coreseries.VersionSeries(channel)
-		out[i] = params.Platform{
+		out[i] = params.Base{
 			Architecture: v.Architecture,
-			OS:           v.Name,
-			Series:       series,
+			Name:         v.Name,
+			Channel:      series,
 		}
 	}
 	return out

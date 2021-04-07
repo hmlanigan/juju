@@ -50,7 +50,7 @@ func (c *Client) Info(name string, options ...InfoOption) (InfoResponse, error) 
 		return InfoResponse{}, errors.Trace(err)
 	}
 
-	return convertCharmInfoResult(result.Result), nil
+	return convertCharmInfoResult(result.Result)
 }
 
 // Find queries the CharmHub API finding potential charms or bundles for the
@@ -66,7 +66,7 @@ func (c *Client) Find(query string, options ...FindOption) ([]FindResponse, erro
 		Category:         opts.category,
 		Channel:          opts.channel,
 		CharmType:        opts.charmType,
-		Platforms:        opts.platforms,
+		Bases:            opts.platforms,
 		Publisher:        opts.publisher,
 		RelationRequires: opts.relationRequires,
 		RelationProvides: opts.relationProvides,

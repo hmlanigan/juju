@@ -154,8 +154,8 @@ func populateFindOptions(arg params.Query) []charmhub.FindOption {
 	if arg.CharmType != "" {
 		options = append(options, charmhub.WithFindType(arg.CharmType))
 	}
-	if arg.Platforms != "" {
-		options = append(options, charmhub.WithFindPlatforms(arg.Platforms))
+	if arg.Bases != "" {
+		options = append(options, charmhub.WithFindPlatforms(arg.Bases))
 	}
 	if arg.Publisher != "" {
 		options = append(options, charmhub.WithFindPublisher(arg.Publisher))

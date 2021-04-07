@@ -70,9 +70,9 @@ func (s charmHubSuite) TestFindWithOptions(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	arg := params.Query{
-		Query:     "wordpress",
-		Channel:   "stable",
-		Platforms: "platforms",
+		Query:   "wordpress",
+		Channel: "stable",
+		Bases:   "platforms",
 	}
 	resultSource := params.CharmHubEntityFindResult{
 		Results: getParamsFindResponses(),
