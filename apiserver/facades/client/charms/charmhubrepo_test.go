@@ -50,6 +50,7 @@ func (s *charmHubRepositoriesSuite) TestResolveForUpgrade(c *gc.C) {
 func (s *charmHubRepositoriesSuite) testResolve(c *gc.C, id string) {
 	curl := charm.MustParseURL("ch:wordpress")
 	rev := 16
+	channel := corecharm.MustParseChannel("stable")
 	origin := corecharm.Origin{
 		Source:   "charm-hub",
 		ID:       id,
@@ -59,6 +60,7 @@ func (s *charmHubRepositoriesSuite) testResolve(c *gc.C, id string) {
 			OS:           "ubuntu",
 			Series:       "focal",
 		},
+		Channel: &channel,
 	}
 
 	resolver := &chRepo{client: s.client}
@@ -69,9 +71,6 @@ func (s *charmHubRepositoriesSuite) testResolve(c *gc.C, id string) {
 
 	origin.Type = "charm"
 	origin.Revision = &curl.Revision
-	origin.Channel = &charm.Channel{
-		Risk: "stable",
-	}
 	origin.Platform.Architecture = arch.DefaultArchitecture
 	origin.Platform.OS = "ubuntu"
 	origin.Platform.Series = "focal"
@@ -236,7 +235,7 @@ func (s *charmHubRepositoriesSuite) TestResolveRevisionNotFoundErrorWithNoSeries
 
 	resolver := &chRepo{client: s.client}
 	_, _, _, err := resolver.ResolveWithPreferredChannel(curl, origin)
-	c.Assert(err, gc.ErrorMatches, `resolving with preferred channel: selecting releases: no charm or bundle matching channel or platform; suggestions: stable with focal`)
+	c.Assert(err, gc.ErrorMatches, `retry resolving with preferred channel: selecting releases: no charm or bundle matching channel or platform; suggestions: stable with focal`)
 }
 
 func (s *charmHubRepositoriesSuite) TestResolveRevisionNotFoundError(c *gc.C) {
@@ -507,7 +506,7 @@ func (refreshConfigSuite) TestRefreshByRevision(c *gc.C) {
 			Revision:    &revision,
 		}},
 		Context: []transport.RefreshRequestContext{},
-		Fields:  []string{"bases", "download", "id", "revision", "version", "resources"},
+		Fields:  []string{"bases", "download", "id", "revision", "version", "resources", "type"},
 	})
 }
 
@@ -516,10 +515,13 @@ func (refreshConfigSuite) TestRefreshByID(c *gc.C) {
 	revision := 1
 	curl := charm.MustParseURL("ch:wordpress")
 	platform := corecharm.MustParsePlatform("amd64/ubuntu/focal")
+	channel := corecharm.MustParseChannel("stable")
 	origin := corecharm.Origin{
+		Type:     transport.CharmType.String(),
 		ID:       id,
 		Platform: platform,
 		Revision: &revision,
+		Channel:  &channel,
 	}
 
 	cfg, err := refreshConfig(curl, origin)
@@ -544,6 +546,7 @@ func (refreshConfigSuite) TestRefreshByID(c *gc.C) {
 				Channel:      "20.04",
 				Architecture: "amd64",
 			},
+			TrackingChannel: channel.String(),
 		}},
 	})
 }
