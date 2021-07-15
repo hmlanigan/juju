@@ -6,6 +6,8 @@ package charms
 import (
 	"context"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/kr/pretty"
 	"net/url"
 	"strings"
 
@@ -54,11 +56,7 @@ type chRepo struct {
 // When charmstore goes, we could potentially rework how the client requests
 // the store.
 func (c *chRepo) ResolveWithPreferredChannel(curl *charm.URL, origin corecharm.Origin) (*charm.URL, corecharm.Origin, []string, error) {
-	logger.Tracef("Resolving CharmHub charm %q with origin %v", curl, origin)
-
-	if curl.Revision != -1 {
-		return nil, corecharm.Origin{}, nil, errors.Errorf("specifying a revision is not supported, please use a channel.")
-	}
+	logger.Tracef("Resolving CharmHub charm %q with origin %s", curl, pretty.Sprint(origin))
 
 	input := origin
 
@@ -68,6 +66,7 @@ func (c *chRepo) ResolveWithPreferredChannel(curl *charm.URL, origin corecharm.O
 		return nil, corecharm.Origin{}, nil, errors.Annotatef(err, "resolving with preferred channel")
 	}
 
+	var effectiveChannel string
 	// resolvableBases holds a slice of supported bases from the subsequent
 	// refresh API call. The bases can inform the consumer of the API about what
 	// they can also install *IF* the retry resolution uses a base that doesn't
@@ -91,16 +90,39 @@ func (c *chRepo) ResolveWithPreferredChannel(curl *charm.URL, origin corecharm.O
 		// validation logic in retry method.
 		origin.Platform.OS = resolvableBases[0].OS
 		origin.Platform.Series = resolvableBases[0].Series
+		effectiveChannel = res.EffectiveChannel
+	} else if curl.Revision != -1 && len(res.Entity.Bases) > 0 {
+		// TODO - bases for a deploy by revision are included in the result, not provided via
+		// an error code.
+		for _, v := range res.Entity.Bases {
+			series, err := coreseries.VersionSeries(v.Channel)
+			if err != nil {
+				return nil, corecharm.Origin{}, nil, errors.Trace(err)
+			}
+			resolvableBases = append(resolvableBases, corecharm.Platform{
+				Architecture: v.Architecture,
+				OS:           v.Name,
+				Series:       series,
+			})
+		}
+		// TODO - HEATHER Check Platform.OS and Platform.Series
+		// Charms installed by revision do not have an effective channel in the data.  A charm with
+		// revision X can be in multiple different channels.  The user specified channel for future
+		// refresh calls, is located in the origin.
+		effectiveChannel = origin.Channel.String()
+	} else {
+		effectiveChannel = res.EffectiveChannel
 	}
 
 	// Use the channel that was actually picked by the API. This should
 	// account for the closed tracks in a given channel.
-	channel, err := charm.ParseChannelNormalize(res.EffectiveChannel)
+	channel, err := charm.ParseChannelNormalize(effectiveChannel)
 	if err != nil {
 		return nil, corecharm.Origin{}, nil, errors.Annotatef(err, "invalid channel")
 	}
 
 	// Ensure we send the updated curl back, with all the correct segments.
+	// TODO - This could be bad?  Or good?
 	revision := res.Entity.Revision
 	resCurl := curl.
 		WithSeries(input.Platform.Series).
@@ -307,6 +329,7 @@ func (c *chRepo) refreshOne(curl *charm.URL, origin corecharm.Origin) (transport
 }
 
 func (c *chRepo) selectNextBases(bases []transport.Base, origin corecharm.Origin) ([]corecharm.Platform, error) {
+	logger.Criticalf("selectNextBases(%s, %s)", spew.Sdump(bases), spew.Sdump(origin))
 	if len(bases) == 0 {
 		return nil, errors.Errorf("no bases available")
 	}
@@ -403,11 +426,11 @@ func refreshConfig(curl *charm.URL, origin corecharm.Origin) (charmhub.RefreshCo
 	// Work out the correct install method.
 	var rev int
 	var method Method
-	if origin.Revision != nil && *origin.Revision >= 0 {
+	if origin.ID == ""&& origin.Revision != nil && *origin.Revision >= 0 {
 		rev = *origin.Revision
 		method = MethodRevision
 	}
-
+    logger.Criticalf("refreshConfig A %s method %s", curl, method)
 	var (
 		channel         string
 		nonEmptyChannel = origin.Channel != nil && !origin.Channel.Empty()
@@ -422,13 +445,17 @@ func refreshConfig(curl *charm.URL, origin corecharm.Origin) (charmhub.RefreshCo
 		channel = corecharm.DefaultChannel.Normalize().String()
 	}
 
-	if origin.ID == "" && channel != "" {
+	if method != MethodRevision && origin.ID == "" && channel != "" {
 		method = MethodChannel
 	}
+	logger.Criticalf("refreshConfig B %s method %s", curl, method)
+
 	// Bundles can not use method IDs, which in turn forces a refresh.
 	if method == MethodRevision && !transport.BundleType.Matches(origin.Type) && origin.ID != "" {
 		method = MethodID
 	}
+	logger.Criticalf("refreshConfig C %s method %s", curl, method)
+
 
 	// origin.Platform.Series could be a series or a version. In reality it will
 	// be a series (focal, groovy), but to be on the safe side we should

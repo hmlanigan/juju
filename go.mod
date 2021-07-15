@@ -23,6 +23,7 @@ require (
 	github.com/canonical/pebble v0.0.0-20210629225259-602ad4b50023
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/coreos/go-systemd/v22 v22.0.0-20200316104309-cb8b64719ae3
+	github.com/davecgh/go-spew v1.1.1
 	github.com/dnaeon/go-vcr v1.1.0 // indirect
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/dustin/go-humanize v1.0.0
