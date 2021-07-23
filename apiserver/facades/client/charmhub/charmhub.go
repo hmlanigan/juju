@@ -136,7 +136,7 @@ type charmHubClientFactory struct {
 }
 
 func (f charmHubClientFactory) Client(url string) (Client, error) {
-	cfg, err := charmhub.CharmHubConfigFromURL(url, logger.ChildWithLabels("client", corelogger.HTTP),
+	cfg, err := charmhub.CharmHubConfigFromURL(url, logger.ChildWithLabels("client", corelogger.CHARMHUB),
 		charmhub.WithHTTPTransport(f.httpTransport),
 	)
 	if err != nil {

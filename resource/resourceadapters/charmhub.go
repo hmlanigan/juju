@@ -7,14 +7,15 @@ import (
 	"context"
 	"net/url"
 
+	"github.com/juju/charm/v9"
+	charmresource "github.com/juju/charm/v9/resource"
 	"github.com/juju/errors"
 	"github.com/kr/pretty"
 
-	"github.com/juju/charm/v9"
-	charmresource "github.com/juju/charm/v9/resource"
 	"github.com/juju/juju/charmhub"
 	"github.com/juju/juju/charmhub/transport"
 	"github.com/juju/juju/charmstore"
+	corelogger "github.com/juju/juju/core/logger"
 	"github.com/juju/juju/resource/repositories"
 )
 
@@ -50,7 +51,7 @@ func newCharmHubClient(st chClientState) (ResourceClient, error) {
 		return &CharmHubClient{}, errors.Trace(err)
 	}
 
-	chLogger := logger.Child("charmhub")
+	chLogger := logger.ChildWithLabels("charmhub", corelogger.CHARMHUB)
 	var chCfg charmhub.Config
 	chURL, ok := modelCfg.CharmHubURL()
 	if ok {

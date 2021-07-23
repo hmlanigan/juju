@@ -8,6 +8,7 @@ import (
 	"github.com/juju/loggo"
 
 	"github.com/juju/juju/charmhub"
+	corelogger "github.com/juju/juju/core/logger"
 	"github.com/juju/juju/environs/config"
 )
 
@@ -33,7 +34,7 @@ func CharmhubClient(mg ModelGetter, httpClient charmhub.Transport, logger loggo.
 	}
 	url, _ := modelConfig.CharmHubURL()
 
-	config, err := charmhub.CharmHubConfigFromURL(url, logger.Child("charmhub"),
+	config, err := charmhub.CharmHubConfigFromURL(url, logger.ChildWithLabels("client", corelogger.CHARMHUB),
 		charmhub.WithMetadataHeaders(metadata),
 		charmhub.WithHTTPTransport(func(charmhub.Logger) charmhub.Transport {
 			return httpClient

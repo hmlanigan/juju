@@ -28,6 +28,7 @@ import (
 	"github.com/juju/juju/apiserver/facade"
 	"github.com/juju/juju/apiserver/facades/controller/caasoperatorprovisioner"
 	"github.com/juju/juju/apiserver/params"
+	corelogger "github.com/juju/juju/core/logger"
 	"github.com/juju/juju/caas"
 	k8s "github.com/juju/juju/caas/kubernetes/provider"
 	k8sconstants "github.com/juju/juju/caas/kubernetes/provider/constants"
@@ -145,7 +146,7 @@ func newFacadeBase(ctx facade.Context) (*APIBase, error) {
 		return nil, errors.Trace(err)
 	}
 
-	clientLogger := logger.Child("client")
+	clientLogger := logger.ChildWithLabels("client", corelogger.CHARMHUB)
 	options := []charmhub.Option{
 		// TODO (stickupkid): Get the http transport from the facade context
 		charmhub.WithHTTPTransport(charmhub.DefaultHTTPTransport),

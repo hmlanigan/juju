@@ -19,6 +19,7 @@ import (
 	"gopkg.in/macaroon.v2"
 
 	"github.com/juju/juju/api"
+	corelogger "github.com/juju/juju/core/logger"
 	"github.com/juju/juju/api/application"
 	"github.com/juju/juju/api/base"
 	apicharms "github.com/juju/juju/api/charms"
@@ -67,7 +68,7 @@ func newRefreshCommand() *refreshCommand {
 			return modelconfig.NewClient(api)
 		},
 		NewCharmHubClient: func(url string) (store.DownloadBundleClient, error) {
-			cfg, err := charmhub.CharmHubConfigFromURL(url, logger)
+			cfg, err := charmhub.CharmHubConfigFromURL(url, logger.ChildWithLabels("client", corelogger.CHARMHUB))
 			if err != nil {
 				return nil, errors.Trace(err)
 			}

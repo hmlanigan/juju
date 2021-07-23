@@ -19,6 +19,7 @@ import (
 
 	"github.com/juju/juju/api/annotations"
 	"github.com/juju/juju/api/application"
+	corelogger "github.com/juju/juju/core/logger"
 	"github.com/juju/juju/api/base"
 	apicharms "github.com/juju/juju/api/charms"
 	commoncharm "github.com/juju/juju/api/common/charm"
@@ -372,7 +373,7 @@ func (c *diffBundleCommand) charmAdaptor(apiRoot base.APICallCloser, curl *charm
 			return nil, errors.Trace(err)
 		}
 
-		cfg, err := charmhub.CharmHubConfigFromURL(url, logger)
+		cfg, err := charmhub.CharmHubConfigFromURL(url, logger.ChildWithLabels("client", corelogger.CHARMHUB))
 		if err != nil {
 			return nil, errors.Trace(err)
 		}

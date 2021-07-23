@@ -14,6 +14,7 @@ import (
 	"github.com/juju/names/v4"
 
 	"github.com/juju/juju/apiserver/common"
+	corelogger "github.com/juju/juju/core/logger"
 	"github.com/juju/juju/apiserver/common/storagecommon"
 	apiservererrors "github.com/juju/juju/apiserver/errors"
 	"github.com/juju/juju/apiserver/facade"
@@ -102,7 +103,7 @@ func NewFacade(ctx facade.Context) (*MachineManagerAPI, error) {
 		return nil, errors.Trace(err)
 	}
 
-	clientLogger := logger.Child("client")
+	clientLogger := logger.ChildWithLabels("client", corelogger.CHARMHUB)
 	options := []charmhub.Option{
 		// TODO (stickupkid): Get the http transport from the facade context
 		charmhub.WithHTTPTransport(charmhub.DefaultHTTPTransport),

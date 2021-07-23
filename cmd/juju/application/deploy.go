@@ -19,6 +19,7 @@ import (
 	"github.com/juju/juju/api/application"
 	"github.com/juju/juju/api/applicationoffers"
 	"github.com/juju/juju/api/base"
+	corelogger "github.com/juju/juju/core/logger"
 	apicharms "github.com/juju/juju/api/charms"
 	commoncharm "github.com/juju/juju/api/common/charm"
 	"github.com/juju/juju/api/controller"
@@ -187,7 +188,7 @@ func newDeployCommand() *DeployCommand {
 			return nil, errors.Trace(err)
 		}
 
-		cfg, err := charmhub.CharmHubConfigFromURL(charmHubURL, logger)
+		cfg, err := charmhub.CharmHubConfigFromURL(charmHubURL, logger.ChildWithLabels("client", corelogger.CHARMHUB))
 		if err != nil {
 			return nil, errors.Trace(err)
 		}

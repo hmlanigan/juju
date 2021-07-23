@@ -20,6 +20,7 @@ import (
 	"gopkg.in/macaroon.v2"
 
 	apiresources "github.com/juju/juju/api/resources"
+	corelogger "github.com/juju/juju/core/logger"
 	charmscommon "github.com/juju/juju/apiserver/common/charms"
 	apiservererrors "github.com/juju/juju/apiserver/errors"
 	"github.com/juju/juju/apiserver/facade"
@@ -638,7 +639,7 @@ func (a *API) charmHubRepository() (corecharm.Repository, error) {
 		return nil, errors.Trace(err)
 	}
 
-	clientLogger := logger.Child("client")
+	clientLogger := logger.ChildWithLabels("client", corelogger.CHARMHUB)
 	options := []charmhub.Option{
 		charmhub.WithHTTPTransport(func(charmhub.Logger) charmhub.Transport {
 			return a.httpClient
