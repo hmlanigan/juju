@@ -8,8 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/juju/charm/v9"
-	"github.com/juju/collections/set"
+    "github.com/juju/charm/v9"
 	"github.com/juju/errors"
 	"github.com/juju/schema"
 	"gopkg.in/juju/environschema.v1"
@@ -131,35 +130,33 @@ func populateStoreControllerCharm(st *state.State, charmRisk, series, arch strin
 	if err != nil {
 		return nil, nil, err
 	}
+
 	curl := charm.MustParseURL(controllerCharmURL)
-	channel := corecharm.MakeRiskOnlyChannel(charmRisk)
+	channel, err := charm.ParseChannelNormalize(charmRisk)
+	if err != nil {
+		return nil, nil, err
+	}
 	origin := corecharm.Origin{
 		Source:  corecharm.CharmHub,
-		Type:    "charm",
 		Channel: &channel,
 		Platform: corecharm.Platform{
 			Architecture: arch,
 			OS:           strings.ToLower(coreos.Ubuntu.String()),
-			Series:       charmhub.NotAvailable,
+			Series:       series,
 		},
 	}
 
-	var supportedSeries []string
-	curl, origin, supportedSeries, err = charmRepo.ResolveWithPreferredChannel(curl, origin, nil)
+	// Since we're running on the machine to which the controller charm will be
+	// deployed, we know the exact platform to ask for, not need to review the
+	// supported series.
+	curl, origin, _, err = charmRepo.ResolveWithPreferredChannel(curl, origin, nil)
 	if err != nil {
 		return nil, nil, errors.Annotatef(err, "resolving %q", controllerCharmURL)
 	}
+
 	// We prefer the latest LTS series but if the controller charm supported series
 	// matches that of the machine, use that one. The controller charm doesn't have
 	// any series specific code.
-	if charmSeries := set.NewStrings(supportedSeries...); charmSeries.Contains(series) {
-		curl = curl.WithSeries(series)
-	} else if charmSeries.Contains(coreseries.LatestLTS()) {
-		curl = curl.WithSeries(coreseries.LatestLTS())
-	} else {
-		// Fallback in case controller charm is out of date.
-		curl = curl.WithSeries("focal")
-	}
 
 	storageFactory := func(modelUUID string) services.Storage {
 		return statestorage.NewStorage(model.UUID(), st.MongoSession())
