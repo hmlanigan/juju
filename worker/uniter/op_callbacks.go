@@ -123,7 +123,7 @@ func (opc *operationCallbacks) ActionStatus(actionId string) (string, error) {
 }
 
 // GetArchiveInfo is part of the operation.Callbacks interface.
-func (opc *operationCallbacks) GetArchiveInfo(charmURL *corecharm.URL) (charm.BundleInfo, error) {
+func (opc *operationCallbacks) GetArchiveInfo(charmURL *corecharm.URL) (charm.CharmInfo, error) {
 	ch, err := opc.u.st.Charm(charmURL)
 	if err != nil {
 		return nil, errors.Trace(err)

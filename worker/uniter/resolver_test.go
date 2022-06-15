@@ -805,7 +805,7 @@ func (m *fakeRW) SetState(_ params.SetUnitStateArg) error {
 type fakeDeployer struct {
 }
 
-func (m *fakeDeployer) Stage(_ unitercharm.BundleInfo, _ <-chan struct{}) error {
+func (m *fakeDeployer) Stage(_ unitercharm.CharmInfo, _ <-chan struct{}) error {
 	return nil
 }
 

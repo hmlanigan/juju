@@ -26,36 +26,36 @@ import (
 
 type ManifestDeployerSuite struct {
 	testing.BaseSuite
-	bundles    *bundleReader
-	targetPath string
-	deployer   charm.Deployer
+	charmReader *charmReader
+	targetPath  string
+	deployer    charm.Deployer
 }
 
 var _ = gc.Suite(&ManifestDeployerSuite{})
 
-// because we generally use real charm bundles for testing, and charm bundling
+// because we generally use real charm charmReader for testing, and charm bundling
 // sets every file mode to 0755 or 0644, all our input data uses those modes as
 // well.
 
 func (s *ManifestDeployerSuite) SetUpTest(c *gc.C) {
 	s.BaseSuite.SetUpTest(c)
-	s.bundles = &bundleReader{}
+	s.charmReader = &charmReader{}
 	s.targetPath = filepath.Join(c.MkDir(), "target")
 	deployerPath := filepath.Join(c.MkDir(), "deployer")
-	s.deployer = charm.NewManifestDeployer(s.targetPath, deployerPath, s.bundles, loggo.GetLogger("test"))
+	s.deployer = charm.NewManifestDeployer(s.targetPath, deployerPath, s.charmReader, loggo.GetLogger("test"))
 }
 
-func (s *ManifestDeployerSuite) addMockCharm(c *gc.C, revision int, bundle charm.Bundle) charm.BundleInfo {
-	return s.bundles.AddBundle(c, charmURL(revision), bundle)
+func (s *ManifestDeployerSuite) addMockCharm(c *gc.C, revision int, charmArchive charm.CharmArchive) charm.CharmInfo {
+	return s.charmReader.AddCharmArchive(c, charmURL(revision), charmArchive)
 }
 
-func (s *ManifestDeployerSuite) addCharm(c *gc.C, revision int, content ...ft.Entry) charm.BundleInfo {
-	return s.bundles.AddCustomBundle(c, charmURL(revision), func(path string) {
+func (s *ManifestDeployerSuite) addCharm(c *gc.C, revision int, content ...ft.Entry) charm.CharmInfo {
+	return s.charmReader.AddCustomCharmArchive(c, charmURL(revision), func(path string) {
 		ft.Entries(content).Create(c, path)
 	})
 }
 
-func (s *ManifestDeployerSuite) deployCharm(c *gc.C, revision int, content ...ft.Entry) charm.BundleInfo {
+func (s *ManifestDeployerSuite) deployCharm(c *gc.C, revision int, content ...ft.Entry) charm.CharmInfo {
 	info := s.addCharm(c, revision, content...)
 	err := s.deployer.Stage(info, nil)
 	c.Assert(err, jc.ErrorIsNil)
@@ -73,10 +73,10 @@ func (s *ManifestDeployerSuite) assertCharm(c *gc.C, revision int, content ...ft
 }
 
 func (s *ManifestDeployerSuite) TestAbortStageWhenClosed(c *gc.C) {
-	info := s.addMockCharm(c, 1, mockBundle{})
+	info := s.addMockCharm(c, 1, mockCharmArchive{})
 	abort := make(chan struct{})
 	errors := make(chan error)
-	s.bundles.EnableWaitForAbort()
+	s.charmReader.EnableWaitForAbort()
 	go func() {
 		errors <- s.deployer.Stage(info, abort)
 	}()
@@ -86,10 +86,10 @@ func (s *ManifestDeployerSuite) TestAbortStageWhenClosed(c *gc.C) {
 }
 
 func (s *ManifestDeployerSuite) TestDontAbortStageWhenNotClosed(c *gc.C) {
-	info := s.addMockCharm(c, 1, mockBundle{})
+	info := s.addMockCharm(c, 1, mockCharmArchive{})
 	abort := make(chan struct{})
 	errors := make(chan error)
-	stopWaiting := s.bundles.EnableWaitForAbort()
+	stopWaiting := s.charmReader.EnableWaitForAbort()
 	go func() {
 		errors <- s.deployer.Stage(info, abort)
 	}()
@@ -194,7 +194,7 @@ func (s *ManifestDeployerSuite) TestUpgradeConflictResolveRetrySameCharm(c *gc.C
 		ft.File{"shared-file", "new", 0755},
 		ft.File{"new-file", "new", 0644},
 	}
-	mockCharm := mockBundle{
+	mockCharm := mockCharmArchive{
 		paths: set.NewStrings(upgradeContent.Paths()...),
 		expand: func(targetPath string) error {
 			upgradeContent.Create(c, targetPath)
@@ -240,7 +240,7 @@ func (s *ManifestDeployerSuite) TestUpgradeConflictRevertRetryDifferentCharm(c *
 		ft.File{"shared-file", "bad", 0644},
 		ft.File{"bad-file", "bad", 0644},
 	}
-	badCharm := mockBundle{
+	badCharm := mockCharmArchive{
 		paths: set.NewStrings(badUpgradeContent.Paths()...),
 		expand: func(targetPath string) error {
 			badUpgradeContent.Create(c, targetPath)
@@ -268,19 +268,19 @@ func (s *ManifestDeployerSuite) TestUpgradeConflictRevertRetryDifferentCharm(c *
 var _ = gc.Suite(&RetryingBundleReaderSuite{})
 
 type RetryingBundleReaderSuite struct {
-	bundleReader *mocks.MockBundleReader
-	bundleInfo   *mocks.MockBundleInfo
-	bundle       *mocks.MockBundle
+	charmReader  *mocks.MockCharmReader
+	charmInfo    *mocks.MockCharmInfo
+	charmArchive *mocks.MockCharmArchive
 	clock        *testclock.Clock
-	rbr          charm.RetryingBundleReader
+	rbr          charm.RetryingCharmArchiveReader
 }
 
 func (s *RetryingBundleReaderSuite) TestReadBundleMaxAttemptsExceeded(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	charmURL := ch.MustParseURL("ch:focal/dummy-1")
-	s.bundleInfo.EXPECT().URL().Return(charmURL).AnyTimes()
-	s.bundleReader.EXPECT().Read(gomock.Any(), gomock.Any()).Return(nil, errors.NotYetAvailablef("still in the oven")).AnyTimes()
+	s.charmInfo.EXPECT().URL().Return(charmURL).AnyTimes()
+	s.charmReader.EXPECT().Read(gomock.Any(), gomock.Any()).Return(nil, errors.NotYetAvailablef("still in the oven")).AnyTimes()
 
 	go func() {
 		// We retry 10 times in total so we need to advance the clock 9
@@ -291,7 +291,7 @@ func (s *RetryingBundleReaderSuite) TestReadBundleMaxAttemptsExceeded(c *gc.C) {
 		}
 	}()
 
-	_, err := s.rbr.Read(s.bundleInfo, nil)
+	_, err := s.rbr.Read(s.charmInfo, nil)
 	c.Assert(err, gc.ErrorMatches, ".*attempt count exceeded.*")
 }
 
@@ -299,10 +299,10 @@ func (s *RetryingBundleReaderSuite) TestReadBundleEventuallySucceeds(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	charmURL := ch.MustParseURL("ch:focal/dummy-1")
-	s.bundleInfo.EXPECT().URL().Return(charmURL).AnyTimes()
+	s.charmInfo.EXPECT().URL().Return(charmURL).AnyTimes()
 	gomock.InOrder(
-		s.bundleReader.EXPECT().Read(gomock.Any(), gomock.Any()).Return(nil, errors.NotYetAvailablef("still in the oven")),
-		s.bundleReader.EXPECT().Read(gomock.Any(), gomock.Any()).Return(s.bundle, nil),
+		s.charmReader.EXPECT().Read(gomock.Any(), gomock.Any()).Return(nil, errors.NotYetAvailablef("still in the oven")),
+		s.charmReader.EXPECT().Read(gomock.Any(), gomock.Any()).Return(s.charmArchive, nil),
 	)
 
 	go func() {
@@ -311,21 +311,21 @@ func (s *RetryingBundleReaderSuite) TestReadBundleEventuallySucceeds(c *gc.C) {
 		c.Assert(s.clock.WaitAdvance(10*time.Second, time.Second, 1), jc.ErrorIsNil)
 	}()
 
-	got, err := s.rbr.Read(s.bundleInfo, nil)
+	got, err := s.rbr.Read(s.charmInfo, nil)
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(got, gc.Equals, s.bundle)
+	c.Assert(got, gc.Equals, s.charmArchive)
 }
 
 func (s *RetryingBundleReaderSuite) setupMocks(c *gc.C) *gomock.Controller {
 	ctrl := gomock.NewController(c)
-	s.bundleReader = mocks.NewMockBundleReader(ctrl)
-	s.bundleInfo = mocks.NewMockBundleInfo(ctrl)
-	s.bundle = mocks.NewMockBundle(ctrl)
+	s.charmReader = mocks.NewMockCharmReader(ctrl)
+	s.charmInfo = mocks.NewMockCharmInfo(ctrl)
+	s.charmArchive = mocks.NewMockCharmArchive(ctrl)
 	s.clock = testclock.NewClock(time.Now())
-	s.rbr = charm.RetryingBundleReader{
-		BundleReader: s.bundleReader,
-		Clock:        s.clock,
-		Logger:       loggo.GetLogger("test"),
+	s.rbr = charm.RetryingCharmArchiveReader{
+		CharmReader: s.charmReader,
+		Clock:       s.clock,
+		Logger:      loggo.GetLogger("test"),
 	}
 
 	return ctrl

@@ -21,33 +21,33 @@ type Downloader interface {
 	Download(req downloader.Request) (string, error)
 }
 
-// BundlesDir is responsible for storing and retrieving charm bundles
+// CharmArchiveDir is responsible for storing and retrieving charm archive
 // identified by state charms.
-type BundlesDir struct {
+type CharmArchiveDir struct {
 	path       string
 	downloader Downloader
 	logger     Logger
 }
 
-// NewBundlesDir returns a new BundlesDir which uses path for storage.
-func NewBundlesDir(path string, dlr Downloader, logger Logger) *BundlesDir {
+// NewCharmArchiveDir returns a new CharmArchiveDir which uses path for storage.
+func NewCharmArchiveDir(path string, dlr Downloader, logger Logger) *CharmArchiveDir {
 	if dlr == nil {
 		dlr = downloader.New(downloader.NewArgs{
 			HostnameVerification: false,
 		})
 	}
-	return &BundlesDir{
+	return &CharmArchiveDir{
 		path:       path,
 		downloader: dlr,
 		logger:     logger,
 	}
 }
 
-// Read returns a charm bundle from the directory. If no bundle exists yet,
+// Read returns a charm charmArchive from the directory. If no charmArchive exists yet,
 // one will be downloaded and validated and copied into the directory before
 // being returned. Downloads will be aborted if a value is received on abort.
-func (d *BundlesDir) Read(info BundleInfo, abort <-chan struct{}) (Bundle, error) {
-	path := d.bundlePath(info)
+func (d *CharmArchiveDir) Read(info CharmInfo, abort <-chan struct{}) (CharmArchive, error) {
+	path := d.archivePath(info)
 	if _, err := os.Stat(path); err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
@@ -62,7 +62,7 @@ func (d *BundlesDir) Read(info BundleInfo, abort <-chan struct{}) (Bundle, error
 // download fetches the supplied charm and checks that it has the correct sha256
 // hash, then copies it into the directory. If a value is received on abort, the
 // download will be stopped.
-func (d *BundlesDir) download(info BundleInfo, target string, abort <-chan struct{}) (err error) {
+func (d *CharmArchiveDir) download(info CharmInfo, target string, abort <-chan struct{}) (err error) {
 	// First download...
 	curl, err := url.Parse(info.URL().String())
 	if err != nil {
@@ -92,24 +92,24 @@ func (d *BundlesDir) download(info BundleInfo, target string, abort <-chan struc
 	return nil
 }
 
-// bundlePath returns the path to the location where the verified charm
-// bundle identified by info will be, or has been, saved.
-func (d *BundlesDir) bundlePath(info BundleInfo) string {
-	return d.bundleURLPath(info.URL())
+// archivePath returns the path to the location where the verified charm
+// archive identified by info will be, or has been, saved.
+func (d *CharmArchiveDir) archivePath(info CharmInfo) string {
+	return d.charmURLPath(info.URL())
 }
 
-// bundleURLPath returns the path to the location where the verified charm
-// bundle identified by url will be, or has been, saved.
-func (d *BundlesDir) bundleURLPath(url *charm.URL) string {
+// charmURLPath returns the path to the location where the verified charm
+// charmArchive identified by url will be, or has been, saved.
+func (d *CharmArchiveDir) charmURLPath(url *charm.URL) string {
 	return path.Join(d.path, charm.Quote(url.String()))
 }
 
-// ClearDownloads removes any entries in the temporary bundle download
+// ClearDownloads removes any entries in the temporary charmArchive download
 // directory. It is intended to be called on uniter startup.
-func ClearDownloads(bundlesDir string) error {
-	downloadDir := downloadsPath(bundlesDir)
+func ClearDownloads(charmArchiveDir string) error {
+	downloadDir := downloadsPath(charmArchiveDir)
 	err := os.RemoveAll(downloadDir)
-	return errors.Annotate(err, "unable to clear bundle downloads")
+	return errors.Annotate(err, "unable to clear charmArchive downloads")
 }
 
 // downloadsPath returns the path to the directory into which charms are

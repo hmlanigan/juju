@@ -8,8 +8,8 @@ package charm
 var NewDeployer = newDeployer
 
 // NewDeployerFunc returns a func used to create a deployer.
-type NewDeployerFunc func(charmPath, dataPath string, bundles BundleReader, logger Logger) (Deployer, error)
+type NewDeployerFunc func(charmPath, dataPath string, charmReader CharmReader, logger Logger) (Deployer, error)
 
-func newDeployer(charmPath, dataPath string, bundles BundleReader, logger Logger) (Deployer, error) {
-	return NewManifestDeployer(charmPath, dataPath, bundles, logger), nil
+func newDeployer(charmPath, dataPath string, charmReader CharmReader, logger Logger) (Deployer, error) {
+	return NewManifestDeployer(charmPath, dataPath, charmReader, logger), nil
 }

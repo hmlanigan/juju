@@ -116,7 +116,7 @@ func (s *DeploySuite) TestPrepareArchiveInfoError_ResolvedUpgrade(c *gc.C) {
 
 func (s *DeploySuite) testPrepareStageError(c *gc.C, newDeploy newDeploy) {
 	callbacks := &DeployCallbacks{
-		MockGetArchiveInfo: &MockGetArchiveInfo{info: &MockBundleInfo{}},
+		MockGetArchiveInfo: &MockGetArchiveInfo{info: &MockCharmInfo{}},
 	}
 	deployer := &MockDeployer{
 		MockNotifyRevert:   &MockNoArgs{},

@@ -225,7 +225,7 @@ type Callbacks interface {
 
 	// GetArchiveInfo is used to find out how to download a charm archive. It's
 	// only used by Deploy operations.
-	GetArchiveInfo(charmURL *corecharm.URL) (charm.BundleInfo, error)
+	GetArchiveInfo(charmURL *corecharm.URL) (charm.CharmInfo, error)
 
 	// SetCurrentCharm records intent to deploy a given charm. It must be called
 	// *before* recording local state referencing that charm, to ensure there's

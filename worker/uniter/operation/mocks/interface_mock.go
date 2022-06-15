@@ -425,10 +425,10 @@ func (mr *MockCallbacksMockRecorder) FailAction(arg0, arg1 interface{}) *gomock.
 }
 
 // GetArchiveInfo mocks base method.
-func (m *MockCallbacks) GetArchiveInfo(arg0 *charm.URL) (charm0.BundleInfo, error) {
+func (m *MockCallbacks) GetArchiveInfo(arg0 *charm.URL) (charm0.CharmInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetArchiveInfo", arg0)
-	ret0, _ := ret[0].(charm0.BundleInfo)
+	ret0, _ := ret[0].(charm0.CharmInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

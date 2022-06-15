@@ -780,15 +780,15 @@ func (u *Uniter) init(unitTag names.UnitTag) (err error) {
 	}
 	u.storage = storageAttachments
 
-	if err := charm.ClearDownloads(u.paths.State.BundlesDir); err != nil {
+	if err := charm.ClearDownloads(u.paths.State.CharmArchiveDir); err != nil {
 		u.logger.Warningf(err.Error())
 	}
 	charmLogger := u.logger.Child("charm")
 	deployer, err := u.newDeployer(
 		u.paths.State.CharmDir,
 		u.paths.State.DeployerDir,
-		charm.NewBundlesDir(
-			u.paths.State.BundlesDir,
+		charm.NewCharmArchiveDir(
+			u.paths.State.CharmArchiveDir,
 			u.downloader,
 			charmLogger),
 		charmLogger,

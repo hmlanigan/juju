@@ -21,11 +21,11 @@ var _ logger = struct{}{}
 // commonly write the charm URL of the latest deployed charm.
 const CharmURLPath = ".juju-charm"
 
-// Bundle allows access to a charm's files.
-type Bundle interface {
+// CharmArchive allows access to a charm's files.
+type CharmArchive interface {
 
 	// ArchiveMembers returns a set of slash-separated strings representing files,
-	// directories, and symlinks stored in the bundle.
+	// directories, and symlinks stored in the charmArchive.
 	ArchiveMembers() (set.Strings, error)
 
 	// ExpandTo unpacks the entities referenced in the manifest into the
@@ -35,36 +35,36 @@ type Bundle interface {
 	ExpandTo(dir string) error
 }
 
-// BundleInfo describes a Bundle.
-type BundleInfo interface {
+// CharmInfo describes a charm.
+type CharmInfo interface {
 
-	// URL returns the charm URL identifying the bundle.
+	// URL returns the charm URL identifying the charm.
 	URL() *charm.URL
 
-	// ArchiveSha256 returns the hex-encoded SHA-256 digest of the bundle data.
+	// ArchiveSha256 returns the hex-encoded SHA-256 digest of the charm data.
 	ArchiveSha256() (string, error)
 }
 
-// BundleReader provides a mechanism for getting a Bundle from a BundleInfo.
-type BundleReader interface {
+// CharmReader provides a mechanism for getting a Charm from a CharmInfo.
+type CharmReader interface {
 
-	// Read returns the bundle identified by the supplied info. The abort chan
+	// Read returns the charm identified by the supplied info. The abort chan
 	// can be used to notify an implementation that it need not complete the
 	// operation, and can immediately error out if it is convenient to do so.
-	Read(bi BundleInfo, abort <-chan struct{}) (Bundle, error)
+	Read(bi CharmInfo, abort <-chan struct{}) (CharmArchive, error)
 }
 
 // Deployer is responsible for installing and upgrading charms.
 type Deployer interface {
 
 	// Stage must be called to prime the Deployer to install or upgrade the
-	// bundle identified by the supplied info. The abort chan can be used to
+	// charmArchive identified by the supplied info. The abort chan can be used to
 	// notify an implementation that it need not complete the operation, and
 	// can immediately error out if it convenient to do so. It must always
-	// be safe to restage the same bundle, or to stage a new bundle.
-	Stage(info BundleInfo, abort <-chan struct{}) error
+	// be safe to restage the same charmArchive, or to stage a new charmArchive.
+	Stage(info CharmInfo, abort <-chan struct{}) error
 
-	// Deploy will install or upgrade the most recently staged bundle.
+	// Deploy will install or upgrade the most recently staged charmArchive.
 	// Behaviour is undefined if Stage has not been called. Failures that
 	// can be resolved by user intervention will be signalled by returning
 	// ErrConflict.

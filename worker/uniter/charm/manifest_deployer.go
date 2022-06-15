@@ -27,8 +27,8 @@ const (
 	manifestsDataPath = "manifests"
 )
 
-// NewManifestDeployer returns a Deployer that installs bundles from the
-// supplied BundleReader into charmPath, and which reads and writes its
+// NewManifestDeployer returns a Deployer that installs charmReader from the
+// supplied CharmReader into charmPath, and which reads and writes its
 // persistent data into dataPath.
 //
 // It works by always writing the full contents of a deployed charm; and, if
@@ -36,38 +36,38 @@ const (
 // that base charm. It thus leaves user files in place, with the exception of
 // those in directories referenced only in the original charm, which will be
 // deleted.
-func NewManifestDeployer(charmPath, dataPath string, bundles BundleReader, logger Logger) Deployer {
+func NewManifestDeployer(charmPath, dataPath string, charmReader CharmReader, logger Logger) Deployer {
 	return &manifestDeployer{
-		charmPath: charmPath,
-		dataPath:  dataPath,
-		bundles:   bundles,
-		logger:    logger,
+		charmPath:   charmPath,
+		dataPath:    dataPath,
+		charmReader: charmReader,
+		logger:      logger,
 	}
 }
 
 type manifestDeployer struct {
-	charmPath string
-	dataPath  string
-	bundles   BundleReader
-	logger    Logger
-	staged    struct {
-		url      *charm.URL
-		bundle   Bundle
-		manifest set.Strings
+	charmPath   string
+	dataPath    string
+	charmReader CharmReader
+	logger      Logger
+	staged      struct {
+		url          *charm.URL
+		charmArchive CharmArchive
+		manifest     set.Strings
 	}
 }
 
-func (d *manifestDeployer) Stage(info BundleInfo, abort <-chan struct{}) error {
-	bdr := RetryingBundleReader{
-		BundleReader: d.bundles,
-		Clock:        clock.WallClock,
-		Logger:       d.logger,
+func (d *manifestDeployer) Stage(info CharmInfo, abort <-chan struct{}) error {
+	bdr := RetryingCharmArchiveReader{
+		CharmReader: d.charmReader,
+		Clock:       clock.WallClock,
+		Logger:      d.logger,
 	}
-	bundle, err := bdr.Read(info, abort)
+	charmArchive, err := bdr.Read(info, abort)
 	if err != nil {
 		return err
 	}
-	manifest, err := bundle.ArchiveMembers()
+	manifest, err := charmArchive.ArchiveMembers()
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (d *manifestDeployer) Stage(info BundleInfo, abort <-chan struct{}) error {
 		return err
 	}
 	d.staged.url = url
-	d.staged.bundle = bundle
+	d.staged.charmArchive = charmArchive
 	d.staged.manifest = manifest
 	return nil
 }
@@ -130,7 +130,7 @@ func (d *manifestDeployer) Deploy() (err error) {
 
 	// Overwrite whatever's in place with the staged charm.
 	d.logger.Debugf("deploying charm %q", d.staged.url)
-	if err := d.staged.bundle.ExpandTo(d.charmPath); err != nil {
+	if err := d.staged.charmArchive.ExpandTo(d.charmPath); err != nil {
 		return err
 	}
 
@@ -138,7 +138,7 @@ func (d *manifestDeployer) Deploy() (err error) {
 	return d.finishDeploy()
 }
 
-// startDeploy persists the fact that we've started deploying the staged bundle.
+// startDeploy persists the fact that we've started deploying the staged charmArchive.
 func (d *manifestDeployer) startDeploy() error {
 	d.logger.Debugf("preparing to deploy charm %q", d.staged.url)
 	if err := os.MkdirAll(d.charmPath, 0755); err != nil {
@@ -159,7 +159,7 @@ func (d *manifestDeployer) removeDiff(oldManifest, newManifest set.Strings) erro
 	return nil
 }
 
-// finishDeploy persists the fact that we've finished deploying the staged bundle.
+// finishDeploy persists the fact that we've finished deploying the staged charmArchive.
 func (d *manifestDeployer) finishDeploy() error {
 	d.logger.Debugf("finishing deploy of charm %q", d.staged.url)
 	oldPath := d.CharmPath(deployingURLPath)
@@ -231,18 +231,18 @@ func (d *manifestDeployer) DataPath(path string) string {
 	return filepath.Join(d.dataPath, path)
 }
 
-type RetryingBundleReader struct {
-	BundleReader
+type RetryingCharmArchiveReader struct {
+	CharmReader
 
 	Clock  clock.Clock
 	Logger Logger
 }
 
-func (rbr RetryingBundleReader) Read(bi BundleInfo, abort <-chan struct{}) (Bundle, error) {
+func (rbr RetryingCharmArchiveReader) Read(bi CharmInfo, abort <-chan struct{}) (CharmArchive, error) {
 	var (
-		bundle   Bundle
-		minDelay = 200 * time.Millisecond
-		maxDelay = 8 * time.Second
+		charmArchive CharmArchive
+		minDelay     = 200 * time.Millisecond
+		maxDelay     = 8 * time.Second
 	)
 
 	fetchErr := retry.Call(retry.CallArgs{
@@ -251,11 +251,11 @@ func (rbr RetryingBundleReader) Read(bi BundleInfo, abort <-chan struct{}) (Bund
 		BackoffFunc: retry.ExpBackoff(minDelay, maxDelay, 2.0, true),
 		Clock:       rbr.Clock,
 		Func: func() error {
-			b, err := rbr.BundleReader.Read(bi, abort)
+			b, err := rbr.CharmReader.Read(bi, abort)
 			if err != nil {
 				return err
 			}
-			bundle = b
+			charmArchive = b
 			return nil
 		},
 		IsFatalError: func(err error) bool {
@@ -272,5 +272,5 @@ func (rbr RetryingBundleReader) Read(bi BundleInfo, abort <-chan struct{}) (Bund
 		}
 		return nil, errors.Trace(fetchErr)
 	}
-	return bundle, nil
+	return charmArchive, nil
 }

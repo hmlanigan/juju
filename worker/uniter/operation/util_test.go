@@ -25,11 +25,11 @@ import (
 
 type MockGetArchiveInfo struct {
 	gotCharmURL *corecharm.URL
-	info        charm.BundleInfo
+	info        charm.CharmInfo
 	err         error
 }
 
-func (mock *MockGetArchiveInfo) Call(charmURL *corecharm.URL) (charm.BundleInfo, error) {
+func (mock *MockGetArchiveInfo) Call(charmURL *corecharm.URL) (charm.CharmInfo, error) {
 	mock.gotCharmURL = charmURL
 	return mock.info, mock.err
 }
@@ -51,7 +51,7 @@ type DeployCallbacks struct {
 	MockInitializeMetricsTimers *MockNoArgs
 }
 
-func (cb *DeployCallbacks) GetArchiveInfo(charmURL *corecharm.URL) (charm.BundleInfo, error) {
+func (cb *DeployCallbacks) GetArchiveInfo(charmURL *corecharm.URL) (charm.CharmInfo, error) {
 	return cb.MockGetArchiveInfo.Call(charmURL)
 }
 
@@ -63,17 +63,17 @@ func (cb *DeployCallbacks) InitializeMetricsTimers() error {
 	return cb.MockInitializeMetricsTimers.Call()
 }
 
-type MockBundleInfo struct {
-	charm.BundleInfo
+type MockCharmInfo struct {
+	charm.CharmInfo
 }
 
 type MockStage struct {
-	gotInfo  *charm.BundleInfo
+	gotInfo  *charm.CharmInfo
 	gotAbort *<-chan struct{}
 	err      error
 }
 
-func (mock *MockStage) Call(info charm.BundleInfo, abort <-chan struct{}) error {
+func (mock *MockStage) Call(info charm.CharmInfo, abort <-chan struct{}) error {
 	mock.gotInfo = &info
 	mock.gotAbort = &abort
 	return mock.err
@@ -97,7 +97,7 @@ type MockDeployer struct {
 	MockNotifyResolved *MockNoArgs
 }
 
-func (d *MockDeployer) Stage(info charm.BundleInfo, abort <-chan struct{}) error {
+func (d *MockDeployer) Stage(info charm.CharmInfo, abort <-chan struct{}) error {
 	return d.MockStage.Call(info, abort)
 }
 
@@ -454,7 +454,7 @@ func (r *MockActionWaitRunner) RunAction(actionName string) (runner.HookHandlerT
 
 func NewDeployCallbacks() *DeployCallbacks {
 	return &DeployCallbacks{
-		MockGetArchiveInfo:  &MockGetArchiveInfo{info: &MockBundleInfo{}},
+		MockGetArchiveInfo:  &MockGetArchiveInfo{info: &MockCharmInfo{}},
 		MockSetCurrentCharm: &MockSetCurrentCharm{},
 	}
 }

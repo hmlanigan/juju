@@ -116,8 +116,8 @@ type StatePaths struct {
 	// ResourcesDir is the directory to which the charm the uniter runs is deployed.
 	ResourcesDir string
 
-	// BundlesDir holds downloaded charms.
-	BundlesDir string
+	// CharmArchiveDir holds downloaded charms.
+	CharmArchiveDir string
 
 	// DeployerDir holds metadata about charms that are installing or have
 	// been installed.
@@ -198,7 +198,7 @@ func NewWorkerPaths(dataDir string, unitTag names.UnitTag, worker string, socket
 			BaseDir:         baseDir,
 			CharmDir:        join(baseDir, "charm"),
 			ResourcesDir:    join(baseDir, "resources"),
-			BundlesDir:      join(stateDir, "bundles"),
+			CharmArchiveDir: join(stateDir, "charmReader"),
 			DeployerDir:     join(stateDir, "deployer"),
 			MetricsSpoolDir: join(stateDir, "spool", "metrics"),
 		},

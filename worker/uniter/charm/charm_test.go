@@ -17,44 +17,44 @@ import (
 	"github.com/juju/juju/worker/uniter/charm"
 )
 
-// bundleReader is a charm.BundleReader that lets us mock out the bundles we
+// charmReader is a charm.CharmReader that lets us mock out the charmReader we
 // deploy to test the Deployers.
-type bundleReader struct {
-	bundles     map[string]charm.Bundle
-	stopWaiting <-chan struct{}
+type charmReader struct {
+	charmArchives map[string]charm.CharmArchive
+	stopWaiting   <-chan struct{}
 }
 
 // EnableWaitForAbort allows us to test that a Deployer.Stage call passes its abort
-// chan down to its BundleReader's Read method. If you call EnableWaitForAbort, the
+// chan down to its CharmReader's Read method. If you call EnableWaitForAbort, the
 // next call to Read will block until either the abort chan is closed (in which case
 // it will return an error) or the stopWaiting chan is closed (in which case it
-// will return the bundle).
-func (br *bundleReader) EnableWaitForAbort() (stopWaiting chan struct{}) {
+// will return the charmArchive).
+func (ch *charmReader) EnableWaitForAbort() (stopWaiting chan struct{}) {
 	stopWaiting = make(chan struct{})
-	br.stopWaiting = stopWaiting
+	ch.stopWaiting = stopWaiting
 	return stopWaiting
 }
 
-// Read implements the BundleReader interface.
-func (br *bundleReader) Read(info charm.BundleInfo, abort <-chan struct{}) (charm.Bundle, error) {
-	bundle, ok := br.bundles[info.URL().String()]
+// Read implements the CharmReader interface.
+func (ch *charmReader) Read(info charm.CharmInfo, abort <-chan struct{}) (charm.CharmArchive, error) {
+	charmArchive, ok := ch.charmArchives[info.URL().String()]
 	if !ok {
 		return nil, fmt.Errorf("no such charm!")
 	}
-	if br.stopWaiting != nil {
+	if ch.stopWaiting != nil {
 		// EnableWaitForAbort is a one-time wait; make sure we clear it.
-		defer func() { br.stopWaiting = nil }()
+		defer func() { ch.stopWaiting = nil }()
 		select {
 		case <-abort:
 			return nil, fmt.Errorf("charm read aborted")
-		case <-br.stopWaiting:
-			// We can stop waiting for the abort chan and return the bundle.
+		case <-ch.stopWaiting:
+			// We can stop waiting for the abort chan and return the charmArchive.
 		}
 	}
-	return bundle, nil
+	return charmArchive, nil
 }
 
-func (br *bundleReader) AddCustomBundle(c *gc.C, url *corecharm.URL, customize func(path string)) charm.BundleInfo {
+func (ch *charmReader) AddCustomCharmArchive(c *gc.C, url *corecharm.URL, customize func(path string)) charm.CharmInfo {
 	base := c.MkDir()
 	dirpath := testcharms.Repo.ClonedDirPath(base, "dummy")
 	if customize != nil {
@@ -64,45 +64,45 @@ func (br *bundleReader) AddCustomBundle(c *gc.C, url *corecharm.URL, customize f
 	c.Assert(err, jc.ErrorIsNil)
 	err = dir.SetDiskRevision(url.Revision)
 	c.Assert(err, jc.ErrorIsNil)
-	bunpath := filepath.Join(base, "bundle")
+	bunpath := filepath.Join(base, "charmArchive")
 	file, err := os.Create(bunpath)
 	c.Assert(err, jc.ErrorIsNil)
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	err = dir.ArchiveTo(file)
 	c.Assert(err, jc.ErrorIsNil)
-	bundle, err := corecharm.ReadCharmArchive(bunpath)
+	charmArchive, err := corecharm.ReadCharmArchive(bunpath)
 	c.Assert(err, jc.ErrorIsNil)
-	return br.AddBundle(c, url, bundle)
+	return ch.AddCharmArchive(c, url, charmArchive)
 }
 
-func (br *bundleReader) AddBundle(c *gc.C, url *corecharm.URL, bundle charm.Bundle) charm.BundleInfo {
-	if br.bundles == nil {
-		br.bundles = map[string]charm.Bundle{}
+func (ch *charmReader) AddCharmArchive(c *gc.C, url *corecharm.URL, charmArchive charm.CharmArchive) charm.CharmInfo {
+	if ch.charmArchives == nil {
+		ch.charmArchives = map[string]charm.CharmArchive{}
 	}
-	br.bundles[url.String()] = bundle
-	return &bundleInfo{nil, url}
+	ch.charmArchives[url.String()] = charmArchive
+	return &charmInfo{nil, url}
 }
 
-type bundleInfo struct {
-	charm.BundleInfo
+type charmInfo struct {
+	charm.CharmInfo
 	url *corecharm.URL
 }
 
-func (info *bundleInfo) URL() *corecharm.URL {
+func (info *charmInfo) URL() *corecharm.URL {
 	return info.url
 }
 
-type mockBundle struct {
+type mockCharmArchive struct {
 	paths  set.Strings
 	expand func(dir string) error
 }
 
-func (b mockBundle) ArchiveMembers() (set.Strings, error) {
+func (b mockCharmArchive) ArchiveMembers() (set.Strings, error) {
 	// TODO(dfc) this looks like set.Strings().Duplicate()
 	return set.NewStrings(b.paths.Values()...), nil
 }
 
-func (b mockBundle) ExpandTo(dir string) error {
+func (b mockCharmArchive) ExpandTo(dir string) error {
 	if b.expand != nil {
 		return b.expand(dir)
 	}

@@ -556,10 +556,10 @@ func (s startUniter) step(c *gc.C, ctx *testContext) {
 			ctx.runner.ctx = context
 			return ctx.runner
 		},
-		NewDeployer: func(charmPath, dataPath string, bundles charm.BundleReader, logger charm.Logger) (charm.Deployer, error) {
+		NewDeployer: func(charmPath, dataPath string, charmReader charm.CharmReader, logger charm.Logger) (charm.Deployer, error) {
 			ctx.deployer.charmPath = charmPath
 			ctx.deployer.dataPath = dataPath
-			ctx.deployer.bundles = bundles
+			ctx.deployer.charmReader = charmReader
 			return ctx.deployer, nil
 		},
 		TranslateResolverErr: s.translateResolverErr,

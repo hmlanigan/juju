@@ -7,8 +7,9 @@ package caasoperator
 import (
 	"path/filepath"
 
-	"github.com/juju/juju/agent/tools"
 	"github.com/juju/names/v4"
+
+	"github.com/juju/juju/agent/tools"
 )
 
 // Paths represents the set of filesystem paths a caasoperator worker has reason to
@@ -82,8 +83,8 @@ type StatePaths struct {
 	// and/or has done.
 	OperationsFile string
 
-	// BundlesDir holds downloaded charms.
-	BundlesDir string
+	// CharmArchiveDir holds downloaded charms.
+	CharmArchiveDir string
 
 	// DeployerDir holds metadata about charms that are installing or have
 	// been installed.
@@ -107,7 +108,7 @@ func NewPaths(dataDir string, applicationTag names.ApplicationTag) Paths {
 		State: StatePaths{
 			BaseDir:         baseDir,
 			CharmDir:        join(baseDir, "charm"),
-			BundlesDir:      join(stateDir, "bundles"),
+			CharmArchiveDir: join(stateDir, "charmReader"),
 			DeployerDir:     join(stateDir, "deployer"),
 			OperationsFile:  join(stateDir, "operator"),
 			MetricsSpoolDir: join(stateDir, "spool", "metrics"),

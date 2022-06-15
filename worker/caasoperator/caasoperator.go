@@ -235,8 +235,8 @@ func NewWorker(config Config) (worker.Worker, error) {
 	deployer, err := jujucharm.NewDeployer(
 		paths.State.CharmDir,
 		paths.State.DeployerDir,
-		jujucharm.NewBundlesDir(
-			paths.State.BundlesDir,
+		jujucharm.NewCharmArchiveDir(
+			paths.State.CharmArchiveDir,
 			config.Downloader,
 			logger),
 		logger,
@@ -357,7 +357,7 @@ func (op *caasOperator) init() (*LocalState, error) {
 		op.config.Logger.Errorf("failed to write profile funcs: %v", err)
 	}
 
-	if err := jujucharm.ClearDownloads(op.paths.State.BundlesDir); err != nil {
+	if err := jujucharm.ClearDownloads(op.paths.State.CharmArchiveDir); err != nil {
 		op.config.Logger.Warningf(err.Error())
 	}
 

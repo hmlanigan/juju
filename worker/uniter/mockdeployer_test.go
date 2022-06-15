@@ -14,21 +14,21 @@ import (
 
 // mockDeployer implements Deployer.
 type mockDeployer struct {
-	charmPath string
-	dataPath  string
-	bundles   charm.BundleReader
+	charmPath   string
+	dataPath    string
+	charmReader charm.CharmReader
 
-	bundle   charm.Bundle
-	staged   *jujucharm.URL
-	curl     *jujucharm.URL
-	deployed bool
-	err      error
+	charmArchive charm.CharmArchive
+	staged       *jujucharm.URL
+	curl         *jujucharm.URL
+	deployed     bool
+	err          error
 }
 
-func (m *mockDeployer) Stage(info charm.BundleInfo, abort <-chan struct{}) error {
+func (m *mockDeployer) Stage(info charm.CharmInfo, abort <-chan struct{}) error {
 	m.staged = info.URL()
 	var err error
-	m.bundle, err = m.bundles.Read(info, abort)
+	m.charmArchive, err = m.charmReader.Read(info, abort)
 	return err
 }
 
@@ -42,7 +42,7 @@ func (m *mockDeployer) Deploy() error {
 	if m.err != nil {
 		return m.err
 	}
-	if err := m.bundle.ExpandTo(m.charmPath); err != nil {
+	if err := m.charmArchive.ExpandTo(m.charmPath); err != nil {
 		return err
 	}
 	m.deployed = true
