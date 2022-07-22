@@ -5,17 +5,20 @@ package application
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/go-macaroon-bakery/macaroon-bakery/v3/httpbakery"
 	"github.com/juju/charm/v9"
 	charmresource "github.com/juju/charm/v9/resource"
 	"github.com/juju/charmrepo/v7"
 	csparams "github.com/juju/charmrepo/v7/csclient/params"
+	"github.com/juju/clock"
 	"github.com/juju/cmd/v3"
 	"github.com/juju/collections/set"
 	"github.com/juju/errors"
 	"github.com/juju/gnuflag"
 	"github.com/juju/names/v4"
+	"github.com/juju/retry"
 	"gopkg.in/macaroon.v2"
 
 	"github.com/juju/juju/api"
@@ -305,6 +308,34 @@ func (c *refreshCommand) Init(args []string) error {
 	return nil
 }
 
+func waitForCharmID(charmRefreshClient CharmRefreshClient, generation, appName string) (*charm.URL, commoncharm.Origin, error) {
+	var oldURL *charm.URL
+	var oldOrigin commoncharm.Origin
+	var err error
+
+	var errCharmNotDownloaded = errors.Errorf("charm for application %q not downloaded yet", appName)
+	err = retry.Call(retry.CallArgs{
+		Func: func() error {
+			oldURL, oldOrigin, err = charmRefreshClient.GetCharmURLOrigin(generation, appName)
+			if err != nil {
+				return errors.Trace(err)
+			}
+			if oldOrigin.ID == "" {
+				return errCharmNotDownloaded
+			}
+			return nil
+		},
+		IsFatalError: func(err error) bool {
+			return err != errCharmNotDownloaded
+		},
+		Attempts: 3,
+		Delay:    10 * time.Second,
+		Clock:    clock.WallClock,
+	})
+
+	return oldURL, oldOrigin, err
+}
+
 // Run connects to the specified environment and starts the charm
 // upgrade process.
 func (c *refreshCommand) Run(ctx *cmd.Context) error {
@@ -319,7 +350,7 @@ func (c *refreshCommand) Run(ctx *cmd.Context) error {
 		return errors.Trace(err)
 	}
 	charmRefreshClient := c.NewCharmRefreshClient(apiRoot)
-	oldURL, oldOrigin, err := charmRefreshClient.GetCharmURLOrigin(generation, c.ApplicationName)
+	oldURL, oldOrigin, err := waitForCharmID(charmRefreshClient, generation, c.ApplicationName)
 	if err != nil {
 		return errors.Trace(err)
 	}
