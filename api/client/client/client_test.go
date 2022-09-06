@@ -12,10 +12,8 @@ import (
 	"net/url"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/juju/errors"
-	"github.com/juju/loggo"
 	"github.com/juju/names/v4"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/version/v2"
@@ -24,7 +22,6 @@ import (
 	"github.com/juju/juju/api"
 	"github.com/juju/juju/api/base"
 	"github.com/juju/juju/api/client/client"
-	"github.com/juju/juju/api/common"
 	jujunames "github.com/juju/juju/juju/names"
 	jujutesting "github.com/juju/juju/juju/testing"
 	"github.com/juju/juju/rpc"
@@ -123,16 +120,6 @@ func modelEndpoint(c *gc.C, apiState api.Connection, destination string) string 
 	return path.Join("/model", modelTag.Id(), destination)
 }
 
-func (s *clientSuite) TestWatchDebugLogConnected(c *gc.C) {
-	client := client.NewClient(s.APIState)
-	// Use the no tail option so we don't try to start a tailing cursor
-	// on the oplog when there is no oplog configured in mongo as the tests
-	// don't set up mongo in replicaset mode.
-	messages, err := client.WatchDebugLog(common.DebugLogParams{NoTail: true})
-	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(messages, gc.NotNil)
-}
-
 func (s *clientSuite) TestConnectStreamRequiresSlashPathPrefix(c *gc.C) {
 	reader, err := s.APIState.ConnectStream("foo", nil)
 	c.Assert(err, gc.ErrorMatches, `cannot make API path from non-slash-prefixed path "foo"`)
@@ -200,49 +187,6 @@ func (s *clientSuite) TestConnectControllerStreamAppliesHeaders(c *gc.C) {
 
 	c.Assert(catcher.Headers().Get("thomas"), gc.Equals, "cromwell")
 	c.Assert(catcher.Headers().Get("anne"), gc.Equals, "boleyn")
-}
-
-func (s *clientSuite) TestWatchDebugLogParamsEncoded(c *gc.C) {
-	catcher := api.UrlCatcher{}
-	s.PatchValue(&api.WebsocketDial, catcher.RecordLocation)
-
-	params := common.DebugLogParams{
-		IncludeEntity: []string{"a", "b"},
-		IncludeModule: []string{"c", "d"},
-		IncludeLabel:  []string{"e", "f"},
-		ExcludeEntity: []string{"g", "h"},
-		ExcludeModule: []string{"i", "j"},
-		ExcludeLabel:  []string{"k", "l"},
-		Limit:         100,
-		Backlog:       200,
-		Level:         loggo.ERROR,
-		Replay:        true,
-		NoTail:        true,
-		StartTime:     time.Date(2016, 11, 30, 11, 48, 0, 100, time.UTC),
-	}
-
-	client := client.NewClient(s.APIState)
-	_, err := client.WatchDebugLog(params)
-	c.Assert(err, jc.ErrorIsNil)
-
-	connectURL, err := url.Parse(catcher.Location())
-	c.Assert(err, jc.ErrorIsNil)
-
-	values := connectURL.Query()
-	c.Assert(values, jc.DeepEquals, url.Values{
-		"includeEntity": params.IncludeEntity,
-		"includeModule": params.IncludeModule,
-		"includeLabel":  params.IncludeLabel,
-		"excludeEntity": params.ExcludeEntity,
-		"excludeModule": params.ExcludeModule,
-		"excludeLabel":  params.ExcludeLabel,
-		"maxLines":      {"100"},
-		"backlog":       {"200"},
-		"level":         {"ERROR"},
-		"replay":        {"true"},
-		"noTail":        {"true"},
-		"startTime":     {"2016-11-30T11:48:00.0000001Z"},
-	})
 }
 
 func (s *clientSuite) TestConnectStreamAtUUIDPath(c *gc.C) {
