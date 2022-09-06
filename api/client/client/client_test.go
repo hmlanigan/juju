@@ -20,25 +20,13 @@ import (
 	basemocks "github.com/juju/juju/api/base/mocks"
 	"github.com/juju/juju/api/client/client"
 	jujunames "github.com/juju/juju/juju/names"
-	jujutesting "github.com/juju/juju/juju/testing"
 	coretesting "github.com/juju/juju/testing"
 )
 
 type clientSuite struct {
-	jujutesting.JujuConnSuite
 }
 
 var _ = gc.Suite(&clientSuite{})
-
-func (s *clientSuite) SetUpTest(c *gc.C) {
-}
-
-func (s *clientSuite) TestCloseMultipleOk(c *gc.C) {
-	cl := client.NewClient(s.APIState)
-	c.Assert(cl.Close(), gc.IsNil)
-	c.Assert(cl.Close(), gc.IsNil)
-	c.Assert(cl.Close(), gc.IsNil)
-}
 
 func (s *clientSuite) TestUploadToolsOtherModel(c *gc.C) {
 	ctrl := gomock.NewController(c)

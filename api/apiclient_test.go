@@ -93,6 +93,16 @@ func (s *apiclientSuite) TestDialAPIMultiple(c *gc.C) {
 	assertConnAddrForModel(c, location, serverAddr, s.State.ModelUUID())
 }
 
+func (s *apiclientSuite) TestCloseMultipleOk(c *gc.C) {
+	info := s.APIInfo(c)
+	info.ModelTag = names.NewModelTag("")
+	conn, _, err := api.DialAPI(info, api.DialOpts{})
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(conn.Close(), gc.IsNil)
+	c.Assert(conn.Close(), gc.IsNil)
+	c.Assert(conn.Close(), gc.IsNil)
+}
+
 func (s *apiclientSuite) TestDialAPIWithProxy(c *gc.C) {
 	info := s.APIInfo(c)
 	opts := api.DialOpts{IPAddrResolver: apitesting.IPAddrResolverMap{
