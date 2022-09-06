@@ -11,16 +11,16 @@ import (
 	"net/url"
 	"path"
 
+	"github.com/golang/mock/gomock"
 	"github.com/juju/errors"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/version/v2"
 	gc "gopkg.in/check.v1"
 
-	"github.com/juju/juju/api"
+	basemocks "github.com/juju/juju/api/base/mocks"
 	"github.com/juju/juju/api/client/client"
 	jujunames "github.com/juju/juju/juju/names"
 	jujutesting "github.com/juju/juju/juju/testing"
-	"github.com/juju/juju/state"
 	coretesting "github.com/juju/juju/testing"
 )
 
@@ -30,25 +30,23 @@ type clientSuite struct {
 
 var _ = gc.Suite(&clientSuite{})
 
-// TODO(jam) 2013-08-27 http://pad.lv/1217282
-// Right now most of the direct tests for client.Client behavior are in
-// apiserver/client/*_test.go
 func (s *clientSuite) SetUpTest(c *gc.C) {
-	s.JujuConnSuite.SetUpTest(c)
 }
 
 func (s *clientSuite) TestCloseMultipleOk(c *gc.C) {
-	client := client.NewClient(s.APIState)
-	c.Assert(client.Close(), gc.IsNil)
-	c.Assert(client.Close(), gc.IsNil)
-	c.Assert(client.Close(), gc.IsNil)
+	cl := client.NewClient(s.APIState)
+	c.Assert(cl.Close(), gc.IsNil)
+	c.Assert(cl.Close(), gc.IsNil)
+	c.Assert(cl.Close(), gc.IsNil)
 }
 
 func (s *clientSuite) TestUploadToolsOtherModel(c *gc.C) {
-	otherSt, otherAPISt := s.otherModel(c)
-	defer otherSt.Close()
-	defer otherAPISt.Close()
-	client := client.NewClient(otherAPISt)
+	ctrl := gomock.NewController(c)
+	defer ctrl.Finish()
+
+	mockFacadeCaller := basemocks.NewMockFacadeCaller(ctrl)
+	testClient := client.NewClientFromCaller(mockFacadeCaller)
+
 	newVersion := version.MustParseBinary("5.4.3-ubuntu-amd64")
 	var called bool
 
@@ -58,36 +56,27 @@ func (s *clientSuite) TestUploadToolsOtherModel(c *gc.C) {
 
 	// UploadTools does not use the facades, so instead of patching the
 	// facade call, we set up a fake endpoint to test.
-	defer fakeAPIEndpoint(c, client, modelEndpoint(c, otherAPISt, "tools"), "POST",
-		func(w http.ResponseWriter, r *http.Request) {
-			called = true
+	defer func() {
+		_ = fakeAPIEndpoint(c, testClient, modelEndpoint(c, "tools"), "POST",
+			func(w http.ResponseWriter, r *http.Request) {
+				called = true
 
-			c.Assert(r.URL.Query(), gc.DeepEquals, url.Values{
-				"binaryVersion": []string{"5.4.3-ubuntu-amd64"},
-				"series":        []string{""},
-			})
-			defer r.Body.Close()
-			obtainedTools, err := ioutil.ReadAll(r.Body)
-			c.Assert(err, jc.ErrorIsNil)
-			c.Assert(obtainedTools, gc.DeepEquals, expectedTools)
-		},
-	).Close()
+				c.Assert(r.URL.Query(), gc.DeepEquals, url.Values{
+					"binaryVersion": []string{"5.4.3-ubuntu-amd64"},
+					"series":        []string{""},
+				})
+				defer func() { _ = r.Body.Close() }()
+				obtainedTools, err := ioutil.ReadAll(r.Body)
+				c.Assert(err, jc.ErrorIsNil)
+				c.Assert(obtainedTools, gc.DeepEquals, expectedTools)
+			},
+		).Close()
+	}()
 
 	// We don't test the error or tools results as we only wish to assert that
 	// the API client POSTs the tools archive to the correct endpoint.
-	client.UploadTools(bytes.NewReader(expectedTools), newVersion)
+	_, _ = testClient.UploadTools(bytes.NewReader(expectedTools), newVersion)
 	c.Assert(called, jc.IsTrue)
-}
-
-func (s *clientSuite) otherModel(c *gc.C) (*state.State, api.Connection) {
-	otherSt := s.Factory.MakeModel(c, nil)
-	info := s.APIInfo(c)
-	model, err := otherSt.Model()
-	c.Assert(err, jc.ErrorIsNil)
-	info.ModelTag = model.ModelTag()
-	apiState, err := api.Open(info, api.DefaultDialOpts())
-	c.Assert(err, jc.ErrorIsNil)
-	return otherSt, apiState
 }
 
 func fakeAPIEndpoint(c *gc.C, cl *client.Client, address, method string, handle func(http.ResponseWriter, *http.Request)) net.Listener {
@@ -108,25 +97,19 @@ func fakeAPIEndpoint(c *gc.C, cl *client.Client, address, method string, handle 
 }
 
 // modelEndpoint returns "/model/<model-uuid>/<destination>"
-func modelEndpoint(c *gc.C, apiState api.Connection, destination string) string {
-	modelTag, ok := apiState.ModelTag()
-	c.Assert(ok, jc.IsTrue)
-	return path.Join("/model", modelTag.Id(), destination)
+func modelEndpoint(c *gc.C, destination string) string {
+	return path.Join("/model", coretesting.ModelTag.String(), destination)
 }
 
 func (s *clientSuite) TestAbortCurrentUpgrade(c *gc.C) {
-	cl := client.NewClient(s.APIState)
-	someErr := errors.New("random")
-	cleanup := client.PatchClientFacadeCall(cl,
-		func(request string, args interface{}, response interface{}) error {
-			c.Assert(request, gc.Equals, "AbortCurrentUpgrade")
-			c.Assert(args, gc.IsNil)
-			c.Assert(response, gc.IsNil)
-			return someErr
-		},
-	)
-	defer cleanup()
+	ctrl := gomock.NewController(c)
+	defer ctrl.Finish()
 
-	err := cl.AbortCurrentUpgrade()
+	mockFacadeCaller := basemocks.NewMockFacadeCaller(ctrl)
+	someErr := errors.New("random")
+	mockFacadeCaller.EXPECT().FacadeCall("AbortCurrentUpgrade", nil, nil).Return(someErr)
+
+	testClient := client.NewClientFromCaller(mockFacadeCaller)
+	err := testClient.AbortCurrentUpgrade()
 	c.Assert(err, gc.Equals, someErr) // Confirms that the correct facade was called
 }
