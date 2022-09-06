@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"reflect"
 	"sync"
@@ -1203,6 +1204,23 @@ func (s *apiclientSuite) TestLoginIncompatibleClient(c *gc.C) {
 		"juju client with major version %d used with a controller having major version %d not supported\\n.*",
 		jujuversion.Current.Major, 99,
 	))
+}
+
+func (s *apiclientSuite) TestConnectStreamAtUUIDPath(c *gc.C) {
+	catcher := api.UrlCatcher{}
+	s.PatchValue(&api.WebsocketDial, catcher.RecordLocation)
+	model, err := s.State.Model()
+	c.Assert(err, jc.ErrorIsNil)
+	info := s.APIInfo(c)
+	info.ModelTag = model.ModelTag()
+	apistate, err := api.Open(info, api.DialOpts{})
+	c.Assert(err, jc.ErrorIsNil)
+	defer apistate.Close()
+	_, err = apistate.ConnectStream("/path", nil)
+	c.Assert(err, jc.ErrorIsNil)
+	connectURL, err := url.Parse(catcher.Location())
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(connectURL.Path, gc.Matches, fmt.Sprintf("/model/%s/path", model.UUID()))
 }
 
 type clientDNSNameSuite struct {

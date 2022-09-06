@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/juju/errors"
-	"github.com/juju/names/v4"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/version/v2"
 	gc "gopkg.in/check.v1"
@@ -24,8 +23,6 @@ import (
 	"github.com/juju/juju/api/client/client"
 	jujunames "github.com/juju/juju/juju/names"
 	jujutesting "github.com/juju/juju/juju/testing"
-	"github.com/juju/juju/rpc"
-	"github.com/juju/juju/rpc/params"
 	"github.com/juju/juju/state"
 	coretesting "github.com/juju/juju/testing"
 )
@@ -187,45 +184,6 @@ func (s *clientSuite) TestConnectControllerStreamAppliesHeaders(c *gc.C) {
 
 	c.Assert(catcher.Headers().Get("thomas"), gc.Equals, "cromwell")
 	c.Assert(catcher.Headers().Get("anne"), gc.Equals, "boleyn")
-}
-
-func (s *clientSuite) TestConnectStreamAtUUIDPath(c *gc.C) {
-	catcher := api.UrlCatcher{}
-	s.PatchValue(&api.WebsocketDial, catcher.RecordLocation)
-	model, err := s.State.Model()
-	c.Assert(err, jc.ErrorIsNil)
-	info := s.APIInfo(c)
-	info.ModelTag = model.ModelTag()
-	apistate, err := api.Open(info, api.DialOpts{})
-	c.Assert(err, jc.ErrorIsNil)
-	defer apistate.Close()
-	_, err = apistate.ConnectStream("/path", nil)
-	c.Assert(err, jc.ErrorIsNil)
-	connectURL, err := url.Parse(catcher.Location())
-	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(connectURL.Path, gc.Matches, fmt.Sprintf("/model/%s/path", model.UUID()))
-}
-
-func (s *clientSuite) TestOpenUsesModelUUIDPaths(c *gc.C) {
-	info := s.APIInfo(c)
-
-	// Passing in the correct model UUID should work
-	model, err := s.State.Model()
-	c.Assert(err, jc.ErrorIsNil)
-	info.ModelTag = model.ModelTag()
-	apistate, err := api.Open(info, api.DialOpts{})
-	c.Assert(err, jc.ErrorIsNil)
-	apistate.Close()
-
-	// Passing in an unknown model UUID should fail with a known error
-	info.ModelTag = names.NewModelTag("1eaf1e55-70ad-face-b007-70ad57001999")
-	apistate, err = api.Open(info, api.DialOpts{})
-	c.Assert(errors.Cause(err), gc.DeepEquals, &rpc.RequestError{
-		Message: `unknown model: "1eaf1e55-70ad-face-b007-70ad57001999"`,
-		Code:    "model not found",
-	})
-	c.Check(err, jc.Satisfies, params.IsCodeModelNotFound)
-	c.Assert(apistate, gc.IsNil)
 }
 
 func (s *clientSuite) TestAbortCurrentUpgrade(c *gc.C) {
