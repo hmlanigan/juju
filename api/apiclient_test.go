@@ -4,6 +4,7 @@
 package api_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -15,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -29,6 +31,7 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/api"
+	"github.com/juju/juju/api/base"
 	apitesting "github.com/juju/juju/api/testing"
 	apiservertesting "github.com/juju/juju/apiserver/testing"
 	"github.com/juju/juju/controller"
@@ -1223,6 +1226,75 @@ func (s *apiclientSuite) TestConnectStreamAtUUIDPath(c *gc.C) {
 	c.Assert(connectURL.Path, gc.Matches, fmt.Sprintf("/model/%s/path", model.UUID()))
 }
 
+func (s *apiclientSuite) TestConnectStreamRequiresSlashPathPrefix(c *gc.C) {
+	reader, err := s.APIState.ConnectStream("foo", nil)
+	c.Assert(err, gc.ErrorMatches, `cannot make API path from non-slash-prefixed path "foo"`)
+	c.Assert(reader, gc.Equals, nil)
+}
+
+func (s *apiclientSuite) TestConnectStreamErrorBadConnection(c *gc.C) {
+	s.PatchValue(&api.WebsocketDial, func(_ api.WebsocketDialer, _ string, _ http.Header) (base.Stream, error) {
+		return nil, fmt.Errorf("bad connection")
+	})
+	reader, err := s.APIState.ConnectStream("/", nil)
+	c.Assert(err, gc.ErrorMatches, "bad connection")
+	c.Assert(reader, gc.IsNil)
+}
+
+func (s *apiclientSuite) TestConnectStreamErrorNoData(c *gc.C) {
+	s.PatchValue(&api.WebsocketDial, func(_ api.WebsocketDialer, _ string, _ http.Header) (base.Stream, error) {
+		return api.NewFakeStreamReader(&bytes.Buffer{}), nil
+	})
+	reader, err := s.APIState.ConnectStream("/", nil)
+	c.Assert(err, gc.ErrorMatches, "unable to read initial response: EOF")
+	c.Assert(reader, gc.IsNil)
+}
+
+func (s *apiclientSuite) TestConnectStreamErrorBadData(c *gc.C) {
+	s.PatchValue(&api.WebsocketDial, func(_ api.WebsocketDialer, _ string, _ http.Header) (base.Stream, error) {
+		return api.NewFakeStreamReader(strings.NewReader("junk\n")), nil
+	})
+	reader, err := s.APIState.ConnectStream("/", nil)
+	c.Assert(err, gc.ErrorMatches, "unable to unmarshal initial response: .*")
+	c.Assert(reader, gc.IsNil)
+}
+
+func (s *apiclientSuite) TestConnectStreamErrorReadError(c *gc.C) {
+	s.PatchValue(&api.WebsocketDial, func(_ api.WebsocketDialer, _ string, _ http.Header) (base.Stream, error) {
+		err := fmt.Errorf("bad read")
+		return api.NewFakeStreamReader(&badReader{err}), nil
+	})
+	reader, err := s.APIState.ConnectStream("/", nil)
+	c.Assert(err, gc.ErrorMatches, "unable to read initial response: bad read")
+	c.Assert(reader, gc.IsNil)
+}
+
+func (s *apiclientSuite) TestConnectControllerStreamRejectsRelativePaths(c *gc.C) {
+	reader, err := s.APIState.ConnectControllerStream("foo", nil, nil)
+	c.Assert(err, gc.ErrorMatches, `path "foo" is not absolute`)
+	c.Assert(reader, gc.IsNil)
+}
+
+func (s *apiclientSuite) TestConnectControllerStreamRejectsModelPaths(c *gc.C) {
+	reader, err := s.APIState.ConnectControllerStream("/model/foo", nil, nil)
+	c.Assert(err, gc.ErrorMatches, `path "/model/foo" is model-specific`)
+	c.Assert(reader, gc.IsNil)
+}
+
+func (s *apiclientSuite) TestConnectControllerStreamAppliesHeaders(c *gc.C) {
+	catcher := api.UrlCatcher{}
+	headers := http.Header{}
+	headers.Add("thomas", "cromwell")
+	headers.Add("anne", "boleyn")
+	s.PatchValue(&api.WebsocketDial, catcher.RecordLocation)
+
+	_, err := s.APIState.ConnectControllerStream("/something", nil, headers)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Assert(catcher.Headers().Get("thomas"), gc.Equals, "cromwell")
+	c.Assert(catcher.Headers().Get("anne"), gc.Equals, "boleyn")
+}
+
 type clientDNSNameSuite struct {
 	jjtesting.JujuConnSuite
 }
@@ -1427,4 +1499,13 @@ func (a *loginTimeoutAPIAdmin) Login(req params.LoginRequest) (params.LoginResul
 		return params.LoginResult{}, errors.New("timed out sending on unblocked channel")
 	}
 	return params.LoginResult{}, errors.Errorf("login failed")
+}
+
+// badReader raises err when Read is called.
+type badReader struct {
+	err error
+}
+
+func (r *badReader) Read(p []byte) (n int, err error) {
+	return 0, r.err
 }
