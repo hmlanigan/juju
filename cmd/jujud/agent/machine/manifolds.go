@@ -27,6 +27,7 @@ import (
 	"github.com/juju/juju/cmd/jujud/agent/engine"
 	containerbroker "github.com/juju/juju/container/broker"
 	"github.com/juju/juju/container/lxd"
+	"github.com/juju/juju/core/instance"
 	"github.com/juju/juju/core/machinelock"
 	"github.com/juju/juju/core/presence"
 	"github.com/juju/juju/core/raft/queue"
@@ -77,6 +78,7 @@ import (
 	"github.com/juju/juju/worker/multiwatcher"
 	"github.com/juju/juju/worker/peergrouper"
 	prworker "github.com/juju/juju/worker/presence"
+	"github.com/juju/juju/worker/provisioner"
 	"github.com/juju/juju/worker/proxyupdater"
 	psworker "github.com/juju/juju/worker/pubsub"
 	"github.com/juju/juju/worker/raft"
@@ -159,6 +161,8 @@ type ManifoldsConfig struct {
 	// workers which rely on an API connection (which have not yet
 	// been converted to work directly with the dependency engine).
 	StartAPIWorkers func(api.Connection) (worker.Worker, error)
+
+	MachineStartup func(api.Connection) error
 
 	// PreUpgradeSteps is a function that is used by the upgradesteps
 	// worker to ensure that conditions are OK for an upgrade to
@@ -604,6 +608,7 @@ func commonManifolds(config ManifoldsConfig) dependency.Manifolds {
 		// upgrades to be finished before starting these workers.
 		apiWorkersName: ifNotMigrating(APIWorkersManifold(APIWorkersConfig{
 			APICallerName:   apiCallerName,
+			MachineStartup:  config.MachineStartup,
 			StartAPIWorkers: config.StartAPIWorkers,
 		})),
 
@@ -997,6 +1002,24 @@ func IAASManifolds(config ManifoldsConfig) dependency.Manifolds {
 			NewWorker: syslogger.NewWorker,
 			NewLogger: syslogger.NewSyslog,
 		}),
+		kvmContainerProvisioner: ifNotMigrating(provisioner.ContainerManifold(provisioner.ContainerManifoldConfig{
+			AgentName:     agentName,
+			APICallerName: apiCallerName,
+			Logger:        loggo.GetLogger("juju.container-provisioner"),
+
+			MachineLock:                  config.MachineLock,
+			NewCredentialValidatorFacade: common.NewCredentialInvalidatorFacade,
+			ContainerType:                instance.KVM,
+		})),
+		lxdContainerProvisioner: ifNotMigrating(provisioner.ContainerManifold(provisioner.ContainerManifoldConfig{
+			AgentName:     agentName,
+			APICallerName: apiCallerName,
+			Logger:        loggo.GetLogger("juju.container-provisioner"),
+
+			MachineLock:                  config.MachineLock,
+			NewCredentialValidatorFacade: common.NewCredentialInvalidatorFacade,
+			ContainerType:                instance.LXD,
+		})),
 		// isNotControllerFlagName is only used for the stateconverter,
 		isNotControllerFlagName: isControllerFlagManifold(false),
 		stateConverterName: ifNotController(ifNotMigrating(stateconverter.Manifold(stateconverter.ManifoldConfig{
@@ -1173,6 +1196,8 @@ const (
 	auditConfigUpdaterName        = "audit-config-updater"
 	leaseManagerName              = "lease-manager"
 	stateConverterName            = "state-converter"
+	lxdContainerProvisioner       = "lxd-container-provisioner"
+	kvmContainerProvisioner       = "kvm-container-provisioner"
 
 	upgradeSeriesWorkerName = "upgrade-series"
 
