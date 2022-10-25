@@ -62,11 +62,6 @@ func (cfg ContainerManifoldConfig) start(context dependency.Context) (worker.Wor
 		return nil, errors.Trace(err)
 	}
 
-	var apiCaller base.APICaller
-	if err := context.Get(cfg.APICallerName, &apiCaller); err != nil {
-		return nil, errors.Trace(err)
-	}
-
 	var a agent.Agent
 	if err := context.Get(cfg.AgentName, &a); err != nil {
 		return nil, errors.Trace(err)
@@ -79,6 +74,10 @@ func (cfg ContainerManifoldConfig) start(context dependency.Context) (worker.Wor
 		return nil, errors.NotValidf("%q machine tag", a)
 	}
 
+	var apiCaller base.APICaller
+	if err := context.Get(cfg.APICallerName, &apiCaller); err != nil {
+		return nil, errors.Trace(err)
+	}
 	pr := apiprovisioner.NewState(apiCaller)
 	result, err := pr.Machines(mTag)
 	if err != nil {
@@ -94,11 +93,15 @@ func (cfg ContainerManifoldConfig) start(context dependency.Context) (worker.Wor
 	m := result[0].Machine
 	types, known, err := m.SupportedContainers()
 	if err != nil {
-		return nil, errors.Annotatef(err, "cannot load machine %s container types from state", tag)
+		return nil, errors.Annotatef(err, "retrieving supported container types")
 	}
 	if known == false {
-		return nil, errors.Annotatef(dependency.ErrMissing, "%s containers types not set", mTag)
+		return nil, errors.Annotatef(dependency.ErrMissing, "no container types determined")
 	}
+	if len(types) == 0 {
+		return nil, errors.Annotatef(dependency.ErrUninstall, "no supported containers on %q", mTag)
+	}
+
 	cfg.Logger.Debugf("%s supported containers types set as %q", mTag, types)
 
 	typeSet := set.NewStrings()
