@@ -15,6 +15,7 @@ import (
 // apiworkers manifold.
 type APIWorkersConfig struct {
 	APICallerName   string
+	MachineStartup  func(api.Connection) error
 	StartAPIWorkers func(api.Connection) (worker.Worker, error)
 }
 
@@ -34,13 +35,18 @@ func APIWorkersManifold(config APIWorkersConfig) dependency.Manifold {
 			if config.StartAPIWorkers == nil {
 				return nil, errors.New("StartAPIWorkers not specified")
 			}
+			if config.MachineStartup == nil {
+				return nil, errors.New("MachineStartup not specified")
+			}
 
 			// Get API connection.
 			var apiConn api.Connection
 			if err := context.Get(config.APICallerName, &apiConn); err != nil {
 				return nil, err
 			}
-			return config.StartAPIWorkers(apiConn)
+			err := config.MachineStartup(apiConn)
+			return nil, err
+			//return config.StartAPIWorkers(apiConn)
 		},
 	}
 }
