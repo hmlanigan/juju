@@ -10,6 +10,7 @@ import (
 	"github.com/juju/errors"
 	"github.com/juju/names/v4"
 	"github.com/juju/worker/v3"
+	"github.com/juju/worker/v3/catacomb"
 	"github.com/juju/worker/v3/dependency"
 
 	"github.com/juju/juju/agent"
@@ -64,6 +65,8 @@ func (cfg ContainerManifoldConfig) start(context dependency.Context) (worker.Wor
 	if err := cfg.Validate(); err != nil {
 		return nil, errors.Trace(err)
 	}
+
+	cfg.Logger.Debugf("starting")
 
 	var a agent.Agent
 	if err := context.Get(cfg.AgentName, &a); err != nil {
@@ -140,7 +143,7 @@ func (cfg ContainerManifoldConfig) start(context dependency.Context) (worker.Wor
 type GetContainerWatcherFunc func() (watcher.StringsWatcher, error)
 
 func (cs *ContainerSetup) initialiseContainers(abort <-chan struct{}) error {
-	cs.logger.Debugf("setup and start provisioner for %s containers", cs.containerType)
+	cs.logger.Debugf("setup for %s containers", cs.containerType)
 	managerConfig, err := containerManagerConfig(cs.containerType, cs.provisioner)
 	if err != nil {
 		return errors.Annotate(err, "generating container manager config")
@@ -150,7 +153,7 @@ func (cs *ContainerSetup) initialiseContainers(abort <-chan struct{}) error {
 	return errors.Annotate(err, "setting up container dependencies on host machine")
 }
 
-func (cs *ContainerSetup) initialiseContainerProvisioner() (ContainerProvisioner, error) {
+func (cs *ContainerSetup) initialiseContainerProvisioner(catacomb *catacomb.Catacomb) (ContainerProvisioner, error) {
 	cs.logger.Debugf("setup provisioner for %s containers", cs.containerType)
 	if cs.managerConfig == nil {
 		return nil, errors.New("Programming error, manager config not setup")
@@ -184,6 +187,7 @@ func (cs *ContainerSetup) initialiseContainerProvisioner() (ContainerProvisioner
 		toolsFinder,
 		getDistributionGroupFinder(cs.provisioner),
 		cs.credentialAPI,
+		catacomb,
 	)
 	if err != nil {
 		return nil, errors.Trace(err)

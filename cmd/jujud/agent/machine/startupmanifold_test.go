@@ -26,9 +26,8 @@ var _ = gc.Suite(&APIWorkersSuite{})
 
 func (s *APIWorkersSuite) SetUpTest(c *gc.C) {
 	s.startCalled = false
-	s.manifold = machine.APIWorkersManifold(machine.APIWorkersConfig{
-		APICallerName:   "api-caller",
-		StartAPIWorkers: s.startAPIWorkers,
+	s.manifold = machine.MachineStartupManifold(machine.MachineStartupConfig{
+		APICallerName: "api-caller",
 	})
 }
 
@@ -41,24 +40,6 @@ func (s *APIWorkersSuite) TestInputs(c *gc.C) {
 	c.Assert(s.manifold.Inputs, jc.SameContents, []string{
 		"api-caller",
 	})
-}
-
-func (s *APIWorkersSuite) TestStartNoStartAPIWorkers(c *gc.C) {
-	manifold := machine.APIWorkersManifold(machine.APIWorkersConfig{})
-	worker, err := manifold.Start(dt.StubContext(nil, nil))
-	c.Check(worker, gc.IsNil)
-	c.Check(err, gc.ErrorMatches, "StartAPIWorkers not specified")
-	c.Check(s.startCalled, jc.IsFalse)
-}
-
-func (s *APIWorkersSuite) TestStartAPIMissing(c *gc.C) {
-	context := dt.StubContext(nil, map[string]interface{}{
-		"api-caller": dependency.ErrMissing,
-	})
-	worker, err := s.manifold.Start(context)
-	c.Check(worker, gc.IsNil)
-	c.Check(err, gc.Equals, dependency.ErrMissing)
-	c.Check(s.startCalled, jc.IsFalse)
 }
 
 func (s *APIWorkersSuite) TestStartSuccess(c *gc.C) {

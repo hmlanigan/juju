@@ -599,14 +599,6 @@ func commonManifolds(config ManifoldsConfig) dependency.Manifolds {
 			Logger:         loggo.GetLogger("juju.worker.agentconfigupdater"),
 		})),
 
-		// The machineSetupName manifold runs small tasks required
-		// to setup a machine, but requires the machine agent's API
-		// connection. Once its work is comlete, it stops.
-		machineSetupName: ifNotMigrating(APIWorkersManifold(APIWorkersConfig{
-			APICallerName:  apiCallerName,
-			MachineStartup: config.MachineStartup,
-		})),
-
 		// The logging config updater is a leaf worker that indirectly
 		// controls the messages sent via the log sender or rsyslog,
 		// according to changes in environment config. We should only need
@@ -997,10 +989,20 @@ func IAASManifolds(config ManifoldsConfig) dependency.Manifolds {
 			NewWorker: syslogger.NewWorker,
 			NewLogger: syslogger.NewSyslog,
 		}),
+		// The machineSetupName manifold runs small tasks required
+		// to setup a machine, but requires the machine agent's API
+		// connection. Once its work is comlete, it stops.
+		machineSetupName: ifNotMigrating(MachineStartupManifold(MachineStartupConfig{
+			APICallerName:  apiCallerName,
+			MachineStartup: config.MachineStartup,
+			Logger:         loggo.GetLogger("heather.machinesetup"),
+			//Logger:         loggo.GetLogger("juju.worker.machinesetup"),
+		})),
 		kvmContainerProvisioner: ifNotMigrating(provisioner.ContainerManifold(provisioner.ContainerManifoldConfig{
 			AgentName:     agentName,
 			APICallerName: apiCallerName,
-			Logger:        loggo.GetLogger("juju.worker.kvmprovisioner"),
+			Logger:        loggo.GetLogger("heather.kvmprovisioner"),
+			//Logger:        loggo.GetLogger("juju.worker.kvmprovisioner"),
 
 			MachineLock:                  config.MachineLock,
 			NewCredentialValidatorFacade: common.NewCredentialInvalidatorFacade,
@@ -1009,7 +1011,8 @@ func IAASManifolds(config ManifoldsConfig) dependency.Manifolds {
 		lxdContainerProvisioner: ifNotMigrating(provisioner.ContainerManifold(provisioner.ContainerManifoldConfig{
 			AgentName:     agentName,
 			APICallerName: apiCallerName,
-			Logger:        loggo.GetLogger("juju.worker.lxdprovisioner"),
+			Logger:        loggo.GetLogger("heather.lxdprovisioner"),
+			//Logger:        loggo.GetLogger("juju.worker.lxdprovisioner"),
 
 			MachineLock:                  config.MachineLock,
 			NewCredentialValidatorFacade: common.NewCredentialInvalidatorFacade,

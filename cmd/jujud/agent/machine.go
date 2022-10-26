@@ -769,7 +769,6 @@ func (a *MachineAgent) machineStartup(apiConn api.Connection) error {
 	if err := a.setupContainerSupport(apiConn); err != nil {
 		return err
 	}
-
 	return dependency.ErrUninstall
 }
 

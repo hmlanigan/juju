@@ -79,7 +79,7 @@ func (w *ContainerWorker) loop() error {
 	}
 
 	// Configure and Add the w.ContainerType Provisioner
-	provisioner, err := w.cs.initialiseContainerProvisioner()
+	provisioner, err := w.cs.initialiseContainerProvisioner(&w.catacomb)
 	if err != nil {
 		return err
 	}

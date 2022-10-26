@@ -64,7 +64,7 @@ type provisioner struct {
 	broker                  environs.InstanceBroker
 	distributionGroupFinder DistributionGroupFinder
 	toolsFinder             ToolsFinder
-	catacomb                catacomb.Catacomb
+	catacomb                *catacomb.Catacomb
 	callContextFunc         common.CloudCallContextFunc
 }
 
@@ -215,7 +215,7 @@ func NewEnvironProvisioner(
 	logger.Tracef("Starting environ provisioner for %q", p.agentConfig.Tag())
 
 	err := catacomb.Invoke(catacomb.Plan{
-		Site: &p.catacomb,
+		Site: p.catacomb,
 		Work: p.loop,
 	})
 	if err != nil {
@@ -298,6 +298,8 @@ type ContainerProvisioner interface {
 // NewContainerProvisioner returns a new uninitialized Provisioner. When new machines
 // are added to the state, it allocates instances from the environment
 // and allocates them to the new machines.
+// A ContainerProvisioner is run from a container provisioning worker, use
+// the catacomb created there. Environ Provisioners invoke their own catacombs.
 func NewContainerProvisioner(
 	containerType instance.ContainerType,
 	st *apiprovisioner.State,
@@ -307,6 +309,7 @@ func NewContainerProvisioner(
 	toolsFinder ToolsFinder,
 	distributionGroupFinder DistributionGroupFinder,
 	credentialAPI common.CredentialAPI,
+	catacomb *catacomb.Catacomb,
 ) (ContainerProvisioner, error) {
 	return &containerProvisioner{
 		provisioner: provisioner{
@@ -317,6 +320,7 @@ func NewContainerProvisioner(
 			toolsFinder:             toolsFinder,
 			distributionGroupFinder: distributionGroupFinder,
 			callContextFunc:         common.NewCloudCallContextFunc(credentialAPI),
+			catacomb:                catacomb,
 		},
 		containerType: containerType,
 	}, nil
