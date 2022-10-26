@@ -10,7 +10,6 @@ import (
 	"github.com/juju/errors"
 	"github.com/juju/names/v4"
 	"github.com/juju/worker/v3"
-	"github.com/juju/worker/v3/catacomb"
 	"github.com/juju/worker/v3/dependency"
 
 	"github.com/juju/juju/agent"
@@ -105,17 +104,20 @@ func (cfg ContainerManifoldConfig) start(context dependency.Context) (worker.Wor
 		return nil, errors.Errorf("no container types determined")
 	}
 	if len(types) == 0 {
-		return nil, errors.Annotatef(dependency.ErrUninstall, "no supported containers on %q", mTag)
+		cfg.Logger.Infof("uninstalling no supported containers on %q", mTag)
+		return nil, dependency.ErrUninstall
 	}
 
 	cfg.Logger.Debugf("%s supported containers types set as %q", mTag, types)
 
 	typeSet := set.NewStrings()
 	for _, v := range types {
+		cfg.Logger.Debugf("adding %q", v)
 		typeSet.Add(string(v))
 	}
 	if !typeSet.Contains(string(cfg.ContainerType)) {
-		return nil, errors.Annotatef(dependency.ErrUninstall, "%s does not support %s containers", mTag, string(cfg.ContainerType))
+		cfg.Logger.Infof("%s does not support %s containers", mTag, string(cfg.ContainerType))
+		return nil, dependency.ErrUninstall
 	}
 
 	credentialAPI, err := workercommon.NewCredentialInvalidatorFacade(apiCaller)
@@ -153,7 +155,7 @@ func (cs *ContainerSetup) initialiseContainers(abort <-chan struct{}) error {
 	return errors.Annotate(err, "setting up container dependencies on host machine")
 }
 
-func (cs *ContainerSetup) initialiseContainerProvisioner(catacomb *catacomb.Catacomb) (ContainerProvisioner, error) {
+func (cs *ContainerSetup) initialiseContainerProvisioner() (Provisioner, error) {
 	cs.logger.Debugf("setup provisioner for %s containers", cs.containerType)
 	if cs.managerConfig == nil {
 		return nil, errors.New("Programming error, manager config not setup")
@@ -187,7 +189,6 @@ func (cs *ContainerSetup) initialiseContainerProvisioner(catacomb *catacomb.Cata
 		toolsFinder,
 		getDistributionGroupFinder(cs.provisioner),
 		cs.credentialAPI,
-		catacomb,
 	)
 	if err != nil {
 		return nil, errors.Trace(err)

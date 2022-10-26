@@ -14,13 +14,15 @@ import (
 // Logger represents the logging methods used by this manifold.
 type Logger interface {
 	Debugf(string, ...interface{})
+	Warningf(string, ...interface{})
+	Criticalf(string, ...interface{})
 }
 
 // MachineStartupConfig provides the dependencies for the
 // machinestartup manifold.
 type MachineStartupConfig struct {
 	APICallerName  string
-	MachineStartup func(api.Connection) error
+	MachineStartup func(api.Connection, Logger) error
 	Logger         Logger
 }
 
@@ -55,7 +57,7 @@ func MachineStartupManifold(config MachineStartupConfig) dependency.Manifold {
 			if err := context.Get(config.APICallerName, &apiConn); err != nil {
 				return nil, err
 			}
-			if err := config.MachineStartup(apiConn); err != nil {
+			if err := config.MachineStartup(apiConn, config.Logger); err != nil {
 				return nil, err
 			}
 			config.Logger.Debugf("Finished machine setup requiring an API connection")

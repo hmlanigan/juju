@@ -715,7 +715,7 @@ var (
 	newBroker     = broker.New
 )
 
-func (a *MachineAgent) machineStartup(apiConn api.Connection) error {
+func (a *MachineAgent) machineStartup(apiConn api.Connection, logger machine.Logger) error {
 	// CAAS agents do not have machines.
 	if a.isCaasAgent {
 		return nil
@@ -741,6 +741,10 @@ func (a *MachineAgent) machineStartup(apiConn api.Connection) error {
 		return errors.Annotate(err, "recording agent start information")
 	}
 
+	if err := a.setupContainerSupport(apiConn, logger); err != nil {
+		return err
+	}
+
 	var isController bool
 	for _, job := range entity.Jobs() {
 		switch job {
@@ -751,24 +755,20 @@ func (a *MachineAgent) machineStartup(apiConn api.Connection) error {
 			// the API, report "unknown job type" here.
 		}
 	}
-	if !isController {
-		return nil
-	}
-	// We disallow "do-release-upgrade" to run on Juju Controller machine because we do not want to break mongodb.
-	// - https://bugs.launchpad.net/juju/+bug/1881218
-	result, err := a.cmdRunner.RunCommands(exec.RunParams{
-		Commands: "[ ! -f /etc/update-manager/release-upgrades ] || sed -i '/Prompt=/ s/=.*/=never/' /etc/update-manager/release-upgrades",
-	})
-	if err != nil {
-		return errors.Trace(err)
-	}
-	if result.Code != 0 {
-		return errors.New(fmt.Sprintf("cannot patch /etc/update-manager/release-upgrades: %s", result.Stderr))
+	if isController {
+		// We disallow "do-release-upgrade" to run on Juju Controller machine because we do not want to break mongodb.
+		// - https://bugs.launchpad.net/juju/+bug/1881218
+		result, err := a.cmdRunner.RunCommands(exec.RunParams{
+			Commands: "[ ! -f /etc/update-manager/release-upgrades ] || sed -i '/Prompt=/ s/=.*/=never/' /etc/update-manager/release-upgrades",
+		})
+		if err != nil {
+			return errors.Trace(err)
+		}
+		if result.Code != 0 {
+			return errors.New(fmt.Sprintf("cannot patch /etc/update-manager/release-upgrades: %s", result.Stderr))
+		}
 	}
 
-	if err := a.setupContainerSupport(apiConn); err != nil {
-		return err
-	}
 	return dependency.ErrUninstall
 }
 
@@ -891,21 +891,7 @@ func (a *MachineAgent) validateMigration(apiCaller base.APICaller) error {
 
 // setupContainerSupport determines what containers can be run on this machine and
 // initialises suitable infrastructure to support such containers.
-func (a *MachineAgent) setupContainerSupport(st api.Connection) error {
-	var supportedContainers []instance.ContainerType
-	supportsContainers := container.ContainersSupported()
-	if supportsContainers {
-		supportedContainers = append(supportedContainers, instance.LXD)
-	}
-
-	supportsKvm, err := kvm.IsKVMSupported()
-	if err != nil {
-		logger.Warningf("determining kvm support: %v\nno kvm containers possible", err)
-	}
-	if err == nil && supportsKvm {
-		supportedContainers = append(supportedContainers, instance.KVM)
-	}
-
+func (a *MachineAgent) setupContainerSupport(st api.Connection, logger machine.Logger) error {
 	pr := apiprovisioner.NewState(st)
 	mTag, ok := a.CurrentConfig().Tag().(names.MachineTag)
 	if !ok {
@@ -919,20 +905,50 @@ func (a *MachineAgent) setupContainerSupport(st api.Connection) error {
 		return errors.Errorf("expected 1 result, got %d", len(result))
 	}
 	if errors.IsNotFound(result[0].Err) || (result[0].Err == nil && result[0].Machine.Life() == life.Dead) {
+		logger.Criticalf("Terminating Agent")
 		return jworker.ErrTerminateAgent
 	}
-
 	m := result[0].Machine
+
+	_, known, err := m.SupportedContainers()
+	if err != nil {
+		return err
+	}
+	if known {
+		logger.Debugf("container support for %s already known, skipping check", mTag)
+		return nil
+	}
+
+	var supportedContainers []instance.ContainerType
+	supportsContainers := container.ContainersSupported()
+	if supportsContainers {
+		supportedContainers = append(supportedContainers, instance.LXD)
+	}
+
+	supportsKvm, err := kvm.IsKVMSupported()
+	if err != nil {
+		logger.Warningf("determining kvm support: %v\nno kvm containers possible", err)
+	}
+	if err == nil && supportsKvm {
+		supportedContainers = append(supportedContainers, instance.KVM)
+	}
+	logger.Criticalf("Supported machine types %q", supportedContainers)
+
 	if len(supportedContainers) == 0 {
+		logger.Criticalf("Attempting SupportsNoContainers")
 		if err := m.SupportsNoContainers(); err != nil {
+			logger.Criticalf("err SupportsNoContainers")
 			return errors.Annotatef(err, "clearing supported supportedContainers for %s", mTag)
 		}
 		return nil
 	}
+	logger.Criticalf("Attempting SetSupportedContainers")
 	err = m.SetSupportedContainers(supportedContainers...)
 	if err != nil {
+		logger.Criticalf("err SetSupportedContainers")
 		return errors.Annotatef(err, "setting supported supportedContainers for %s", mTag)
 	}
+	logger.Criticalf("happy setupContainerSupport")
 	return nil
 }
 

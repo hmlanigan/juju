@@ -11,7 +11,6 @@ import (
 	"github.com/juju/worker/v3"
 	"github.com/juju/worker/v3/catacomb"
 
-	"github.com/juju/juju/core/instance"
 	"github.com/juju/juju/core/watcher"
 )
 
@@ -43,9 +42,8 @@ type ContainerWorker struct {
 	cs *ContainerSetup
 
 	containerWatcher watcher.StringsWatcher
-	containerType    instance.ContainerType
 	logger           Logger
-	provisioner      ContainerProvisioner
+	provisioner      Provisioner
 
 	// For introspection Report
 	mu sync.Mutex
@@ -79,11 +77,10 @@ func (w *ContainerWorker) loop() error {
 	}
 
 	// Configure and Add the w.ContainerType Provisioner
-	provisioner, err := w.cs.initialiseContainerProvisioner(&w.catacomb)
+	provisioner, err := w.cs.initialiseContainerProvisioner()
 	if err != nil {
 		return err
 	}
-	w.logger.Tracef("Starting %s provisioner for %q", w.containerType, w.cs.mTag)
 	if err := w.checkDying(); err != nil {
 		return err
 	}
@@ -96,8 +93,10 @@ func (w *ContainerWorker) loop() error {
 	w.provisioner = provisioner
 	w.mu.Unlock()
 
-	// Set the w.ContainerType provisioner to doing it's work.
-	return w.provisioner.Loop()
+	select {
+	case <-w.catacomb.Dying():
+		return w.catacomb.ErrDying()
+	}
 }
 
 func (w *ContainerWorker) checkDying() error {
@@ -141,14 +140,14 @@ func (w *ContainerWorker) Wait() error {
 func (w *ContainerWorker) Report() map[string]interface{} {
 	w.mu.Lock()
 
-	watcherName := fmt.Sprintf("%s-container-watcher", string(w.containerType))
+	watcherName := fmt.Sprintf("%s-container-watcher", string(w.cs.containerType))
 	var watcherMsg string
 	if w.containerWatcher == nil {
 		watcherMsg = fmt.Sprintf("found containers, watcher stopped")
 	} else {
 		watcherMsg = fmt.Sprintf("waiting for containers")
 	}
-	provisionerName := fmt.Sprintf("%s-provisioner", string(w.containerType))
+	provisionerName := fmt.Sprintf("%s-provisioner", string(w.cs.containerType))
 	var provisionerMsg string
 	if w.provisioner == nil {
 		provisionerMsg = fmt.Sprintf("not setup, nor running")

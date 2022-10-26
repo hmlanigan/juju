@@ -64,7 +64,7 @@ type provisioner struct {
 	broker                  environs.InstanceBroker
 	distributionGroupFinder DistributionGroupFinder
 	toolsFinder             ToolsFinder
-	catacomb                *catacomb.Catacomb
+	catacomb                catacomb.Catacomb
 	callContextFunc         common.CloudCallContextFunc
 }
 
@@ -213,9 +213,8 @@ func NewEnvironProvisioner(
 	p.Provisioner = p
 	p.broker = environ
 	logger.Tracef("Starting environ provisioner for %q", p.agentConfig.Tag())
-
 	err := catacomb.Invoke(catacomb.Plan{
-		Site: p.catacomb,
+		Site: &p.catacomb,
 		Work: p.loop,
 	})
 	if err != nil {
@@ -290,11 +289,6 @@ func (p *environProvisioner) setConfig(modelConfig *config.Config) error {
 	return nil
 }
 
-type ContainerProvisioner interface {
-	Provisioner
-	Loop() error
-}
-
 // NewContainerProvisioner returns a new uninitialized Provisioner. When new machines
 // are added to the state, it allocates instances from the environment
 // and allocates them to the new machines.
@@ -309,9 +303,8 @@ func NewContainerProvisioner(
 	toolsFinder ToolsFinder,
 	distributionGroupFinder DistributionGroupFinder,
 	credentialAPI common.CredentialAPI,
-	catacomb *catacomb.Catacomb,
-) (ContainerProvisioner, error) {
-	return &containerProvisioner{
+) (Provisioner, error) {
+	p := &containerProvisioner{
 		provisioner: provisioner{
 			st:                      st,
 			agentConfig:             agentConfig,
@@ -320,13 +313,23 @@ func NewContainerProvisioner(
 			toolsFinder:             toolsFinder,
 			distributionGroupFinder: distributionGroupFinder,
 			callContextFunc:         common.NewCloudCallContextFunc(credentialAPI),
-			catacomb:                catacomb,
 		},
 		containerType: containerType,
-	}, nil
+	}
+	p.Provisioner = p
+	p.logger.Tracef("Starting %s provisioner for %q", p.containerType, p.agentConfig.Tag())
+
+	err := catacomb.Invoke(catacomb.Plan{
+		Site: &p.catacomb,
+		Work: p.loop,
+	})
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	return p, nil
 }
 
-func (p *containerProvisioner) Loop() error {
+func (p *containerProvisioner) loop() error {
 	modelWatcher, err := p.st.WatchForModelConfigChanges()
 	if err != nil {
 		return errors.Trace(err)
@@ -335,6 +338,7 @@ func (p *containerProvisioner) Loop() error {
 		return errors.Trace(err)
 	}
 
+	p.logger.Infof("Watching for model config changes")
 	modelConfig, err := p.st.ModelConfig()
 	if err != nil {
 		return errors.Trace(err)
