@@ -290,7 +290,7 @@ func (p *environProvisioner) setConfig(modelConfig *config.Config) error {
 	return nil
 }
 
-// NewContainerProvisioner returns a new Provisioner. When new machines
+// NewContainerProvisioner returns a new uninitialized Provisioner. When new machines
 // are added to the state, it allocates instances from the environment
 // and allocates them to the new machines.
 func NewContainerProvisioner(

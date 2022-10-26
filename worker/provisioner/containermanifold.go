@@ -95,8 +95,8 @@ func (cfg ContainerManifoldConfig) start(context dependency.Context) (worker.Wor
 	if err != nil {
 		return nil, errors.Annotatef(err, "retrieving supported container types")
 	}
-	if known == false {
-		return nil, errors.Annotatef(dependency.ErrMissing, "no container types determined")
+	if !known {
+		return nil, errors.Errorf("no container types determined")
 	}
 	if len(types) == 0 {
 		return nil, errors.Annotatef(dependency.ErrUninstall, "no supported containers on %q", mTag)
@@ -116,6 +116,8 @@ func (cfg ContainerManifoldConfig) start(context dependency.Context) (worker.Wor
 	if err != nil {
 		return nil, errors.Annotatef(err, "cannot get credential invalidator facade")
 	}
+
+	// TODO - watch for a container here... then do setup
 
 	cs := NewContainerSetup(ContainerSetupParams{
 		Abort:         context.Abort(),

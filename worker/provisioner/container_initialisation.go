@@ -4,7 +4,6 @@
 package provisioner
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/juju/errors"
@@ -81,11 +80,12 @@ func (cs *ContainerSetup) initContainerDependencies(containerType instance.Conta
 	}
 	initialiser := getContainerInitialiser(containerType, snapChannels)
 
-	releaser, err := cs.acquireLock(fmt.Sprintf("%s container initialisation", containerType))
-	if err != nil {
-		return errors.Annotate(err, "failed to acquire initialization lock")
-	}
-	defer releaser()
+	//TODO - figure this out.
+	//releaser, err := cs.acquireLock(fmt.Sprintf("%s container initialisation", containerType))
+	//if err != nil {
+	//	return errors.Annotate(err, "failed to acquire initialization lock")
+	//}
+	//defer releaser()
 
 	if err := initialiser.Initialise(); err != nil {
 		return errors.Trace(err)
@@ -116,9 +116,10 @@ func (cs *ContainerSetup) observeNetwork() ([]params.NetworkConfig, error) {
 func (cs *ContainerSetup) acquireLock(comment string) (func(), error) {
 	// temporary
 	// TODO how to get an abort channel here.
+	//cs.abort
 	timeout := make(chan struct{})
 	go func() {
-		<-time.After(1 * time.Minute)
+		<-time.After(5 * time.Minute)
 		close(timeout)
 	}()
 	spec := machinelock.Spec{
@@ -138,10 +139,10 @@ var getContainerInitialiser = func(ct instance.ContainerType, snapChannels map[s
 }
 
 func containerManagerConfig(
-	containerType instance.ContainerType, provisioner *apiprovisioner.State,
+	containerType instance.ContainerType, configGetter ContainerManagerConfigGetter,
 ) (container.ManagerConfig, error) {
-	// Ask the provisioner for the container manager configuration.
-	managerConfigResult, err := provisioner.ContainerManagerConfig(
+	// Ask the configGetter for the container manager configuration.
+	managerConfigResult, err := configGetter.ContainerManagerConfig(
 		params.ContainerManagerConfigParams{Type: containerType},
 	)
 	if err != nil {
@@ -149,4 +150,8 @@ func containerManagerConfig(
 	}
 	managerConfig := container.ManagerConfig(managerConfigResult.ManagerConfig)
 	return managerConfig, nil
+}
+
+type ContainerManagerConfigGetter interface {
+	ContainerManagerConfig(params.ContainerManagerConfigParams) (params.ContainerManagerConfig, error)
 }
