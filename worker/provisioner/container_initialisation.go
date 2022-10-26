@@ -4,10 +4,10 @@
 package provisioner
 
 import (
-	"time"
+	"fmt"
 
 	"github.com/juju/errors"
-	"github.com/juju/worker/v3"
+	"github.com/juju/names/v4"
 
 	"github.com/juju/juju/agent"
 	apiprovisioner "github.com/juju/juju/api/agent/provisioner"
@@ -28,64 +28,66 @@ import (
 // to create containers and start a suitable provisioner.
 type ContainerSetup struct {
 	// abort used for init container dependencies
-	abort         <-chan struct{}
 	logger        Logger
 	containerType instance.ContainerType
 	provisioner   *apiprovisioner.State
 	machine       apiprovisioner.MachineProvisioner
+	mTag          names.MachineTag
 	config        agent.Config
 	machineLock   machinelock.Lock
+	managerConfig container.ManagerConfig
 
 	// The number of provisioners started. Once all necessary provisioners have
 	// been started, the container watcher can be stopped.
-	numberProvisioners int32
-	credentialAPI      workercommon.CredentialAPI
-	getNetConfig       func(network.ConfigSource) ([]params.NetworkConfig, error)
+	numberProvisioners      int32
+	credentialAPI           workercommon.CredentialAPI
+	getNetConfig            func(network.ConfigSource) ([]params.NetworkConfig, error)
+	getContainerWatcherFunc GetContainerWatcherFunc
 }
 
 // ContainerSetupParams are used to initialise a container setup handler.
 type ContainerSetupParams struct {
-	Abort         <-chan struct{}
-	Runner        *worker.Runner
-	Logger        Logger
-	ContainerType instance.ContainerType
-	Machine       apiprovisioner.MachineProvisioner
-	Provisioner   *apiprovisioner.State
-	Config        agent.Config
-	MachineLock   machinelock.Lock
-	CredentialAPI workercommon.CredentialAPI
+	Logger                  Logger
+	ContainerType           instance.ContainerType
+	Machine                 apiprovisioner.MachineProvisioner
+	MTag                    names.MachineTag
+	Provisioner             *apiprovisioner.State
+	Config                  agent.Config
+	MachineLock             machinelock.Lock
+	CredentialAPI           workercommon.CredentialAPI
+	GetContainerWatcherFunc GetContainerWatcherFunc
 }
 
 // NewContainerSetup returns a ContainerSetup to start the container
 // provisioner workers.
 func NewContainerSetup(params ContainerSetupParams) *ContainerSetup {
 	return &ContainerSetup{
-		abort:         params.Abort,
-		logger:        params.Logger,
-		machine:       params.Machine,
-		containerType: params.ContainerType,
-		provisioner:   params.Provisioner,
-		config:        params.Config,
-		machineLock:   params.MachineLock,
-		credentialAPI: params.CredentialAPI,
-		getNetConfig:  common.GetObservedNetworkConfig,
+		logger:                  params.Logger,
+		machine:                 params.Machine,
+		mTag:                    params.MTag,
+		containerType:           params.ContainerType,
+		provisioner:             params.Provisioner,
+		config:                  params.Config,
+		machineLock:             params.MachineLock,
+		credentialAPI:           params.CredentialAPI,
+		getNetConfig:            common.GetObservedNetworkConfig,
+		getContainerWatcherFunc: params.GetContainerWatcherFunc,
 	}
 }
 
 // initContainerDependencies ensures that the host machine is set-up to manage
 // containers of the input type.
-func (cs *ContainerSetup) initContainerDependencies(containerType instance.ContainerType, managerCfg container.ManagerConfig) error {
+func (cs *ContainerSetup) initContainerDependencies(abort <-chan struct{}, managerCfg container.ManagerConfig) error {
 	snapChannels := map[string]string{
 		"lxd": managerCfg.PopValue(config.LXDSnapChannel),
 	}
-	initialiser := getContainerInitialiser(containerType, snapChannels)
+	initialiser := getContainerInitialiser(cs.containerType, snapChannels)
 
-	//TODO - figure this out.
-	//releaser, err := cs.acquireLock(fmt.Sprintf("%s container initialisation", containerType))
-	//if err != nil {
-	//	return errors.Annotate(err, "failed to acquire initialization lock")
-	//}
-	//defer releaser()
+	releaser, err := cs.acquireLock(abort, fmt.Sprintf("%s container initialisation", cs.containerType))
+	if err != nil {
+		return errors.Annotate(err, "failed to acquire initialization lock")
+	}
+	defer releaser()
 
 	if err := initialiser.Initialise(); err != nil {
 		return errors.Trace(err)
@@ -100,12 +102,11 @@ func (cs *ContainerSetup) initContainerDependencies(containerType instance.Conta
 	if len(observedConfig) > 0 {
 		machineTag := cs.machine.MachineTag()
 		cs.logger.Tracef("updating observed network config for %q %s containers to %#v",
-			machineTag, containerType, observedConfig)
+			machineTag, cs.containerType, observedConfig)
 		if err := cs.provisioner.SetHostMachineNetworkConfig(machineTag, observedConfig); err != nil {
 			return errors.Trace(err)
 		}
 	}
-
 	return nil
 }
 
@@ -113,17 +114,9 @@ func (cs *ContainerSetup) observeNetwork() ([]params.NetworkConfig, error) {
 	return cs.getNetConfig(network.DefaultConfigSource())
 }
 
-func (cs *ContainerSetup) acquireLock(comment string) (func(), error) {
-	// temporary
-	// TODO how to get an abort channel here.
-	//cs.abort
-	timeout := make(chan struct{})
-	go func() {
-		<-time.After(5 * time.Minute)
-		close(timeout)
-	}()
+func (cs *ContainerSetup) acquireLock(abort <-chan struct{}, comment string) (func(), error) {
 	spec := machinelock.Spec{
-		Cancel:  timeout,
+		Cancel:  abort,
 		Worker:  "provisioner",
 		Comment: comment,
 	}

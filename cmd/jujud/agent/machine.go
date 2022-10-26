@@ -609,7 +609,6 @@ func (a *MachineAgent) makeEngineCreator(
 			UpgradeCheckLock:        a.initialUpgradeCheckComplete,
 			OpenStatePool:           a.initState,
 			OpenStateForUpgrade:     a.openStateForUpgrade,
-			StartAPIWorkers:         a.startAPIWorkers,
 			MachineStartup:          a.machineStartup,
 			PreUpgradeSteps:         a.preUpgradeSteps,
 			LogSource:               a.bufferedLogger.Logs(),
@@ -772,45 +771,6 @@ func (a *MachineAgent) machineStartup(apiConn api.Connection) error {
 	}
 
 	return dependency.ErrUninstall
-}
-
-// startAPIWorkers is called to start workers which rely on the
-// machine agent's API connection (via the apiworkers manifold). It
-// returns a Runner with a number of workers attached to it.
-//
-// The workers started here need to be converted to run under the
-// dependency engine. Once they have all been converted, this method -
-// and the apiworkers manifold - can be removed.
-func (a *MachineAgent) startAPIWorkers(apiConn api.Connection) (_ worker.Worker, outErr error) {
-	// CAAS agents do not have any api workers.
-	if a.isCaasAgent {
-		return nil, dependency.ErrUninstall
-	}
-
-	runner := worker.NewRunner(worker.RunnerParams{
-		IsFatal:       agenterrors.ConnectionIsFatal(logger, apiConn),
-		MoreImportant: agenterrors.MoreImportant,
-		RestartDelay:  jworker.RestartDelay,
-		Logger:        logger.Child("runner"),
-	})
-	defer func() {
-		// If startAPIWorkers exits early with an error, stop the
-		// runner so that any already started runners aren't leaked.
-		if outErr != nil {
-			_ = worker.Stop(runner)
-		}
-	}()
-
-	// Perform the operations needed to set up hosting for containers.
-	if err := a.setupContainerSupport(apiConn); err != nil {
-		cause := errors.Cause(err)
-		if params.IsCodeDead(cause) || cause == jworker.ErrTerminateAgent {
-			return nil, jworker.ErrTerminateAgent
-		}
-		return nil, errors.Annotate(err, "setting up container support")
-	}
-
-	return runner, nil
 }
 
 type noopStatusSetter struct{}

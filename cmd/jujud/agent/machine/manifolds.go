@@ -157,11 +157,8 @@ type ManifoldsConfig struct {
 	// use to establish a connection to state.
 	OpenStateForUpgrade func() (*state.StatePool, error)
 
-	// StartAPIWorkers is passed to the apiworkers manifold. It starts
-	// workers which rely on an API connection (which have not yet
-	// been converted to work directly with the dependency engine).
-	StartAPIWorkers func(api.Connection) (worker.Worker, error)
-
+	// MachineStartup is passed to the machine manifold. It does
+	// machine setup work which relies on an API connection.
 	MachineStartup func(api.Connection) error
 
 	// PreUpgradeSteps is a function that is used by the upgradesteps
@@ -602,14 +599,12 @@ func commonManifolds(config ManifoldsConfig) dependency.Manifolds {
 			Logger:         loggo.GetLogger("juju.worker.agentconfigupdater"),
 		})),
 
-		// The apiworkers manifold starts workers which rely on the
-		// machine agent's API connection but have not been converted
-		// to work directly under the dependency engine. It waits for
-		// upgrades to be finished before starting these workers.
-		apiWorkersName: ifNotMigrating(APIWorkersManifold(APIWorkersConfig{
-			APICallerName:   apiCallerName,
-			MachineStartup:  config.MachineStartup,
-			StartAPIWorkers: config.StartAPIWorkers,
+		// The machineSetupName manifold runs small tasks required
+		// to setup a machine, but requires the machine agent's API
+		// connection. Once its work is comlete, it stops.
+		machineSetupName: ifNotMigrating(APIWorkersManifold(APIWorkersConfig{
+			APICallerName:  apiCallerName,
+			MachineStartup: config.MachineStartup,
 		})),
 
 		// The logging config updater is a leaf worker that indirectly
@@ -1005,7 +1000,7 @@ func IAASManifolds(config ManifoldsConfig) dependency.Manifolds {
 		kvmContainerProvisioner: ifNotMigrating(provisioner.ContainerManifold(provisioner.ContainerManifoldConfig{
 			AgentName:     agentName,
 			APICallerName: apiCallerName,
-			Logger:        loggo.GetLogger("juju.container-provisioner"),
+			Logger:        loggo.GetLogger("juju.worker.kvmprovisioner"),
 
 			MachineLock:                  config.MachineLock,
 			NewCredentialValidatorFacade: common.NewCredentialInvalidatorFacade,
@@ -1014,7 +1009,7 @@ func IAASManifolds(config ManifoldsConfig) dependency.Manifolds {
 		lxdContainerProvisioner: ifNotMigrating(provisioner.ContainerManifold(provisioner.ContainerManifoldConfig{
 			AgentName:     agentName,
 			APICallerName: apiCallerName,
-			Logger:        loggo.GetLogger("juju.container-provisioner"),
+			Logger:        loggo.GetLogger("juju.worker.lxdprovisioner"),
 
 			MachineLock:                  config.MachineLock,
 			NewCredentialValidatorFacade: common.NewCredentialInvalidatorFacade,
@@ -1163,7 +1158,7 @@ const (
 	migrationInactiveFlagName = "migration-inactive-flag"
 	migrationMinionName       = "migration-minion"
 
-	apiWorkersName                = "unconverted-api-workers"
+	machineSetupName              = "machine-setup"
 	rebootName                    = "reboot-executor"
 	loggingConfigUpdaterName      = "logging-config-updater"
 	diskManagerName               = "disk-manager"

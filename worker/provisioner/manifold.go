@@ -5,7 +5,6 @@ package provisioner
 
 import (
 	"github.com/juju/errors"
-	"github.com/juju/loggo"
 	"github.com/juju/worker/v3"
 	"github.com/juju/worker/v3/dependency"
 
@@ -23,7 +22,6 @@ type Logger interface {
 	Infof(string, ...interface{})
 	Warningf(string, ...interface{})
 	Errorf(string, ...interface{})
-	Child(string) loggo.Logger
 }
 
 // ManifoldConfig defines an environment provisioner's dependencies. It's not

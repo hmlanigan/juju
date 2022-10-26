@@ -290,6 +290,11 @@ func (p *environProvisioner) setConfig(modelConfig *config.Config) error {
 	return nil
 }
 
+type ContainerProvisioner interface {
+	Provisioner
+	Loop() error
+}
+
 // NewContainerProvisioner returns a new uninitialized Provisioner. When new machines
 // are added to the state, it allocates instances from the environment
 // and allocates them to the new machines.
@@ -302,8 +307,8 @@ func NewContainerProvisioner(
 	toolsFinder ToolsFinder,
 	distributionGroupFinder DistributionGroupFinder,
 	credentialAPI common.CredentialAPI,
-) (Provisioner, error) {
-	p := &containerProvisioner{
+) (ContainerProvisioner, error) {
+	return &containerProvisioner{
 		provisioner: provisioner{
 			st:                      st,
 			agentConfig:             agentConfig,
@@ -314,21 +319,10 @@ func NewContainerProvisioner(
 			callContextFunc:         common.NewCloudCallContextFunc(credentialAPI),
 		},
 		containerType: containerType,
-	}
-	p.Provisioner = p
-	logger.Tracef("Starting %s provisioner for %q", p.containerType, p.agentConfig.Tag())
-
-	err := catacomb.Invoke(catacomb.Plan{
-		Site: &p.catacomb,
-		Work: p.loop,
-	})
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-	return p, nil
+	}, nil
 }
 
-func (p *containerProvisioner) loop() error {
+func (p *containerProvisioner) Loop() error {
 	modelWatcher, err := p.st.WatchForModelConfigChanges()
 	if err != nil {
 		return errors.Trace(err)

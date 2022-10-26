@@ -4,6 +4,8 @@
 package provisioner
 
 import (
+	"fmt"
+
 	"github.com/juju/collections/set"
 	"github.com/juju/errors"
 	"github.com/juju/names/v4"
@@ -17,6 +19,7 @@ import (
 	"github.com/juju/juju/core/instance"
 	"github.com/juju/juju/core/life"
 	"github.com/juju/juju/core/machinelock"
+	"github.com/juju/juju/core/watcher"
 	workercommon "github.com/juju/juju/worker/common"
 )
 
@@ -117,50 +120,53 @@ func (cfg ContainerManifoldConfig) start(context dependency.Context) (worker.Wor
 		return nil, errors.Annotatef(err, "cannot get credential invalidator facade")
 	}
 
-	// TODO - watch for a container here... then do setup
-
 	cs := NewContainerSetup(ContainerSetupParams{
-		Abort:         context.Abort(),
 		Logger:        cfg.Logger,
 		ContainerType: cfg.ContainerType,
 		Machine:       m,
+		MTag:          mTag,
 		Provisioner:   pr,
 		Config:        agentConfig,
 		MachineLock:   cfg.MachineLock,
 		CredentialAPI: credentialAPI,
+		GetContainerWatcherFunc: func() (watcher.StringsWatcher, error) {
+			return m.WatchContainers(cfg.ContainerType)
+		},
 	})
 
-	return cs.initialiseAndStartProvisioner(agentConfig, mTag, pr, m, credentialAPI)
+	return NewContainerWorker(cs)
 }
 
-func (cs *ContainerSetup) initialiseAndStartProvisioner(
-	agentCfg agent.Config,
-	mTag names.MachineTag,
-	provisioner *apiprovisioner.State,
-	machineZone broker.AvailabilityZoner,
-	credentialAPI workercommon.CredentialAPI,
-) (worker.Worker, error) {
+type GetContainerWatcherFunc func() (watcher.StringsWatcher, error)
+
+func (cs *ContainerSetup) initialiseContainers(abort <-chan struct{}) error {
 	cs.logger.Debugf("setup and start provisioner for %s containers", cs.containerType)
-	managerConfig, err := containerManagerConfig(cs.containerType, provisioner)
+	managerConfig, err := containerManagerConfig(cs.containerType, cs.provisioner)
 	if err != nil {
-		return nil, errors.Annotate(err, "generating container manager config")
+		return errors.Annotate(err, "generating container manager config")
 	}
-	managerConfigWithZones, err := broker.ConfigureAvailabilityZone(managerConfig, machineZone)
+	cs.managerConfig = managerConfig
+	err = cs.initContainerDependencies(abort, managerConfig)
+	return errors.Annotate(err, "setting up container dependencies on host machine")
+}
+
+func (cs *ContainerSetup) initialiseContainerProvisioner() (ContainerProvisioner, error) {
+	cs.logger.Debugf("setup provisioner for %s containers", cs.containerType)
+	if cs.managerConfig == nil {
+		return nil, errors.New("Programming error, manager config not setup")
+	}
+	managerConfigWithZones, err := broker.ConfigureAvailabilityZone(cs.managerConfig, cs.machine)
 	if err != nil {
 		return nil, errors.Annotate(err, "configuring availability zones")
 	}
 
-	if err := cs.initContainerDependencies(cs.containerType, managerConfig); err != nil {
-		return nil, errors.Annotate(err, "setting up container dependencies on host machine")
-	}
-
 	instanceBroker, err := broker.New(broker.Config{
-		Name:          "provisioner",
+		Name:          fmt.Sprintf("%s-provisioner", string(cs.containerType)),
 		ContainerType: cs.containerType,
 		ManagerConfig: managerConfigWithZones,
-		APICaller:     provisioner,
+		APICaller:     cs.provisioner,
 		AgentConfig:   cs.config,
-		MachineTag:    mTag,
+		MachineTag:    cs.mTag,
 		MachineLock:   cs.machineLock,
 		GetNetConfig:  cs.getNetConfig,
 	})
@@ -168,15 +174,16 @@ func (cs *ContainerSetup) initialiseAndStartProvisioner(
 		return nil, errors.Annotate(err, "initialising container infrastructure on host machine")
 	}
 
-	toolsFinder := getToolsFinder(provisioner)
-	w, err := NewContainerProvisioner(cs.containerType,
-		provisioner,
-		cs.logger.Child(string(cs.containerType)),
-		agentCfg,
+	toolsFinder := getToolsFinder(cs.provisioner)
+	w, err := NewContainerProvisioner(
+		cs.containerType,
+		cs.provisioner,
+		cs.logger,
+		cs.config,
 		instanceBroker,
 		toolsFinder,
-		getDistributionGroupFinder(provisioner),
-		credentialAPI,
+		getDistributionGroupFinder(cs.provisioner),
+		cs.credentialAPI,
 	)
 	if err != nil {
 		return nil, errors.Trace(err)
