@@ -96,9 +96,6 @@ func NewDiffBundleCommand() cmd.Command {
 	cmd.newAPIRootFn = func() (base.APICallCloser, error) {
 		return cmd.NewAPIRoot()
 	}
-	cmd.newControllerAPIRootFn = func() (base.APICallCloser, error) {
-		return cmd.NewControllerAPIRoot()
-	}
 	cmd.modelConfigClientFunc = func(api base.APICallCloser) ModelConfigClient {
 		return modelconfig.NewClient(api)
 	}
@@ -130,7 +127,6 @@ type diffBundleCommand struct {
 
 	charmAdaptorFn             func(base.APICallCloser, *charm.URL) (BundleResolver, error)
 	newAPIRootFn               func() (base.APICallCloser, error)
-	newControllerAPIRootFn     func() (base.APICallCloser, error)
 	modelConfigClientFunc      func(base.APICallCloser) ModelConfigClient
 	modelConstraintsClientFunc func() (ModelConstraintsClient, error)
 	newCharmHubClient          func(string) (store.DownloadBundleClient, error)
