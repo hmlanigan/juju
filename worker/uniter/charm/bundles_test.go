@@ -10,7 +10,7 @@ import (
 
 	"github.com/juju/loggo"
 
-	corecharm "github.com/juju/charm/v9"
+	corecharm "github.com/juju/charm/v10"
 	jujutesting "github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils/v3"

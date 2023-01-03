@@ -49,7 +49,7 @@ require (
 	github.com/im7mortal/kmutex v1.0.1
 	github.com/juju/ansiterm v1.0.0
 	github.com/juju/blobstore/v3 v3.0.2
-	github.com/juju/charm/v9 v9.0.6
+	github.com/juju/charm/v10 v10.0.0-00010101000000-000000000000
 	github.com/juju/charmrepo/v7 v7.0.1
 	github.com/juju/clock v1.0.2
 	github.com/juju/cmd/v3 v3.0.2
@@ -196,6 +196,7 @@ require (
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/juju/charm/v9 v9.0.6 // indirect
 	github.com/juju/go4 v0.0.0-20160222163258-40d72ab9641a // indirect
 	github.com/juju/gojsonpointer v0.0.0-20150204194629-afe8b77aa08f // indirect
 	github.com/juju/gojsonreference v0.0.0-20150204194633-f0d24ac5ee33 // indirect
@@ -289,3 +290,7 @@ replace gopkg.in/yaml.v2 => github.com/juju/yaml/v2 v2.0.0
 replace github.com/dustin/go-humanize v1.0.0 => github.com/dustin/go-humanize v0.0.0-20141228071148-145fabdb1ab7
 
 replace github.com/hashicorp/raft-boltdb => github.com/juju/raft-boltdb v0.0.0-20200518034108-40b112c917c5
+
+replace github.com/juju/charm/v10 => /Users/heathermlanigan/work/src/github.com/juju/charm
+
+//replace github.com/juju/charm/v10 => /Users/heathermlanigan/gohack/github.com/juju/charm/v10

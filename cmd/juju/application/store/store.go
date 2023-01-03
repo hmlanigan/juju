@@ -5,7 +5,7 @@ package store
 
 import (
 	"github.com/go-macaroon-bakery/macaroon-bakery/v3/httpbakery"
-	"github.com/juju/charm/v9"
+	"github.com/juju/charm/v10"
 	"github.com/juju/charmrepo/v7"
 	"github.com/juju/charmrepo/v7/csclient"
 	"github.com/juju/errors"
