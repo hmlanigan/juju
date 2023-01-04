@@ -2775,8 +2775,7 @@ func (s *BundleHandlerMakeModelSuite) TestEmptyModelOldController(c *gc.C) {
 	s.expectEmptyModelToStart(c)
 
 	handler := &bundleHandler{
-		deployAPI:          s.deployerAPI,
-		defaultCharmSchema: charm.CharmStore,
+		deployAPI: s.deployerAPI,
 	}
 
 	err := handler.makeModel(false, nil)
@@ -2792,9 +2791,8 @@ func (s *BundleHandlerMakeModelSuite) TestModelOldController(c *gc.C) {
 	s.expectDeployerAPIModelGet(c)
 
 	handler := &bundleHandler{
-		deployAPI:          s.deployerAPI,
-		defaultCharmSchema: charm.CharmStore,
-		unitStatus:         make(map[string]string),
+		deployAPI:  s.deployerAPI,
+		unitStatus: make(map[string]string),
 	}
 
 	err := handler.makeModel(false, nil)

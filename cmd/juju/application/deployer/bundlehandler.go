@@ -280,9 +280,10 @@ func (h *bundleHandler) makeModel(
 // between pre 2.9 controllers and newer clients.  The controller has the data,
 // status output does not.
 func (h *bundleHandler) updateChannelsModelStatus(status *params.FullStatus) (*params.FullStatus, error) {
-	if !h.defaultCharmSchema.Matches(charm.CharmStore.String()) || len(status.Applications) <= 0 {
-		return status, nil
-	}
+	// HEATHER - can this method be removed?
+	//if !h.defaultCharmSchema.Matches(charm.CharmStore.String()) || len(status.Applications) <= 0 {
+	//	return status, nil
+	//}
 	var tags []names.ApplicationTag
 	for k := range status.Applications {
 		tags = append(tags, names.NewApplicationTag(k))
@@ -374,13 +375,6 @@ func (h *bundleHandler) resolveCharmsAndEndpoints() error {
 			if spec.Revision != nil && *spec.Revision != -1 && channel.Empty() {
 				return errors.Errorf("application %q with a revision requires a channel for future upgrades, please use channel", name)
 			}
-		} else if charm.CharmStore.Matches(ch.Schema) {
-			if ch.Revision != -1 && spec.Revision != nil && *spec.Revision != -1 && ch.Revision != *spec.Revision {
-				return errors.Errorf("two different revisions to deploy %q: specified %d and %d, please choose one.", name, ch.Revision, *spec.Revision)
-			}
-			if ch.Revision == -1 && spec.Revision != nil && *spec.Revision != -1 {
-				ch = ch.WithRevision(*spec.Revision)
-			}
 		}
 
 		channel, origin, err := h.constructChannelAndOrigin(ch, spec.Series, spec.Channel, cons)
@@ -401,9 +395,11 @@ func (h *bundleHandler) resolveCharmsAndEndpoints() error {
 				Revision: -1,
 			}
 			origin = origin.WithBase(nil)
-		} else if charm.CharmStore.Matches(url.Schema) {
-			h.ctx.Warningf("Deploying %q.\n\tCharm store charms, those with cs: before the charm name, will not be supported in juju 3.1.\n\tMigration of this model to a juju 3.1 controller will be prohibited.", ch)
 		}
+		// HEATHER - what to replace
+		//else if charm.CharmStore.Matches(url.Schema) {
+		//	h.ctx.Warningf("Deploying %q.\n\tCharm store charms, those with cs: before the charm name, will not be supported in juju 3.1.\n\tMigration of this model to a juju 3.1 controller will be prohibited.", ch)
+		//}
 
 		h.ctx.Infof(formatLocatedText(ch, origin))
 		if url.Series == "bundle" || origin.Type == "bundle" {
@@ -651,9 +647,6 @@ func (h *bundleHandler) addCharm(change *bundlechanges.AddCharmChange) error {
 
 	// Verification of the revision piece was done when the bundle was
 	// read in.  Ensure that the validated charm has correct revision.
-	if charm.CharmStore.Matches(ch.Schema) && change.Params.Revision != nil && *change.Params.Revision >= 0 {
-		ch = ch.WithRevision(*change.Params.Revision)
-	}
 	urlForOrigin := ch
 	if change.Params.Revision != nil && *change.Params.Revision >= 0 {
 		urlForOrigin = urlForOrigin.WithRevision(*change.Params.Revision)
@@ -716,9 +709,10 @@ func (h *bundleHandler) addCharm(change *bundlechanges.AddCharmChange) error {
 		if err != nil {
 			return errors.Trace(err)
 		}
-		if url.Schema != charm.CharmStore.String() {
-			url = url.WithSeries(chSeries)
-		}
+		// HEATHER
+		//if url.Schema != charm.CharmStore.String() {
+		//	url = url.WithSeries(chSeries)
+		//}
 		// TODO(juju3) - use os/channel, not series
 		base, err := series.GetBaseFromSeries(chSeries)
 		if err != nil {
@@ -946,24 +940,6 @@ func (h *bundleHandler) addApplication(change *bundlechanges.AddApplicationChang
 			return errors.Trace(err)
 		}
 		origin.Base = base
-	case charm.CharmStore.Matches(chID.URL.Schema):
-		// Figure out what series we need to deploy with. For CharmHub charms,
-		// this was determined when addcharm was called.
-		selectedSeries, err := h.selectedSeries(charmInfo.Charm(), chID, curl, p.Series)
-		if err != nil {
-			return errors.Trace(err)
-		}
-
-		platform, err := utils.DeducePlatform(cons, selectedSeries, h.modelConstraints)
-		if err != nil {
-			return errors.Trace(err)
-		}
-		// A channel is needed whether the risk is valid or not.
-		channel, _ := charm.MakeChannel("", origin.Risk, "")
-		origin, err = utils.DeduceOrigin(chID.URL, channel, platform)
-		if err != nil {
-			return errors.Trace(err)
-		}
 	}
 
 	args := application.DeployArgs{

@@ -324,20 +324,12 @@ func (s *deployerSuite) TestResolveCharmURL(c *gc.C) {
 		url:           &charm.URL{Schema: "ch", Name: "wordpress", Revision: -1},
 	}, {
 		defaultSchema: charm.CharmHub,
-		path:          "cs:wordpress",
-		url:           &charm.URL{Schema: "cs", Name: "wordpress", Revision: -1},
+		path:          "ch:wordpress",
+		url:           &charm.URL{Schema: "ch", Name: "wordpress", Revision: -1},
 	}, {
 		defaultSchema: charm.CharmHub,
 		path:          "local:wordpress",
 		url:           &charm.URL{Schema: "local", Name: "wordpress", Revision: -1},
-	}, {
-		defaultSchema: charm.CharmHub,
-		path:          "cs:~user/series/name",
-		url:           &charm.URL{Schema: "cs", User: "user", Name: "name", Series: "series", Revision: -1},
-	}, {
-		defaultSchema: charm.CharmHub,
-		path:          "wordpress",
-		url:           &charm.URL{Schema: "ch", Name: "wordpress", Revision: -1},
 	}}
 	for i, test := range tests {
 		c.Logf("%d %s", i, test.path)

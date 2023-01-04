@@ -78,7 +78,6 @@ func (c *Client) UploadCharm(modelUUID string, curl *charm.URL, content io.ReadS
 	args.Add("name", curl.Name)
 	args.Add("schema", curl.Schema)
 	args.Add("arch", curl.Architecture)
-	args.Add("user", curl.User)
 	args.Add("series", curl.Series)
 	args.Add("revision", strconv.Itoa(curl.Revision))
 

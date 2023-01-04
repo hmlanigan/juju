@@ -1343,8 +1343,6 @@ func storeLocation(schema string) string {
 	switch {
 	case charm.CharmHub.Matches(schema):
 		return "charm-hub"
-	case charm.CharmStore.Matches(schema):
-		return "charm-store"
 	case charm.Local.Matches(schema):
 		return "local"
 	}
