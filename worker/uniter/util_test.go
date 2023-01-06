@@ -1387,7 +1387,7 @@ var subordinateDying = custom{func(c *gc.C, ctx *testContext) {
 }}
 
 func curl(revision int) *corecharm.URL {
-	return corecharm.MustParseURL("cs:quantal/wordpress").WithRevision(revision)
+	return corecharm.MustParseURL("ch:quantal/wordpress").WithRevision(revision)
 }
 
 type hookLock struct {

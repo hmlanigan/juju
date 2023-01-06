@@ -292,5 +292,6 @@ replace github.com/dustin/go-humanize v1.0.0 => github.com/dustin/go-humanize v0
 replace github.com/hashicorp/raft-boltdb => github.com/juju/raft-boltdb v0.0.0-20200518034108-40b112c917c5
 
 replace github.com/juju/charm/v10 => /Users/heathermlanigan/work/src/github.com/juju/charm
+replace github.com/juju/charmrepo/v7 => /Users/heathermlanigan/work/src/github.com/juju/charmrepo
 
 //replace github.com/juju/charm/v10 => /Users/heathermlanigan/gohack/github.com/juju/charm/v10

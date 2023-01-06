@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	gitlabCharmURL = charm.MustParseURL("cs:gitlab-1")
+	gitlabCharmURL = charm.MustParseURL("ch:gitlab-1")
 	gitlabSettings = charm.Settings{"k": 123}
 
 	fakeCharmContent    = []byte("abc")

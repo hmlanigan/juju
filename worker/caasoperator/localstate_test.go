@@ -24,7 +24,7 @@ func (s *LocalStateFileSuite) TestState(c *gc.C) {
 	c.Assert(err, gc.Equals, caasoperator.ErrNoStateFile)
 
 	localSt := caasoperator.LocalState{
-		CharmURL:             charm.MustParseURL("cs:quantal/application-name-123"),
+		CharmURL:             charm.MustParseURL("ch:quantal/application-name-123"),
 		CharmModifiedVersion: 123,
 	}
 	err = file.Write(&localSt)

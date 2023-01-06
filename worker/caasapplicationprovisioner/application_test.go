@@ -111,7 +111,7 @@ func (s *ApplicationWorkerSuite) getWorker(c *gc.C, name string) (func(...*gomoc
 	s.appProvisioningInfo = api.ProvisioningInfo{
 		Base: series.MakeDefaultBase("ubuntu", "20.04"),
 		CharmURL: &charm.URL{
-			Schema:   "cs",
+			Schema:   "ch",
 			Name:     "test",
 			Revision: -1,
 		},
@@ -169,7 +169,7 @@ func (s *ApplicationWorkerSuite) getWorker(c *gc.C, name string) (func(...*gomoc
 			tc.facade.EXPECT().Life(name).Return(life.Alive, nil),
 			tc.facade.EXPECT().WatchProvisioningInfo(name).Return(watchertest.NewMockNotifyWatcher(tc.provisioningInfoChan), nil),
 			tc.facade.EXPECT().ProvisioningInfo(name).Return(s.appProvisioningInfo, nil),
-			tc.facade.EXPECT().CharmInfo("cs:test").Return(s.appCharmInfo, nil),
+			tc.facade.EXPECT().CharmInfo("ch:test").Return(s.appCharmInfo, nil),
 			tc.brokerApp.EXPECT().Exists().Return(caas.DeploymentState{}, nil),
 			tc.facade.EXPECT().ApplicationOCIResources(name).Return(s.ociResources, nil),
 		)
@@ -374,7 +374,7 @@ func (s *ApplicationWorkerSuite) assertWorker(c *gc.C, name string) {
 		tc.facade.EXPECT().ProvisioningInfo(name).DoAndReturn(func(string) (api.ProvisioningInfo, error) {
 			return s.appProvisioningInfo, nil
 		}),
-		tc.facade.EXPECT().CharmInfo("cs:test").DoAndReturn(func(string) (*charmscommon.CharmInfo, error) {
+		tc.facade.EXPECT().CharmInfo("ch:test").DoAndReturn(func(string) (*charmscommon.CharmInfo, error) {
 			return s.appCharmInfo, nil
 		}),
 		tc.brokerApp.EXPECT().Exists().DoAndReturn(func() (caas.DeploymentState, error) {
@@ -686,7 +686,7 @@ func (s *ApplicationWorkerSuite) TestRefreshApplicationStatusNewUnitsAllocating(
 		tc.facade.EXPECT().ProvisioningInfo("test").DoAndReturn(func(string) (api.ProvisioningInfo, error) {
 			return s.appProvisioningInfo, nil
 		}),
-		tc.facade.EXPECT().CharmInfo("cs:test").DoAndReturn(func(string) (*charmscommon.CharmInfo, error) {
+		tc.facade.EXPECT().CharmInfo("ch:test").DoAndReturn(func(string) (*charmscommon.CharmInfo, error) {
 			return s.appCharmInfo, nil
 		}),
 		tc.brokerApp.EXPECT().Exists().DoAndReturn(func() (caas.DeploymentState, error) {
@@ -728,7 +728,7 @@ func (s *ApplicationWorkerSuite) TestRefreshApplicationStatusAllUnitsAreSettled(
 		tc.facade.EXPECT().ProvisioningInfo("test").DoAndReturn(func(string) (api.ProvisioningInfo, error) {
 			return s.appProvisioningInfo, nil
 		}),
-		tc.facade.EXPECT().CharmInfo("cs:test").DoAndReturn(func(string) (*charmscommon.CharmInfo, error) {
+		tc.facade.EXPECT().CharmInfo("ch:test").DoAndReturn(func(string) (*charmscommon.CharmInfo, error) {
 			return s.appCharmInfo, nil
 		}),
 		tc.brokerApp.EXPECT().Exists().DoAndReturn(func() (caas.DeploymentState, error) {
@@ -770,7 +770,7 @@ func (s *ApplicationWorkerSuite) TestRefreshApplicationStatusTransitionFromWaiti
 		tc.facade.EXPECT().ProvisioningInfo("test").DoAndReturn(func(string) (api.ProvisioningInfo, error) {
 			return s.appProvisioningInfo, nil
 		}),
-		tc.facade.EXPECT().CharmInfo("cs:test").DoAndReturn(func(string) (*charmscommon.CharmInfo, error) {
+		tc.facade.EXPECT().CharmInfo("ch:test").DoAndReturn(func(string) (*charmscommon.CharmInfo, error) {
 			return s.appCharmInfo, nil
 		}),
 		tc.brokerApp.EXPECT().Exists().DoAndReturn(func() (caas.DeploymentState, error) {

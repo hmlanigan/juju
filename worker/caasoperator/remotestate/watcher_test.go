@@ -62,7 +62,7 @@ func (s *WatcherSuite) TestRemoteStateChanged(c *gc.C) {
 		assertNoNotifyEvent(c, s.watcher.RemoteStateChanged(), "remote state change")
 	}
 
-	curl := charm.MustParseURL("cs:gitlab-4")
+	curl := charm.MustParseURL("ch:gitlab-4")
 	s.charmGetter.curl = curl
 	s.charmGetter.version = 666
 	s.charmGetter.force = true
