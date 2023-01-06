@@ -16,7 +16,7 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
-	"github.com/juju/juju/testcharms/repo"
+	testcharmrepo "github.com/juju/juju/testcharms/repo"
 )
 
 const defaultSeries = "bionic"
@@ -124,8 +124,8 @@ func (s *DownloadSuite) TestDownloadAndReadWithFailedStatusCode(c *gc.C) {
 func (s *DownloadSuite) createCharmArchieve(c *gc.C) []byte {
 	tmpDir, err := os.MkdirTemp("", "charm")
 	c.Assert(err, jc.ErrorIsNil)
-
-	repo := repo.NewRepo(localCharmRepo, defaultSeries)
+	
+	repo := testcharmrepo.NewRepo(localCharmRepo, defaultSeries)
 	charmPath := repo.CharmArchivePath(tmpDir, "dummy")
 
 	path, err := os.ReadFile(charmPath)
