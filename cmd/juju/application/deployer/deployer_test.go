@@ -41,7 +41,6 @@ type deployerSuite struct {
 	resolver          *mocks.MockResolver
 	deployerAPI       *mocks.MockDeployerAPI
 	deployStep        *fakeDeployStep
-	macaroonGetter    *mocks.MockMacaroonGetter
 	modelCommand      *mocks.MockModelCommand
 	filesystem        *mocks.MockFilesystem
 	bundle            *mocks.MockBundle
@@ -475,7 +474,6 @@ func (s *deployerSuite) setupMocks(c *gc.C) *gomock.Controller {
 	s.resolver = mocks.NewMockResolver(ctrl)
 	s.bundle = mocks.NewMockBundle(ctrl)
 	s.deployerAPI = mocks.NewMockDeployerAPI(ctrl)
-	s.macaroonGetter = mocks.NewMockMacaroonGetter(ctrl)
 	s.modelCommand = mocks.NewMockModelCommand(ctrl)
 	s.filesystem = mocks.NewMockFilesystem(ctrl)
 	s.modelConfigGetter = mocks.NewMockModelConfigGetter(ctrl)
