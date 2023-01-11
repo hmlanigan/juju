@@ -4,7 +4,6 @@
 package store
 
 import (
-	"github.com/go-macaroon-bakery/macaroon-bakery/v3/httpbakery"
 	"github.com/juju/charm/v10"
 	"github.com/juju/errors"
 
@@ -36,14 +35,14 @@ func AddCharmFromURL(client CharmAdder, curl *charm.URL, origin commoncharm.Orig
 //}
 
 // NewCharmStoreAdaptor combines charm store functionality with the ability to get a macaroon.
-func NewCharmStoreAdaptor(client *httpbakery.Client, csURL string) *CharmStoreAdaptor {
-	//cstoreClient := NewCharmStoreClient(client, csURL)
-	//return &CharmStoreAdaptor{
-	//CharmrepoForDeploy: charmrepo.NewCharmStoreFromClient(cstoreClient),
-	//}
-	return nil
-}
-
-type CharmStoreAdaptor struct {
-	CharmrepoForDeploy
-}
+//func NewCharmStoreAdaptor(client *httpbakery.Client, csURL string) *CharmStoreAdaptor {
+//cstoreClient := NewCharmStoreClient(client, csURL)
+//return &CharmStoreAdaptor{
+//CharmrepoForDeploy: charmrepo.NewCharmStoreFromClient(cstoreClient),
+//}
+//	return nil
+//}
+//
+//type CharmStoreAdaptor struct {
+//	CharmrepoForDeploy
+//}
