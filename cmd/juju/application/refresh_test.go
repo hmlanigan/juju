@@ -183,20 +183,7 @@ func (s *BaseRefreshSuite) refreshCommand() cmd.Command {
 		memStore,
 		apiOpen,
 		s.deployResources,
-<<<<<<< HEAD
 		func(base.APICallCloser, store.DownloadBundleClient) CharmResolver {
-=======
-		func(
-			bakeryClient *httpbakery.Client,
-			channel csclientparams.Channel,
-		) store.CharmrepoForDeploy {
-			s.AddCall("NewCharmStore")
-			return &fakeCharmStoreAPI{
-				fakeDeployAPI: s.fakeAPI,
-			}
-		},
-		func(base.APICallCloser, store.CharmrepoForDeploy, store.DownloadBundleClient) CharmResolver {
->>>>>>> Initial work on charm store url config removal
 			s.AddCall("NewCharmResolver")
 			return &s.resolveCharm
 		},
@@ -380,17 +367,6 @@ func (s *RefreshErrorsStateSuite) SetUpTest(c *gc.C) {
 	}
 	s.fakeAPI = vanillaFakeModelAPI(cfgAttrs)
 	s.cmd = NewRefreshCommandForStateTest(
-<<<<<<< HEAD
-=======
-		func(
-			bakeryClient *httpbakery.Client,
-			channel csclientparams.Channel,
-		) store.CharmrepoForDeploy {
-			return &fakeCharmStoreAPI{
-				fakeDeployAPI: s.fakeAPI,
-			}
-		},
->>>>>>> Initial work on charm store url config removal
 		func(conn api.Connection) store.CharmAdder {
 			return s.fakeAPI
 		},
@@ -518,17 +494,6 @@ func (s *RefreshSuccessStateSuite) SetUpTest(c *gc.C) {
 
 	s.charmClient = mockCharmClient{}
 	s.cmd = NewRefreshCommandForStateTest(
-<<<<<<< HEAD
-=======
-		func(
-			bakeryClient *httpbakery.Client,
-			channel csclientparams.Channel,
-		) store.CharmrepoForDeploy {
-			return &fakeCharmStoreAPI{
-				fakeDeployAPI: s.fakeAPI,
-			}
-		},
->>>>>>> Initial work on charm store url config removal
 		newCharmAdder,
 		func(conn base.APICallCloser) utils.CharmClient {
 			return &s.charmClient
