@@ -149,6 +149,9 @@ func (s *BaseRefreshSuite) SetUpTest(c *gc.C) {
 		bindings: map[string]string{
 			"": network.AlphaSpaceName,
 		},
+		charmOrigin: commoncharm.Origin{
+			Risk: "stable",
+		},
 	}
 	s.modelConfigGetter = newMockModelConfigGetter()
 	s.resourceLister = mockResourceLister{}
@@ -611,6 +614,28 @@ func (s *RefreshSuite) TestUpgradeWithChannel(c *gc.C) {
 			},
 		},
 		EndpointBindings: map[string]string{},
+	})
+}
+
+func (s *RefreshSuite) TestUpgradeWithChannelNoNewCharmURL(c *gc.C) {
+	// Test setting a new charm channel, without an actual
+	// charm upgrade needed.
+	s.resolvedCharmURL = charm.MustParseURL("cs:quantal/foo-1")
+	s.resolvedChannel = csclientparams.BetaChannel
+	_, err := s.runRefresh(c, "foo", "--channel=beta")
+	c.Assert(err, jc.ErrorIsNil)
+
+	s.charmAPIClient.CheckCallNames(c, "GetCharmURLOrigin", "Get", "SetCharm")
+	s.charmAPIClient.CheckCall(c, 2, "SetCharm", model.GenerationMaster, application.SetCharmConfig{
+		ApplicationName: "foo",
+		CharmID: application.CharmID{
+			URL: s.resolvedCharmURL,
+			Origin: commoncharm.Origin{
+				Source:       "charm-store",
+				Architecture: arch.DefaultArchitecture,
+				Risk:         "beta",
+			},
+		},
 	})
 }
 
