@@ -19,8 +19,8 @@ run_refresh_cs() {
 	# shellcheck disable=SC2059
 	printf "${OUT}\n"
 
-	# Added charm-store charm "ubuntu", revision 21 in channel stable, to the model
-	revision=$(echo "${OUT}" | awk 'BEGIN{FS=","} {print $2}' | awk 'BEGIN{FS=" "} {print $2}')
+	# format: WARNING Charm store charms, those with cs: before the charm name, will not be supported in juju 3.1. Migration of this model to a juju 3.1 controller will be prohibited. Use the --switch flag to refresh to a non charm store version of the charm. Added charm-store charm "ubuntu", revision 21 in channel stable, to the model
+	revision=$(echo "${OUT}" | awk 'BEGIN{FS=","} {print $4}' | awk 'BEGIN{FS=" "} {print $2}')
 
 	wait_for "ubuntu" "$(charm_rev "ubuntu" "${revision}")"
 	wait_for "ubuntu" "$(idle_condition "ubuntu")"
@@ -51,8 +51,8 @@ run_refresh_local() {
 	# shellcheck disable=SC2059
 	printf "${OUT}\n"
 
-	# Added local charm "ubuntu", revision 2, to the model
-	revision=$(echo "${OUT}" | awk 'BEGIN{FS=","} {print $2}' | awk 'BEGIN{FS=" "} {print $2}')
+	# format: WARNING Charm store charms, those with cs: before the charm name, will not be supported in juju 3.1. Migration of this model to a juju 3.1 controller will be prohibited. Use the --switch flag to refresh to a non charm store version of the charm. Added charm-store charm "ubuntu", revision 21 in channel stable, to the model
+	revision=$(echo "${OUT}" | awk 'BEGIN{FS=","} {print $4}' | awk 'BEGIN{FS=" "} {print $2}')
 
 	wait_for "ubuntu" "$(charm_rev "ubuntu" "${revision}")"
 	wait_for "ubuntu" "$(idle_condition "ubuntu")"
@@ -64,7 +64,7 @@ run_refresh_channel() {
 	# Test juju refresh from one channel to another
 	echo
 
-	model_name="test-refresh-switch-channel"
+	model_name="test-refresh-channel"
 	file="${TEST_DIR}/${model_name}.log"
 
 	ensure "${model_name}" "${file}"
@@ -76,8 +76,8 @@ run_refresh_channel() {
 	# shellcheck disable=SC2059
 	printf "${OUT}\n"
 
-	# format: Added local charm "ubuntu", revision 2, to the model
-	revision=$(echo "${OUT}" | awk 'BEGIN{FS=","} {print $2}' | awk 'BEGIN{FS=" "} {print $2}')
+	# format: WARNING Charm store charms, those with cs: before the charm name, will not be supported in juju 3.1. Migration of this model to a juju 3.1 controller will be prohibited. Use the --switch flag to refresh to a non charm store version of the charm. Added charm-store charm "ubuntu", revision 21 in channel stable, to the model
+	revision=$(echo "${OUT}" | awk 'BEGIN{FS=","} {print $4}' | awk 'BEGIN{FS=" "} {print $2}')
 
 	wait_for "juju-qa-test" "$(charm_rev "juju-qa-test" "${revision}")"
 	wait_for "juju-qa-test" "$(charm_channel "juju-qa-test" "2.0/edge")"
@@ -91,7 +91,7 @@ run_refresh_channel_no_new_revision() {
 	# charm revision.
 	echo
 
-	model_name="test-refresh-switch-channel-no-new-revision"
+	model_name="test-refresh-channel-no-new-revision"
 	file="${TEST_DIR}/${model_name}.log"
 
 	ensure "${model_name}" "${file}"
