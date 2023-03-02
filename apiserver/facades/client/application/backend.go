@@ -54,6 +54,7 @@ type Backend interface {
 	SaveEgressNetworks(relationKey string, cidrs []string) (state.RelationNetworks, error)
 	Branch(string) (Generation, error)
 	state.EndpointBinding
+	ModelConstraints() (constraints.Value, error)
 }
 
 // BlockChecker defines the block-checking functionality required by
@@ -131,6 +132,8 @@ type Charm interface {
 // details on the methods, see the methods on state.Machine with
 // the same names.
 type Machine interface {
+	Base() state.Base
+	HardwareCharacteristics() (*instance.HardwareCharacteristics, error)
 	PublicAddress() (network.SpaceAddress, error)
 	IsLockedForSeriesUpgrade() (bool, error)
 	IsParentLockedForSeriesUpgrade() (bool, error)

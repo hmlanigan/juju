@@ -6,12 +6,9 @@ package params
 import (
 	"time"
 
-	"github.com/juju/charm/v10"
-
 	"github.com/juju/juju/core/constraints"
 	"github.com/juju/juju/core/devices"
 	"github.com/juju/juju/core/instance"
-	"github.com/juju/juju/core/series"
 	"github.com/juju/juju/storage"
 )
 
@@ -568,12 +565,13 @@ type DeployFromRepositoryArg struct {
 	AttachStorage []string
 
 	// Base describes the OS base intended to be used by the charm.
-	Base series.Base
+	Base *Base
 
 	// Channel is the channel in the repository to deploy from.
 	// This is an optional value. Required if revision is provided.
 	// Defaults to “stable” if not defined nor required.
-	Channel *charm.Channel
+	//Channel *charm.Channel
+	Channel string
 
 	// ConfigYAML is a string that overrides the default config.yml.
 	ConfigYAML string

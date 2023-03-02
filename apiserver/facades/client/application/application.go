@@ -116,10 +116,12 @@ type CaasBrokerInterface interface {
 }
 
 func newFacadeBase(ctx facade.Context) (*APIBase, error) {
-	model, err := ctx.State().Model()
+	m, err := ctx.State().Model()
 	if err != nil {
 		return nil, errors.Annotate(err, "getting model")
 	}
+	// modelShim wraps the AllPorts() API.
+	model := &modelShim{Model: m}
 	storageAccess, err := getStorageState(ctx.State())
 	if err != nil {
 		return nil, errors.Annotate(err, "getting state")
@@ -167,7 +169,7 @@ func newFacadeBase(ctx facade.Context) (*APIBase, error) {
 	}
 
 	updateBase := NewUpdateBaseAPI(state, makeUpdateSeriesValidator(chClient))
-	repoDeploy := NewDeployFromRepositoryAPI(state, makeDeployFromRepositoryValidator(modelType, chClient))
+	repoDeploy := NewDeployFromRepositoryAPI(state, makeDeployFromRepositoryValidator(state, model, chClient))
 
 	return NewAPIBase(
 		state,
@@ -176,7 +178,7 @@ func newFacadeBase(ctx facade.Context) (*APIBase, error) {
 		updateBase,
 		repoDeploy,
 		blockChecker,
-		&modelShim{Model: model}, // modelShim wraps the AllPorts() API.
+		model,
 		leadershipReader,
 		stateCharm,
 		DeployApplication,
