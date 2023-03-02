@@ -302,6 +302,21 @@ func (mr *MockBackendMockRecorder) Model() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Model", reflect.TypeOf((*MockBackend)(nil).Model))
 }
 
+// ModelConstraints mocks base method.
+func (m *MockBackend) ModelConstraints() (constraints.Value, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ModelConstraints")
+	ret0, _ := ret[0].(constraints.Value)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ModelConstraints indicates an expected call of ModelConstraints.
+func (mr *MockBackendMockRecorder) ModelConstraints() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ModelConstraints", reflect.TypeOf((*MockBackend)(nil).ModelConstraints))
+}
+
 // OfferConnectionForRelation mocks base method.
 func (m *MockBackend) OfferConnectionForRelation(arg0 string) (application.OfferConnection, error) {
 	m.ctrl.T.Helper()
@@ -2180,6 +2195,35 @@ func NewMockMachine(ctrl *gomock.Controller) *MockMachine {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockMachine) EXPECT() *MockMachineMockRecorder {
 	return m.recorder
+}
+
+// Base mocks base method.
+func (m *MockMachine) Base() state.Base {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Base")
+	ret0, _ := ret[0].(state.Base)
+	return ret0
+}
+
+// Base indicates an expected call of Base.
+func (mr *MockMachineMockRecorder) Base() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Base", reflect.TypeOf((*MockMachine)(nil).Base))
+}
+
+// HardwareCharacteristics mocks base method.
+func (m *MockMachine) HardwareCharacteristics() (*instance.HardwareCharacteristics, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HardwareCharacteristics")
+	ret0, _ := ret[0].(*instance.HardwareCharacteristics)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HardwareCharacteristics indicates an expected call of HardwareCharacteristics.
+func (mr *MockMachineMockRecorder) HardwareCharacteristics() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HardwareCharacteristics", reflect.TypeOf((*MockMachine)(nil).HardwareCharacteristics))
 }
 
 // IsLockedForSeriesUpgrade mocks base method.
