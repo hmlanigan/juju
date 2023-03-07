@@ -42,3 +42,7 @@ func (adapter charmInfoAdapter) Actions() *charm.Actions {
 func (adapter charmInfoAdapter) Revision() int {
 	return 0 // not part of the essential metadata
 }
+
+func (adapter charmInfoAdapter) String() string {
+	return ""
+}

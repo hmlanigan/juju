@@ -34,7 +34,7 @@ func (s *platformSuite) TestDeducePlatformSimple(c *gc.C) {
 	s.model.EXPECT().Config().Return(config.New(config.UseDefaults, coretesting.FakeConfig()))
 
 	arg := params.DeployFromRepositoryArg{CharmName: "testme"}
-	plat, err := s.getValidator().deducePlatform(arg)
+	plat, _, err := s.getValidator().deducePlatform(arg)
 	c.Assert(err, gc.IsNil)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{Architecture: "amd64"})
 }
@@ -50,7 +50,7 @@ func (s *platformSuite) TestDeducePlatformArgArchBase(c *gc.C) {
 			Channel: "22.10",
 		},
 	}
-	plat, err := s.getValidator().deducePlatform(arg)
+	plat, _, err := s.getValidator().deducePlatform(arg)
 	c.Assert(err, gc.IsNil)
 
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{
@@ -75,7 +75,7 @@ func (s *platformSuite) TestDeducePlatformModelDefaultBase(c *gc.C) {
 	arg := params.DeployFromRepositoryArg{
 		CharmName: "testme",
 	}
-	plat, err := s.getValidator().deducePlatform(arg)
+	plat, _, err := s.getValidator().deducePlatform(arg)
 	c.Assert(err, gc.IsNil)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{
 		Architecture: "amd64",
@@ -100,7 +100,7 @@ func (s *platformSuite) TestDeducePlatformPlacementSimpleFound(c *gc.C) {
 			Directive: "0",
 		}},
 	}
-	plat, err := s.getValidator().deducePlatform(arg)
+	plat, _, err := s.getValidator().deducePlatform(arg)
 	c.Assert(err, gc.IsNil)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{
 		Architecture: "arm64",
@@ -122,7 +122,7 @@ func (s *platformSuite) TestDeducePlatformPlacementSimpleNotFound(c *gc.C) {
 			Directive: "0/lxd/0",
 		}},
 	}
-	plat, err := s.getValidator().deducePlatform(arg)
+	plat, _, err := s.getValidator().deducePlatform(arg)
 	c.Assert(err, gc.IsNil)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{Architecture: "amd64"})
 }
@@ -145,7 +145,7 @@ func (s *platformSuite) TestDeducePlatformPlacementMutipleMatch(c *gc.C) {
 			{Directive: "3"},
 		},
 	}
-	plat, err := s.getValidator().deducePlatform(arg)
+	plat, _, err := s.getValidator().deducePlatform(arg)
 	c.Assert(err, gc.IsNil)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{
 		Architecture: "arm64",
@@ -179,7 +179,7 @@ func (s *platformSuite) TestDeducePlatformPlacementMutipleMatchFail(c *gc.C) {
 		},
 	}
 
-	_, err := s.getValidator().deducePlatform(arg)
+	_, _, err := s.getValidator().deducePlatform(arg)
 	c.Assert(errors.Is(err, errors.BadRequest), jc.IsTrue, gc.Commentf("%+v", err))
 }
 

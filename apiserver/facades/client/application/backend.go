@@ -14,6 +14,7 @@ import (
 	"gopkg.in/juju/environschema.v1"
 
 	"github.com/juju/juju/apiserver/common/storagecommon"
+	"github.com/juju/juju/apiserver/facades/client/charms/services"
 	"github.com/juju/juju/cloud"
 	"github.com/juju/juju/controller"
 	coreconfig "github.com/juju/juju/core/config"
@@ -35,6 +36,7 @@ type Backend interface {
 	Application(string) (Application, error)
 	ApplyOperation(state.ModelOperation) error
 	AddApplication(state.AddApplicationArgs) (Application, error)
+	AddCharmMetadata(info state.CharmInfo) (Charm, error)
 	RemoteApplication(string) (RemoteApplication, error)
 	AddRemoteApplication(state.AddRemoteApplicationParams) (RemoteApplication, error)
 	AddRelation(...state.Endpoint) (Relation, error)
@@ -55,6 +57,7 @@ type Backend interface {
 	Branch(string) (Generation, error)
 	state.EndpointBinding
 	ModelConstraints() (constraints.Value, error)
+	services.StateBackend
 }
 
 // BlockChecker defines the block-checking functionality required by
@@ -125,6 +128,7 @@ type Charm interface {
 	Meta() *charm.Meta
 	URL() *charm.URL
 	String() string
+	IsUploaded() bool
 }
 
 // Machine defines a subset of the functionality provided by the
@@ -307,6 +311,30 @@ func (s stateShim) AddApplication(args state.AddApplicationArgs) (Application, e
 		return nil, err
 	}
 	return stateApplicationShim{a, s.State}, nil
+}
+
+func (s stateShim) AddCharmMetadata(info state.CharmInfo) (Charm, error) {
+	c, err := s.State.AddCharmMetadata(info)
+	if err != nil {
+		return nil, err
+	}
+	return stateCharmShim{Charm: c}, nil
+}
+
+func (s stateShim) UpdateUploadedCharm(info state.CharmInfo) (services.UploadedCharm, error) {
+	c, err := s.State.UpdateUploadedCharm(info)
+	if err != nil {
+		return nil, err
+	}
+	return stateCharmShim{Charm: c}, nil
+}
+
+func (s stateShim) PrepareCharmUpload(curl *charm.URL) (services.UploadedCharm, error) {
+	c, err := s.State.PrepareCharmUpload(curl)
+	if err != nil {
+		return nil, err
+	}
+	return stateCharmShim{Charm: c}, nil
 }
 
 type remoteApplicationShim struct {

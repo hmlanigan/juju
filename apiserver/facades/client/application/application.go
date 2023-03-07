@@ -158,10 +158,11 @@ func newFacadeBase(ctx facade.Context) (*APIBase, error) {
 		return nil, errors.Trace(err)
 	}
 
+	charmhubHTTPClient := ctx.HTTPClient(facade.CharmhubHTTPClient)
 	chURL, _ := modelCfg.CharmHubURL()
 	chClient, err := charmhub.NewClient(charmhub.Config{
 		URL:        chURL,
-		HTTPClient: ctx.HTTPClient(facade.CharmhubHTTPClient),
+		HTTPClient: charmhubHTTPClient,
 		Logger:     logger,
 	})
 	if err != nil {
@@ -169,7 +170,7 @@ func newFacadeBase(ctx facade.Context) (*APIBase, error) {
 	}
 
 	updateBase := NewUpdateBaseAPI(state, makeUpdateSeriesValidator(chClient))
-	repoDeploy := NewDeployFromRepositoryAPI(state, makeDeployFromRepositoryValidator(state, model, chClient))
+	repoDeploy := NewDeployFromRepositoryAPI(state, makeDeployFromRepositoryValidator(state, model, charmhubHTTPClient))
 
 	return NewAPIBase(
 		state,
