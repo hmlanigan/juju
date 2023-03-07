@@ -1019,3 +1019,9 @@ func unitInfoFromParams(in params.UnitInfoResult) UnitInfo {
 	}
 	return info
 }
+
+func (c *Client) DeployFromRepository(args params.DeployFromRepositoryArgs) (params.DeployFromRepositoryResults, error) {
+	var results params.DeployFromRepositoryResults
+	err := c.facade.FacadeCall("DeployFromRepository", args, &results)
+	return results, err
+}

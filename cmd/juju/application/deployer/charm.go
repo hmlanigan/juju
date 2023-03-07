@@ -11,7 +11,9 @@ import (
 	jujuclock "github.com/juju/clock"
 	"github.com/juju/cmd/v3"
 	"github.com/juju/errors"
+	"github.com/juju/featureflag"
 	"github.com/juju/gnuflag"
+	"github.com/kr/pretty"
 
 	"github.com/juju/juju/api/client/application"
 	applicationapi "github.com/juju/juju/api/client/application"
@@ -26,6 +28,8 @@ import (
 	"github.com/juju/juju/core/instance"
 	"github.com/juju/juju/core/series"
 	coreseries "github.com/juju/juju/core/series"
+	"github.com/juju/juju/feature"
+	apiparams "github.com/juju/juju/rpc/params"
 	"github.com/juju/juju/storage"
 )
 
@@ -62,6 +66,29 @@ func (d *deployCharm) deploy(
 	ctx *cmd.Context,
 	deployAPI DeployerAPI,
 ) (rErr error) {
+	if featureflag.Enabled(feature.ServerSideCharmDeploy) {
+		var base *apiparams.Base
+		if d.baseFlag.Empty() {
+			base = &apiparams.Base{
+				Name:    d.baseFlag.OS,
+				Channel: d.baseFlag.Channel.String(),
+			}
+		}
+		res, err := deployAPI.DeployFromRepository(apiparams.DeployFromRepositoryArgs{
+			Args: []apiparams.DeployFromRepositoryArg{{
+				ApplicationName: d.applicationName,
+				CharmName:       d.id.URL.Name,
+				Force:           d.force,
+				Placement:       d.placement,
+				DryRun:          d.dryRun,
+				Base:            base,
+				Resources:       d.resources,
+			}},
+		})
+		ctx.Infof("%s", pretty.Sprint(res))
+		return err
+	}
+
 	id := d.id
 	charmInfo, err := deployAPI.CharmInfo(id.URL.String())
 	if err != nil {
