@@ -9,6 +9,7 @@ import (
 	"net"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/juju/charm/v10"
 	"github.com/juju/collections/transform"
@@ -25,6 +26,7 @@ import (
 	"github.com/juju/juju/apiserver/common/storagecommon"
 	apiservererrors "github.com/juju/juju/apiserver/errors"
 	"github.com/juju/juju/apiserver/facade"
+	"github.com/juju/juju/apiserver/facades/client/charms/services"
 	"github.com/juju/juju/apiserver/facades/controller/caasoperatorprovisioner"
 	"github.com/juju/juju/caas"
 	k8s "github.com/juju/juju/caas/kubernetes/provider"
@@ -105,6 +107,12 @@ type APIBase struct {
 	registry              storage.ProviderRegistry
 	caasBroker            CaasBrokerInterface
 	deployApplicationFunc func(ApplicationDeployer, Model, DeployApplicationParams) (Application, error)
+
+	// mu locks to ensure we use a single instance of the repoFactory.
+	mu                 sync.Mutex
+	repoFactory        corecharm.RepositoryFactory
+	newRepoFactory     func(services.CharmRepoFactoryConfig) corecharm.RepositoryFactory
+	charmhubHTTPClient facade.HTTPClient
 }
 
 type CaasBrokerInterface interface {
@@ -215,6 +223,9 @@ func NewAPIBase(
 		registry:              registry,
 		resources:             resources,
 		caasBroker:            caasBroker,
+		newRepoFactory: func(cfg services.CharmRepoFactoryConfig) corecharm.RepositoryFactory {
+			return services.NewCharmRepoFactory(cfg)
+		},
 	}, nil
 }
 
