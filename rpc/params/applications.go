@@ -632,7 +632,7 @@ type DeployFromRepositoryResult struct {
 	Errors []*Error
 
 	// Info
-	Info []string
+	Info DeployFromRepositoryInfo
 
 	// PendingResourceUploads returns a collection of data
 	// required to upload a specific resource for this charm.
@@ -641,6 +641,20 @@ type DeployFromRepositoryResult struct {
 	// as local upload will be included. They have already been
 	// added as Pending.
 	PendingResourceUploads []*PendingResourceUpload
+}
+
+type DeployFromRepositoryInfo struct {
+	CharmURL string `json:"charm-url"`
+	// Risk is the CharmHub channel risk, or the CharmStore channel value.
+	Risk string `json:"risk,omitempty"`
+
+	Track  *string `json:"track,omitempty"`
+	Branch *string `json:"branch,omitempty"`
+
+	Architecture string `json:"architecture,omitempty"`
+	Base         Base   `json:"base,omitempty"`
+
+	EffectiveChannel *string `json:"effective-channelchannel"`
 }
 
 type PendingResourceUpload struct {

@@ -11,9 +11,11 @@ import (
 	jujuclock "github.com/juju/clock"
 	"github.com/juju/collections/set"
 	"github.com/juju/errors"
+	"github.com/kr/pretty"
 
 	"github.com/juju/juju/apiserver/facade"
 	"github.com/juju/juju/apiserver/facades/client/charms/services"
+	"github.com/juju/juju/controller"
 	"github.com/juju/juju/core/arch"
 	corecharm "github.com/juju/juju/core/charm"
 	"github.com/juju/juju/core/constraints"
@@ -21,7 +23,6 @@ import (
 	"github.com/juju/juju/core/instance"
 	coreseries "github.com/juju/juju/core/series"
 	"github.com/juju/juju/environs/bootstrap"
-	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/rpc/params"
 	"github.com/juju/juju/state"
 )
@@ -34,24 +35,19 @@ type DeployFromRepositoryValidator interface {
 // DeployFromRepository defines an interface for deploying a charm
 // from a repository.
 type DeployFromRepository interface {
-	DeployFromRepository(arg params.DeployFromRepositoryArg) ([]string, []*params.PendingResourceUpload, []error)
+	DeployFromRepository(arg params.DeployFromRepositoryArg) (params.DeployFromRepositoryInfo, []*params.PendingResourceUpload, []error)
 }
 
 // DeployFromRepositoryState defines a common set of functions for retrieving state
 // objects.
 type DeployFromRepositoryState interface {
+	AddApplication(state.AddApplicationArgs) (Application, error)
 	AddCharmMetadata(info state.CharmInfo) (Charm, error)
+	ControllerConfig() (controller.Config, error)
 	Machine(string) (Machine, error)
 	ModelConstraints() (constraints.Value, error)
 
 	services.StateBackend
-}
-
-// DeployFromRepositoryModel defines a common set of functions for retrieving model
-// objects.
-type DeployFromRepositoryModel interface {
-	Config() (*config.Config, error)
-	Type() state.ModelType
 }
 
 // DeployFromRepositoryAPI provides the deploy from repository
@@ -71,33 +67,69 @@ func NewDeployFromRepositoryAPI(state DeployFromRepositoryState, validator Deplo
 	return api
 }
 
-func (api *DeployFromRepositoryAPI) DeployFromRepository(arg params.DeployFromRepositoryArg) ([]string, []*params.PendingResourceUpload, []error) {
+func (api *DeployFromRepositoryAPI) DeployFromRepository(arg params.DeployFromRepositoryArg) (params.DeployFromRepositoryInfo, []*params.PendingResourceUpload, []error) {
+	logger.Tracef("deployOneFromRepository(%s)", pretty.Sprint(arg))
 	// Validate the args.
 	dt, errs := api.validator.ValidateArg(arg)
 
 	if len(errs) > 0 {
-		return nil, nil, errs
+		return params.DeployFromRepositoryInfo{}, nil, errs
 	}
 
+	logger.Tracef("%s", pretty.Sprint(dt))
+	info := params.DeployFromRepositoryInfo{
+		CharmURL:     dt.charmURL.String(),
+		Risk:         string(dt.origin.Channel.Risk),
+		Track:        nil,
+		Branch:       nil,
+		Architecture: dt.origin.Platform.Architecture,
+		Base: params.Base{
+			Name:    dt.origin.Platform.OS,
+			Channel: dt.origin.Platform.Channel,
+		},
+		EffectiveChannel: nil,
+	}
 	if dt.dryRun {
-
+		return info, nil, nil
 	}
-	// From queueAsyncCharmDownload
-	_, err := api.state.AddCharmMetadata(state.CharmInfo{
+	// Queue async charm download.
+	// AddCharmMetadata returns no error if the charm
+	// has already been queue'd or downloaded.
+	ch, err := api.state.AddCharmMetadata(state.CharmInfo{
 		Charm: dt.charm,
 		ID:    dt.charmURL,
 	})
 	if err != nil {
-		return nil, nil, []error{errors.Trace(err)}
+		return params.DeployFromRepositoryInfo{}, nil, []error{errors.Trace(err)}
 	}
 
-	// TODO:
-	// AddApplication equivalent method called here.
+	stOrigin, err := StateCharmOrigin(dt.origin)
+	if err != nil {
+		return params.DeployFromRepositoryInfo{}, nil, []error{errors.Trace(err)}
+	}
+	_, err = api.state.AddApplication(state.AddApplicationArgs{
+		Name:              dt.applicationName,
+		Charm:             CharmToStateCharm(ch),
+		CharmOrigin:       stOrigin,
+		Storage:           nil,
+		Devices:           nil,
+		AttachStorage:     nil,
+		EndpointBindings:  nil,
+		ApplicationConfig: nil,
+		CharmConfig:       nil,
+		NumUnits:          dt.numUnits,
+		Placement:         dt.placement,
+		Constraints:       dt.constraints,
+		Resources:         dt.resources,
+	})
+	if err != nil {
+		return params.DeployFromRepositoryInfo{}, nil, []error{errors.Trace(err)}
+	}
 
 	// Last step, add pending resources.
 	pendingResourceUploads, errs := addPendingResources()
 
-	return nil, pendingResourceUploads, errs
+	return info, pendingResourceUploads, errs
 }
 
 // addPendingResource adds a pending resource doc for all resources to be
@@ -129,7 +161,7 @@ type deployTemplate struct {
 	trust           bool
 }
 
-func makeDeployFromRepositoryValidator(st DeployFromRepositoryState, m DeployFromRepositoryModel, charmhubHTTPClient facade.HTTPClient) DeployFromRepositoryValidator {
+func makeDeployFromRepositoryValidator(st DeployFromRepositoryState, m Model, charmhubHTTPClient facade.HTTPClient) DeployFromRepositoryValidator {
 	v := &deployFromRepositoryValidator{
 		charmhubHTTPClient: charmhubHTTPClient,
 		model:              m,
@@ -149,7 +181,7 @@ func makeDeployFromRepositoryValidator(st DeployFromRepositoryState, m DeployFro
 }
 
 type deployFromRepositoryValidator struct {
-	model DeployFromRepositoryModel
+	model Model
 	state DeployFromRepositoryState
 
 	mu                 sync.Mutex
@@ -168,8 +200,10 @@ func (v *deployFromRepositoryValidator) validate(arg params.DeployFromRepository
 
 	initialCurl, requestedOrigin, usedModelDefaultBase, err := v.createOrigin(arg)
 	if err != nil {
-		// HEATHER
+		errs = append(errs, err)
+		return deployTemplate{}, errs
 	}
+	logger.Criticalf("from createOrigin: %s, %s", initialCurl, pretty.Sprint(requestedOrigin))
 	// TODO:
 	// The logic in resolveCharm and getCharm can be improved as there is some
 	// duplication. We call ResolveCharmWithPreferredChannel, then pick a
@@ -177,20 +211,22 @@ func (v *deployFromRepositoryValidator) validate(arg params.DeployFromRepository
 	// then a refresh request.
 
 	charmURL, resolvedOrigin, err := v.resolveCharm(initialCurl, requestedOrigin, arg.Force, usedModelDefaultBase)
-	// TODO: determine base to use here.
+	if err != nil {
+		errs = append(errs, err)
+		return deployTemplate{}, errs
+	}
+	logger.Criticalf("from resolveCharm: %s, %s", charmURL, pretty.Sprint(resolvedOrigin))
 
-	// get the charm data to validate against, either a previsouly deployed
-	// charm or the essential metdata from a charm to be async downloaded.
+	// get the charm data to validate against, either a previously deployed
+	// charm or the essential metadata from a charm to be async downloaded.
 	resolvedOrigin, resolvedCharm, err := v.getCharm(charmURL, resolvedOrigin)
 	if err != nil {
-		// HEATHER
+		errs = append(errs, err)
+		return deployTemplate{}, errs
 	}
+	logger.Criticalf("from getCharm: %s", charmURL, pretty.Sprint(resolvedOrigin))
 
-	// TODO
-	//charmConfig, err := resolvedCharm.Config().ValidateSettings(arg.ConfigYAML)
-	//if err != nil {
-	//	// HEATHER
-	//}
+	// TODO: validate config
 
 	if resolvedCharm.Meta().Name == bootstrap.ControllerCharmName {
 		errs = append(errs, errors.NotSupportedf("manual deploy of the controller charm"))
@@ -204,60 +240,47 @@ func (v *deployFromRepositoryValidator) validate(arg params.DeployFromRepository
 		}
 	}
 
-	//model, err := api.backend.Model()
-	//if err != nil {
-	//	// HEATHER
-	//}
-	//modelType := model.Type()
-	//
-	//appConfig, appSchema, charmSettings, appDefaults, err := parseCharmSettings(modelType, newCharm, params.AppName, params.ConfigSettingsStrings, params.ConfigSettingsYAML, environsconfig.NoDefaults)
-	//if err != nil {
-	//	// HEATHER
-	//}
-	//if err := appConfig.Validate(); err != nil {
-	//	// HEATHER
-	//}
-	//var stateStorageConstraints map[string]state.StorageConstraints
-	//if len(arg.Storage) > 0 {
-	//	stateStorageConstraints = make(map[string]state.StorageConstraints)
-	//	for name, cons := range arg.Storage {
-	//		stateCons := state.StorageConstraints{Pool: cons.Pool}
-	//		if cons.Size != nil {
-	//			stateCons.Size = *cons.Size
-	//		}
-	//		if cons.Count != nil {
-	//			stateCons.Count = *cons.Count
-	//		}
-	//		stateStorageConstraints[name] = stateCons
-	//	}
-	//}
-
-	//if err := c.validateCharmFlags(); err != nil {
-	//		return errors.Trace(err)
-	//	}
+	appName := charmURL.Name
+	if arg.ApplicationName != "" {
+		appName = arg.ApplicationName
+	}
 
 	// Enforce "assumes" requirements if the feature flag is enabled.
-	//if err := assertCharmAssumptions(resolvedCharm.Meta().Assumes, model, st.ControllerConfig); err != nil {
-	//	if !errors.IsNotSupported(err) || !arg.Force {
-	//		// HEATHER
-	//	}
-	//
-	//	logger.Warningf("proceeding with deployment of application %q even though the charm feature requirements could not be met as --force was specified", args.ApplicationName)
-	//}
+	if err := assertCharmAssumptions(resolvedCharm.Meta().Assumes, v.model, v.state.ControllerConfig); err != nil {
+		if !errors.Is(err, errors.NotSupported) || !arg.Force {
+			errs = append(errs, err)
+		}
+		logger.Warningf("proceeding with deployment of application %q even though the charm feature requirements could not be met as --force was specified", appName)
+	}
 
 	if corecharm.IsKubernetes(resolvedCharm) && charm.MetaFormat(resolvedCharm) == charm.FormatV1 {
 		logger.Debugf("DEPRECATED: %q is a podspec charm, which will be removed in a future release", arg.CharmName)
 	}
 
+	var numUnits int
+	if arg.NumUnits != nil {
+		numUnits = *arg.NumUnits
+	} else {
+		numUnits = 1
+	}
+
 	// Validate the other args.
-	return deployTemplate{
-		applicationName: arg.ApplicationName,
+	dt := deployTemplate{
+		applicationName: appName,
 		charm:           resolvedCharm,
 		charmURL:        charmURL,
+		dryRun:          arg.DryRun,
+		force:           arg.Force,
+		numUnits:        numUnits,
 		origin:          resolvedOrigin,
 		placement:       arg.Placement,
-		//storage: stateStorageConstraints,
-	}, errs
+		storage:         stateStorageConstraints(arg.Storage),
+	}
+	if !resolvedCharm.Meta().Subordinate {
+		dt.constraints = arg.Cons
+	}
+	logger.Criticalf("validateDeployFromRepositoryArgs returning: %s", pretty.Sprint(dt))
+	return dt, errs
 }
 
 type caasDeployFromRepositoryValidator struct {
@@ -296,12 +319,12 @@ func (v *deployFromRepositoryValidator) createOrigin(arg params.DeployFromReposi
 	if !charm.CharmHub.Matches(curl.Schema) {
 		return nil, corecharm.Origin{}, false, errors.Errorf("unknown schema for charm URL %q", curl.String())
 	}
+	if arg.Channel == "" {
+		arg.Channel = corecharm.DefaultChannelString
+	}
 	channel, err := charm.ParseChannelNormalize(arg.Channel)
 	if err != nil {
 		return nil, corecharm.Origin{}, false, err
-	}
-	if channel.Empty() {
-		channel.Risk = corecharm.DefaultChannelString
 	}
 
 	plat, usedModelDefaultBase, err := v.deducePlatform(arg)
@@ -318,28 +341,48 @@ func (v *deployFromRepositoryValidator) createOrigin(arg params.DeployFromReposi
 	return curl, origin, usedModelDefaultBase, nil
 }
 
-// platform is determined by the args: architecture constraint and provided base.
-// Check placement to determine known machine platform. If diffs from other provided
-// data return error.
-// If no base provided, use model default base
-// If model default base, will be determined later with help from Charmhub
-// If no architecture provided, use model default.
+// deducePlatform returns a platform for initial resolveCharm call.
+// At minimum, it must contain an architecture.
+// Platform is determined by the args: architecture constraint and
+// provided base.
+// - Check placement to determine known machine platform. If diffs from
+// other provided data return error.
+// - If no base provided, use model default base.
+// - If no model default base, will be determined later.
+// - If no architecture provided, use model default. Fallback
+// to DefaultArchitecture.
 func (v *deployFromRepositoryValidator) deducePlatform(arg params.DeployFromRepositoryArg) (corecharm.Platform, bool, error) {
-	arch := arg.Cons.Arch
-	base := arg.Base
+	argArch := arg.Cons.Arch
+	argBase := arg.Base
 
-	// Try base with provided arch and base first.
+	// Try argBase with provided argArch and argBase first.
 	platform := corecharm.Platform{}
-	if arch != nil {
-		platform.Architecture = *arch
+	if argArch != nil {
+		platform.Architecture = *argArch
+	}
+	// Fallback to model defaults if set. DefaultArchitecture otherwise.
+	if platform.Architecture == "" {
+		mConst, err := v.state.ModelConstraints()
+		if err != nil {
+			return corecharm.Platform{}, false, err
+		}
+		if mConst.Arch != nil {
+			logger.Criticalf("deducePlatform use model default argArch %s", *mConst.Arch)
+			platform.Architecture = *mConst.Arch
+		} else {
+			platform.Architecture = arch.DefaultArchitecture
+		}
 	}
 	var usedModelDefaultBase bool
-	if base != nil {
-		platform.OS = base.Name
-		platform.Channel = base.Channel
+	if argBase != nil {
+		platform.OS = argBase.Name
+		platform.Channel = argBase.Channel
 	}
+
+	// Initial validation of platform from known data.
 	_, err := corecharm.ParsePlatform(platform.String())
 	if err != nil && !errors.Is(err, errors.BadRequest) {
+		logger.Criticalf("deducePlatform placements don't match %+v", err)
 		return corecharm.Platform{}, usedModelDefaultBase, err
 	}
 	argEmptyPlatform := errors.Is(err, errors.BadRequest)
@@ -352,22 +395,13 @@ func (v *deployFromRepositoryValidator) deducePlatform(arg params.DeployFromRepo
 	if err == nil && !placementsMatch {
 		return corecharm.Platform{}, usedModelDefaultBase, errors.BadRequestf("bases of existing placement machines do not match")
 	}
+	logger.Criticalf("deducePlatform placements don't match")
 
 	// No platform args, and one platform from placement, use that.
 	if placementsMatch && argEmptyPlatform {
 		return placementPlatform, usedModelDefaultBase, nil
 	}
-
-	// Fallback to defaults if set.
-	if platform.Architecture == "" {
-		mConst, err := v.state.ModelConstraints()
-		if err != nil {
-			return corecharm.Platform{}, usedModelDefaultBase, err
-		}
-		if mConst.Arch != nil {
-			platform.Architecture = *mConst.Arch
-		}
-	}
+	logger.Criticalf("deducePlatform no placements")
 	if platform.Channel == "" {
 		mCfg, err := v.model.Config()
 		if err != nil {
@@ -381,6 +415,7 @@ func (v *deployFromRepositoryValidator) deducePlatform(arg params.DeployFromRepo
 			platform.OS = defaultBase.OS
 			platform.Channel = defaultBase.Channel.String()
 			usedModelDefaultBase = true
+			logger.Criticalf("deducePlatform use model default base %s", defaultBase)
 		}
 	}
 	return platform, usedModelDefaultBase, nil

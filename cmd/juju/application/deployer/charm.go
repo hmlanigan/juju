@@ -66,29 +66,6 @@ func (d *deployCharm) deploy(
 	ctx *cmd.Context,
 	deployAPI DeployerAPI,
 ) (rErr error) {
-	if featureflag.Enabled(feature.ServerSideCharmDeploy) {
-		var base *apiparams.Base
-		if d.baseFlag.Empty() {
-			base = &apiparams.Base{
-				Name:    d.baseFlag.OS,
-				Channel: d.baseFlag.Channel.String(),
-			}
-		}
-		res, err := deployAPI.DeployFromRepository(apiparams.DeployFromRepositoryArgs{
-			Args: []apiparams.DeployFromRepositoryArg{{
-				ApplicationName: d.applicationName,
-				CharmName:       d.id.URL.Name,
-				Force:           d.force,
-				Placement:       d.placement,
-				DryRun:          d.dryRun,
-				Base:            base,
-				Resources:       d.resources,
-			}},
-		})
-		ctx.Infof("%s", pretty.Sprint(res))
-		return err
-	}
-
 	id := d.id
 	charmInfo, err := deployAPI.CharmInfo(id.URL.String())
 	if err != nil {
@@ -400,6 +377,30 @@ func (c *repositoryCharm) String() string {
 // PrepareAndDeploy finishes preparing to deploy a repository charm,
 // then deploys it.
 func (c *repositoryCharm) PrepareAndDeploy(ctx *cmd.Context, deployAPI DeployerAPI, resolver Resolver) error {
+	if featureflag.Enabled(feature.ServerSideCharmDeploy) {
+		var base *apiparams.Base
+		if !c.baseFlag.Empty() {
+			base = &apiparams.Base{
+				Name:    c.baseFlag.OS,
+				Channel: c.baseFlag.Channel.String(),
+			}
+		}
+		res, err := deployAPI.DeployFromRepository(apiparams.DeployFromRepositoryArgs{
+			Args: []apiparams.DeployFromRepositoryArg{{
+				ApplicationName: c.applicationName,
+				CharmName:       c.userRequestedURL.Name,
+				Force:           c.force,
+				Placement:       c.placement,
+				DryRun:          c.dryRun,
+				Base:            base,
+				Resources:       c.resources,
+				Cons:            c.constraints,
+			}},
+		})
+		ctx.Infof("%s", pretty.Sprint(res))
+		return err
+	}
+
 	userRequestedURL := c.userRequestedURL
 	location := "charmhub"
 
