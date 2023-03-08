@@ -12,6 +12,7 @@ import (
 	charm "github.com/juju/charm/v10"
 	storagecommon "github.com/juju/juju/apiserver/common/storagecommon"
 	application "github.com/juju/juju/apiserver/facades/client/application"
+	services "github.com/juju/juju/apiserver/facades/client/charms/services"
 	cloud "github.com/juju/juju/cloud"
 	controller "github.com/juju/juju/controller"
 	config "github.com/juju/juju/core/config"
@@ -65,6 +66,21 @@ func (m *MockBackend) AddApplication(arg0 state.AddApplicationArgs) (application
 func (mr *MockBackendMockRecorder) AddApplication(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddApplication", reflect.TypeOf((*MockBackend)(nil).AddApplication), arg0)
+}
+
+// AddCharmMetadata mocks base method.
+func (m *MockBackend) AddCharmMetadata(arg0 state.CharmInfo) (application.Charm, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddCharmMetadata", arg0)
+	ret0, _ := ret[0].(application.Charm)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AddCharmMetadata indicates an expected call of AddCharmMetadata.
+func (mr *MockBackendMockRecorder) AddCharmMetadata(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddCharmMetadata", reflect.TypeOf((*MockBackend)(nil).AddCharmMetadata), arg0)
 }
 
 // AddRelation mocks base method.
@@ -317,6 +333,20 @@ func (mr *MockBackendMockRecorder) ModelConstraints() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ModelConstraints", reflect.TypeOf((*MockBackend)(nil).ModelConstraints))
 }
 
+// ModelUUID mocks base method.
+func (m *MockBackend) ModelUUID() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ModelUUID")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ModelUUID indicates an expected call of ModelUUID.
+func (mr *MockBackendMockRecorder) ModelUUID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ModelUUID", reflect.TypeOf((*MockBackend)(nil).ModelUUID))
+}
+
 // OfferConnectionForRelation mocks base method.
 func (m *MockBackend) OfferConnectionForRelation(arg0 string) (application.OfferConnection, error) {
 	m.ctrl.T.Helper()
@@ -330,6 +360,21 @@ func (m *MockBackend) OfferConnectionForRelation(arg0 string) (application.Offer
 func (mr *MockBackendMockRecorder) OfferConnectionForRelation(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OfferConnectionForRelation", reflect.TypeOf((*MockBackend)(nil).OfferConnectionForRelation), arg0)
+}
+
+// PrepareCharmUpload mocks base method.
+func (m *MockBackend) PrepareCharmUpload(arg0 *charm.URL) (services.UploadedCharm, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PrepareCharmUpload", arg0)
+	ret0, _ := ret[0].(services.UploadedCharm)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PrepareCharmUpload indicates an expected call of PrepareCharmUpload.
+func (mr *MockBackendMockRecorder) PrepareCharmUpload(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareCharmUpload", reflect.TypeOf((*MockBackend)(nil).PrepareCharmUpload), arg0)
 }
 
 // Relation mocks base method.
@@ -449,6 +494,21 @@ func (m *MockBackend) UnitsInError() ([]application.Unit, error) {
 func (mr *MockBackendMockRecorder) UnitsInError() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnitsInError", reflect.TypeOf((*MockBackend)(nil).UnitsInError))
+}
+
+// UpdateUploadedCharm mocks base method.
+func (m *MockBackend) UpdateUploadedCharm(arg0 state.CharmInfo) (services.UploadedCharm, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUploadedCharm", arg0)
+	ret0, _ := ret[0].(services.UploadedCharm)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateUploadedCharm indicates an expected call of UpdateUploadedCharm.
+func (mr *MockBackendMockRecorder) UpdateUploadedCharm(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUploadedCharm", reflect.TypeOf((*MockBackend)(nil).UpdateUploadedCharm), arg0)
 }
 
 // MockStorageInterface is a mock of StorageInterface interface.
@@ -1587,6 +1647,20 @@ func (m *MockCharm) Config() *charm.Config {
 func (mr *MockCharmMockRecorder) Config() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Config", reflect.TypeOf((*MockCharm)(nil).Config))
+}
+
+// IsUploaded mocks base method.
+func (m *MockCharm) IsUploaded() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsUploaded")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsUploaded indicates an expected call of IsUploaded.
+func (mr *MockCharmMockRecorder) IsUploaded() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsUploaded", reflect.TypeOf((*MockCharm)(nil).IsUploaded))
 }
 
 // Manifest mocks base method.

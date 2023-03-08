@@ -67,12 +67,9 @@ func (api *APIBase) deployOneFromRepository(arg params.DeployFromRepositoryArg) 
 		return params.DeployFromRepositoryInfo{}, nil, errs
 	}
 
-	logger.Tracef("%s", pretty.Sprint(dt))
 	info := params.DeployFromRepositoryInfo{
 		CharmURL:     dt.charmURL.String(),
-		Risk:         string(dt.origin.Channel.Risk),
-		Track:        nil,
-		Branch:       nil,
+		Channel:      dt.origin.Channel.String(),
 		Architecture: dt.origin.Platform.Architecture,
 		Base: params.Base{
 			Name:    dt.origin.Platform.OS,
@@ -124,12 +121,11 @@ func (api *APIBase) deployOneFromRepository(arg params.DeployFromRepositoryArg) 
 }
 
 // validateDeployFromRepositoryArgs does validation of all provided
-// arguments. Returned is a deployTemplate which contains validate
+// arguments. Returned is a deployTemplate which contains validated
 // data necessary to deploy the application.
+// Where possible, errors will be grouped and returned as a list.
 func (api *APIBase) validateDeployFromRepositoryArgs(arg params.DeployFromRepositoryArg) (deployTemplate, []error) {
 	errs := make([]error, 0)
-	// Are we deploying a charm? if not, fail fast here.
-	// TODO: add a ErrorNotACharm or the like for the juju client.
 
 	initialCurl, requestedOrigin, usedModelDefaultBase, err := api.createOrigin(arg)
 	if err != nil {
@@ -149,6 +145,8 @@ func (api *APIBase) validateDeployFromRepositoryArgs(arg params.DeployFromReposi
 		return deployTemplate{}, errs
 	}
 	logger.Criticalf("from resolveCharm: %s, %s", charmURL, pretty.Sprint(resolvedOrigin))
+	// Are we deploying a charm? if not, fail fast here.
+	// TODO: add a ErrorNotACharm or the like for the juju client.
 
 	// get the charm data to validate against, either a previously deployed
 	// charm or the essential metadata from a charm to be async downloaded.
@@ -158,8 +156,6 @@ func (api *APIBase) validateDeployFromRepositoryArgs(arg params.DeployFromReposi
 		return deployTemplate{}, errs
 	}
 	logger.Criticalf("from getCharm: %s", charmURL, pretty.Sprint(resolvedOrigin))
-
-	// TODO: validate config
 
 	if resolvedCharm.Meta().Name == bootstrap.ControllerCharmName {
 		errs = append(errs, errors.NotSupportedf("manual deploy of the controller charm"))
@@ -260,10 +256,11 @@ func (api *APIBase) createOrigin(arg params.DeployFromRepositoryArg) (*charm.URL
 	if !charm.CharmHub.Matches(curl.Schema) {
 		return nil, corecharm.Origin{}, false, errors.Errorf("unknown schema for charm URL %q", curl.String())
 	}
-	if arg.Channel == "" {
-		arg.Channel = corecharm.DefaultChannelString
+	channelStr := corecharm.DefaultChannelString
+	if arg.Channel != nil && *arg.Channel != "" {
+		channelStr = *arg.Channel
 	}
-	channel, err := charm.ParseChannelNormalize(arg.Channel)
+	channel, err := charm.ParseChannelNormalize(channelStr)
 	if err != nil {
 		return nil, corecharm.Origin{}, false, err
 	}
@@ -421,8 +418,6 @@ func (api *APIBase) resolveCharm(curl *charm.URL, requestedOrigin corecharm.Orig
 	} else if resolveErr != nil {
 		return nil, corecharm.Origin{}, errors.Trace(resolveErr)
 	}
-	// TODO: choose a base, if we weren't successful with NA.
-	// look at logic above too for this.
 
 	// The charmhub API can return "all" for architecture as it's not a real
 	// arch we don't know how to correctly model it. "all " doesn't mean use the
@@ -490,7 +485,6 @@ func (api *APIBase) resolveCharm(curl *charm.URL, requestedOrigin corecharm.Orig
 	resolvedOrigin.Platform.OS = base.OS
 	resolvedOrigin.Platform.Channel = base.Channel.String()
 
-	// handle actualSupportedSeries if possible here...
 	return resultURL, resolvedOrigin, nil
 }
 
@@ -511,17 +505,12 @@ func (api *APIBase) getCharm(charmURL *charm.URL, resolvedOrigin corecharm.Origi
 	// We need to use GetDownloadURL instead of ResolveWithPreferredChannel
 	// to ensure that the resolved origin has the ID/Hash fields correctly
 	// populated.
-	// TODO: HEATHER need resolved charmurl here.
 	// TODO: Handle already deployed charm.
 	//deployedCharm, err := api.backend.Charm(charmURL)
 	//if err == nil {
-	//	// Heather
 	//	_, resolvedOrigin, err = repo.GetDownloadURL(charmURL, resolvedOrigin)
 	//	if err != nil {
-	//		//HEATHER
 	//	}
-	//} else if !errors.Is(err, errors.NotFound) {
-	//	return resolvedOrigin, nil, err
 	//}
 
 	// Fetch the essential metadata that we require to deploy the charm

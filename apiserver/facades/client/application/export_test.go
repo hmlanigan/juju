@@ -22,6 +22,6 @@ func GetModel(m *state.Model) Model {
 	return modelShim{m}
 }
 
-func DeducePlatformForTest(api *APIBase, arg params.DeployFromRepositoryArg) (corecharm.Platform, error) {
+func DeducePlatformForTest(api *APIBase, arg params.DeployFromRepositoryArg) (corecharm.Platform, bool, error) {
 	return api.deducePlatform(arg)
 }

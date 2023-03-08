@@ -39,8 +39,9 @@ func (s *platformSuite) TestDeducePlatformSimple(c *gc.C) {
 	arg := params.DeployFromRepositoryArg{CharmName: "testme"}
 	api, err := s.getAPI()
 	c.Assert(err, gc.IsNil)
-	plat, err := application.DeducePlatformForTest(api, arg)
+	plat, usedModelDefaultBase, err := application.DeducePlatformForTest(api, arg)
 	c.Assert(err, gc.IsNil)
+	c.Assert(usedModelDefaultBase, jc.IsFalse)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{Architecture: "amd64"})
 }
 
@@ -57,9 +58,9 @@ func (s *platformSuite) TestDeducePlatformArgArchBase(c *gc.C) {
 	}
 	api, err := s.getAPI()
 	c.Assert(err, gc.IsNil)
-	plat, err := application.DeducePlatformForTest(api, arg)
+	plat, usedModelDefaultBase, err := application.DeducePlatformForTest(api, arg)
 	c.Assert(err, gc.IsNil)
-
+	c.Assert(usedModelDefaultBase, jc.IsFalse)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{
 		Architecture: "arm64",
 		OS:           "ubuntu",
@@ -84,8 +85,9 @@ func (s *platformSuite) TestDeducePlatformModelDefaultBase(c *gc.C) {
 	}
 	api, err := s.getAPI()
 	c.Assert(err, gc.IsNil)
-	plat, err := application.DeducePlatformForTest(api, arg)
+	plat, usedModelDefaultBase, err := application.DeducePlatformForTest(api, arg)
 	c.Assert(err, gc.IsNil)
+	c.Assert(usedModelDefaultBase, jc.IsFalse)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{
 		Architecture: "amd64",
 		OS:           "ubuntu",
@@ -111,8 +113,9 @@ func (s *platformSuite) TestDeducePlatformPlacementSimpleFound(c *gc.C) {
 	}
 	api, err := s.getAPI()
 	c.Assert(err, gc.IsNil)
-	plat, err := application.DeducePlatformForTest(api, arg)
+	plat, usedModelDefaultBase, err := application.DeducePlatformForTest(api, arg)
 	c.Assert(err, gc.IsNil)
+	c.Assert(usedModelDefaultBase, jc.IsFalse)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{
 		Architecture: "arm64",
 		OS:           "ubuntu",
@@ -135,8 +138,9 @@ func (s *platformSuite) TestDeducePlatformPlacementSimpleNotFound(c *gc.C) {
 	}
 	api, err := s.getAPI()
 	c.Assert(err, gc.IsNil)
-	plat, err := application.DeducePlatformForTest(api, arg)
+	plat, usedModelDefaultBase, err := application.DeducePlatformForTest(api, arg)
 	c.Assert(err, gc.IsNil)
+	c.Assert(usedModelDefaultBase, jc.IsFalse)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{Architecture: "amd64"})
 }
 
@@ -160,8 +164,9 @@ func (s *platformSuite) TestDeducePlatformPlacementMutipleMatch(c *gc.C) {
 	}
 	api, err := s.getAPI()
 	c.Assert(err, gc.IsNil)
-	plat, err := application.DeducePlatformForTest(api, arg)
+	plat, usedModelDefaultBase, err := application.DeducePlatformForTest(api, arg)
 	c.Assert(err, gc.IsNil)
+	c.Assert(usedModelDefaultBase, jc.IsFalse)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{
 		Architecture: "arm64",
 		OS:           "ubuntu",
@@ -195,7 +200,7 @@ func (s *platformSuite) TestDeducePlatformPlacementMutipleMatchFail(c *gc.C) {
 	}
 	api, err := s.getAPI()
 	c.Assert(err, gc.IsNil)
-	_, err = application.DeducePlatformForTest(api, arg)
+	_, _, err = application.DeducePlatformForTest(api, arg)
 	c.Assert(errors.Is(err, errors.BadRequest), jc.IsTrue, gc.Commentf("%+v", err))
 }
 

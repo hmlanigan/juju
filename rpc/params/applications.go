@@ -550,6 +550,8 @@ type DeployFromRepositoryArgs struct {
 	Args []DeployFromRepositoryArg
 }
 
+// DeployFromRepositoryArg is all data required to deploy a
+// charm from a repository.
 type DeployFromRepositoryArg struct {
 	// CharmName is a string identifying the name of the thing to deploy.
 	// Required.
@@ -565,13 +567,12 @@ type DeployFromRepositoryArg struct {
 	AttachStorage []string
 
 	// Base describes the OS base intended to be used by the charm.
-	Base *Base
+	Base *Base `json:"base,omitempty"`
 
 	// Channel is the channel in the repository to deploy from.
 	// This is an optional value. Required if revision is provided.
 	// Defaults to “stable” if not defined nor required.
-	//Channel *charm.Channel
-	Channel string
+	Channel *string `json:"channel,omitempty"`
 
 	// ConfigYAML is a string that overrides the default config.yml.
 	ConfigYAML string
@@ -590,16 +591,16 @@ type DeployFromRepositoryArg struct {
 	DryRun bool
 
 	// EndpointBindings
-	EndpointBindings map[string]string
+	EndpointBindings map[string]string `json:"endpoint-bindings,omitempty"`
 
 	// Force can be set to true to bypass any checks for charm-specific
 	// requirements ("assumes" sections in charm metadata, supported series,
 	// LXD profile allow list)
-	Force bool
+	Force bool `json:"force,omitempty"`
 
 	// NumUnits is the number of units to deploy. Defaults to 1 if no
 	// value provided. Synonymous with scale for kubernetes charms.
-	NumUnits *int
+	NumUnits *int `json:"num-units,omitempty"`
 
 	// Placement directives define on which machines the unit(s) must be
 	// created.
@@ -607,12 +608,12 @@ type DeployFromRepositoryArg struct {
 
 	// Revision is the charm revision number. Requires the channel
 	// be explicitly set.
-	Revision *int
+	Revision *int `json:"revision,omitempty"`
 
 	// Resources is a collection of resource names for the
 	// application, with the value being the revision of the
 	// resource to use if default revision is not desired.
-	Resources map[string]string
+	Resources map[string]string `json:"resources,omitempty"`
 
 	// Storage contains Constraints specifying how storage should be
 	// handled.
@@ -645,16 +646,14 @@ type DeployFromRepositoryResult struct {
 
 type DeployFromRepositoryInfo struct {
 	CharmURL string `json:"charm-url"`
-	// Risk is the CharmHub channel risk, or the CharmStore channel value.
-	Risk string `json:"risk,omitempty"`
-
-	Track  *string `json:"track,omitempty"`
-	Branch *string `json:"branch,omitempty"`
-
-	Architecture string `json:"architecture,omitempty"`
-	Base         Base   `json:"base,omitempty"`
-
-	EffectiveChannel *string `json:"effective-channelchannel"`
+	// Channel is a string representation of the channel
+	Channel string `json:"channel,omitempty"`
+	// Architecture is the architecture used to deploy the charm.
+	Architecture string `json:"architecture"`
+	// Base is the base used to deploy the charm.
+	Base Base `json:"base,omitempty"`
+	// EffectiveChannel
+	EffectiveChannel *string `json:"effective-channel,omitempty"`
 }
 
 type PendingResourceUpload struct {
