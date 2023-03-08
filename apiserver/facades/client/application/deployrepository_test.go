@@ -22,7 +22,7 @@ import (
 type platformSuite struct {
 	state   *MockDeployFromRepositoryState
 	machine *mocks.MockMachine
-	model   *MockDeployFromRepositoryModel
+	model   *mocks.MockModel
 }
 
 var _ = gc.Suite(&platformSuite{})
@@ -34,8 +34,9 @@ func (s *platformSuite) TestDeducePlatformSimple(c *gc.C) {
 	s.model.EXPECT().Config().Return(config.New(config.UseDefaults, coretesting.FakeConfig()))
 
 	arg := params.DeployFromRepositoryArg{CharmName: "testme"}
-	plat, _, err := s.getValidator().deducePlatform(arg)
+	plat, usedModelDefaultBase, err := s.getValidator().deducePlatform(arg)
 	c.Assert(err, gc.IsNil)
+	c.Assert(usedModelDefaultBase, jc.IsFalse)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{Architecture: "amd64"})
 }
 
@@ -50,9 +51,9 @@ func (s *platformSuite) TestDeducePlatformArgArchBase(c *gc.C) {
 			Channel: "22.10",
 		},
 	}
-	plat, _, err := s.getValidator().deducePlatform(arg)
+	plat, usedModelDefaultBase, err := s.getValidator().deducePlatform(arg)
 	c.Assert(err, gc.IsNil)
-
+	c.Assert(usedModelDefaultBase, jc.IsFalse)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{
 		Architecture: "arm64",
 		OS:           "ubuntu",
@@ -75,8 +76,9 @@ func (s *platformSuite) TestDeducePlatformModelDefaultBase(c *gc.C) {
 	arg := params.DeployFromRepositoryArg{
 		CharmName: "testme",
 	}
-	plat, _, err := s.getValidator().deducePlatform(arg)
+	plat, usedModelDefaultBase, err := s.getValidator().deducePlatform(arg)
 	c.Assert(err, gc.IsNil)
+	c.Assert(usedModelDefaultBase, jc.IsFalse)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{
 		Architecture: "amd64",
 		OS:           "ubuntu",
@@ -100,8 +102,9 @@ func (s *platformSuite) TestDeducePlatformPlacementSimpleFound(c *gc.C) {
 			Directive: "0",
 		}},
 	}
-	plat, _, err := s.getValidator().deducePlatform(arg)
+	plat, usedModelDefaultBase, err := s.getValidator().deducePlatform(arg)
 	c.Assert(err, gc.IsNil)
+	c.Assert(usedModelDefaultBase, jc.IsFalse)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{
 		Architecture: "arm64",
 		OS:           "ubuntu",
@@ -122,8 +125,9 @@ func (s *platformSuite) TestDeducePlatformPlacementSimpleNotFound(c *gc.C) {
 			Directive: "0/lxd/0",
 		}},
 	}
-	plat, _, err := s.getValidator().deducePlatform(arg)
+	plat, usedModelDefaultBase, err := s.getValidator().deducePlatform(arg)
 	c.Assert(err, gc.IsNil)
+	c.Assert(usedModelDefaultBase, jc.IsFalse)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{Architecture: "amd64"})
 }
 
@@ -145,8 +149,9 @@ func (s *platformSuite) TestDeducePlatformPlacementMutipleMatch(c *gc.C) {
 			{Directive: "3"},
 		},
 	}
-	plat, _, err := s.getValidator().deducePlatform(arg)
+	plat, usedModelDefaultBase, err := s.getValidator().deducePlatform(arg)
 	c.Assert(err, gc.IsNil)
+	c.Assert(usedModelDefaultBase, jc.IsFalse)
 	c.Assert(plat, gc.DeepEquals, corecharm.Platform{
 		Architecture: "arm64",
 		OS:           "ubuntu",
@@ -178,21 +183,20 @@ func (s *platformSuite) TestDeducePlatformPlacementMutipleMatchFail(c *gc.C) {
 			{Directive: "1"},
 		},
 	}
-
 	_, _, err := s.getValidator().deducePlatform(arg)
 	c.Assert(errors.Is(err, errors.BadRequest), jc.IsTrue, gc.Commentf("%+v", err))
 }
 
 func (s *platformSuite) setupMocks(c *gc.C) *gomock.Controller {
 	ctrl := gomock.NewController(c)
-	s.model = NewMockDeployFromRepositoryModel(ctrl)
+	s.model = mocks.NewMockModel(ctrl)
 	s.state = NewMockDeployFromRepositoryState(ctrl)
 	s.machine = mocks.NewMockMachine(ctrl)
 	return ctrl
 }
 
-func (s *platformSuite) getValidator() deployFromRepositoryValidator {
-	return deployFromRepositoryValidator{
+func (s *platformSuite) getValidator() *deployFromRepositoryValidator {
+	return &deployFromRepositoryValidator{
 		model: s.model,
 		state: s.state,
 	}
