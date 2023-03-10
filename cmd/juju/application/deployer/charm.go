@@ -29,7 +29,6 @@ import (
 	"github.com/juju/juju/core/series"
 	coreseries "github.com/juju/juju/core/series"
 	"github.com/juju/juju/feature"
-	apiparams "github.com/juju/juju/rpc/params"
 	"github.com/juju/juju/storage"
 )
 
@@ -377,28 +376,26 @@ func (c *repositoryCharm) String() string {
 // PrepareAndDeploy finishes preparing to deploy a repository charm,
 // then deploys it.
 func (c *repositoryCharm) PrepareAndDeploy(ctx *cmd.Context, deployAPI DeployerAPI, resolver Resolver) error {
-	if featureflag.Enabled(feature.ServerSideCharmDeploy) {
-		var base *apiparams.Base
+	if featureflag.Enabled(feature.ServerSideCharmDeploy) && deployAPI.BestFacadeVersion("application") >= 18 {
+		var base *series.Base
 		if !c.baseFlag.Empty() {
-			base = &apiparams.Base{
-				Name:    c.baseFlag.OS,
-				Channel: c.baseFlag.Channel.String(),
-			}
+			base = &c.baseFlag
 		}
-		res, err := deployAPI.DeployFromRepository(apiparams.DeployFromRepositoryArgs{
-			Args: []apiparams.DeployFromRepositoryArg{{
-				ApplicationName: c.applicationName,
-				CharmName:       c.userRequestedURL.Name,
-				Force:           c.force,
-				Placement:       c.placement,
-				DryRun:          c.dryRun,
-				Base:            base,
-				Resources:       c.resources,
-				Cons:            c.constraints,
-			}},
+		info, _, errs := deployAPI.DeployFromRepository(application.DeployFromRepositoryArg{
+			ApplicationName: c.applicationName,
+			CharmName:       c.userRequestedURL.Name,
+			Force:           c.force,
+			Placement:       c.placement,
+			DryRun:          c.dryRun,
+			Base:            base,
+			Resources:       c.resources,
+			Cons:            c.constraints,
 		})
-		ctx.Infof("%s", pretty.Sprint(res))
-		return err
+		ctx.Infof("%s", pretty.Sprint(info))
+		for _, err := range errs {
+			ctx.Errorf(err.Error())
+		}
+		return nil
 	}
 
 	userRequestedURL := c.userRequestedURL

@@ -140,7 +140,7 @@ type ApplicationAPI interface {
 
 	ApplicationsInfo([]names.ApplicationTag) ([]apiparams.ApplicationInfoResult, error)
 
-	DeployFromRepository(args apiparams.DeployFromRepositoryArgs) (apiparams.DeployFromRepositoryResults, error)
+	DeployFromRepository(arg application.DeployFromRepositoryArg) (application.DeployInfo, []application.PendingResourceUpload, []error)
 }
 
 // Bundle is a local version of the charm.Bundle interface, for test
