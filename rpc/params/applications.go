@@ -546,6 +546,8 @@ type ExposeInfoResult struct {
 	ExposedEndpoints map[string]ExposedEndpoint `json:"exposed-endpoints,omitempty"`
 }
 
+// DeployFromRepositoryArgs holds arguments for multiple charms
+// to be deployed.
 type DeployFromRepositoryArgs struct {
 	Args []DeployFromRepositoryArg
 }
@@ -627,6 +629,8 @@ type DeployFromRepositoryResults struct {
 	Results []DeployFromRepositoryResult
 }
 
+// DeployFromRepositoryResult contains the result of deploying
+// a repository charm.
 type DeployFromRepositoryResult struct {
 	// Errors holds errors accumulated during validation of
 	// deployment, or errors during deployment
@@ -644,6 +648,12 @@ type DeployFromRepositoryResult struct {
 	PendingResourceUploads []*PendingResourceUpload
 }
 
+// DeployFromRepositoryInfo describes the charm deployed.
+// TODO: (hml)
+// Change the data here: charmurl not required, add
+// source, revision and application name. The latter may
+// different from the charm name, even if not specified
+// by the user.
 type DeployFromRepositoryInfo struct {
 	CharmURL string `json:"charm-url"`
 	// Channel is a string representation of the channel
@@ -656,6 +666,8 @@ type DeployFromRepositoryInfo struct {
 	EffectiveChannel *string `json:"effective-channel,omitempty"`
 }
 
+// PendingResourceUpload holds data required to upload a
+// local resource if required.
 type PendingResourceUpload struct {
 	// Name is the name of the resource.
 	Name string
@@ -665,7 +677,7 @@ type PendingResourceUpload struct {
 	Filename string
 
 	// PendingID is the pending ID to associate with this upload.
-	PendingID string
+	PendingID string `json:"pending-id"`
 
 	// Type of the resource, a string matching one of the resource.Type
 	Type string
