@@ -13,7 +13,6 @@ import (
 	"github.com/juju/errors"
 	jc "github.com/juju/testing/checkers"
 
-	"github.com/juju/juju/apiserver/facades/client/machinemanager/mocks"
 	corecharm "github.com/juju/juju/core/charm"
 	coreconfig "github.com/juju/juju/core/config"
 	"github.com/juju/juju/core/constraints"
@@ -501,9 +500,13 @@ func (s *validatorSuite) TestGetCharmAlreadyDeployed(c *gc.C) {
 		Platform: corecharm.Platform{Architecture: "amd64", OS: "ubuntu", Channel: "22.04"},
 		Revision: intptr(4),
 	}
+	downloadURLOrigin := resolvedOrigin
+	downloadURLOrigin.ID = "charm-id"
+	downloadURLOrigin.Hash = "download-hash"
 	supportedSeries := []string{"jammy", "focal"}
-	ch := mocks.NewMockCharm(ctrl)
+	ch := NewMockCharm(ctrl)
 	s.repo.EXPECT().ResolveWithPreferredChannel(curl, origin).Return(resultURL, resolvedOrigin, supportedSeries, nil)
+	s.repo.EXPECT().GetDownloadURL(resultURL, resolvedOrigin).Return(nil, downloadURLOrigin, nil)
 	s.state.EXPECT().Charm(gomock.Any()).Return(ch, nil)
 
 	arg := params.DeployFromRepositoryArg{
@@ -512,7 +515,7 @@ func (s *validatorSuite) TestGetCharmAlreadyDeployed(c *gc.C) {
 	obtainedURL, obtainedOrigin, obtainedCharm, err := s.getValidator().getCharm(arg)
 
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(obtainedOrigin, gc.DeepEquals, resolvedOrigin)
+	c.Assert(obtainedOrigin, gc.DeepEquals, downloadURLOrigin)
 	c.Assert(obtainedCharm, gc.NotNil)
 	c.Assert(obtainedURL.String(), gc.Equals, resultURL.String())
 }
