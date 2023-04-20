@@ -13,6 +13,7 @@ import (
 	"github.com/juju/errors"
 	jc "github.com/juju/testing/checkers"
 
+	"github.com/juju/juju/apiserver/facades/client/machinemanager/mocks"
 	corecharm "github.com/juju/juju/core/charm"
 	coreconfig "github.com/juju/juju/core/config"
 	"github.com/juju/juju/core/constraints"
@@ -73,6 +74,7 @@ func (s *validatorSuite) TestValidateSuccess(c *gc.C) {
 		Origin:   resolvedOrigin,
 	}).Return([]corecharm.EssentialMetadata{essMeta}, nil)
 	s.state.EXPECT().ModelConstraints().Return(constraints.Value{Arch: strptr("arm64")}, nil)
+	s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
 
 	arg := params.DeployFromRepositoryArg{
 		CharmName: "testcharm",
@@ -138,6 +140,7 @@ func (s *validatorSuite) TestValidatePlacementSuccess(c *gc.C) {
 	hwc := &instance.HardwareCharacteristics{Arch: strptr("amd64")}
 	s.machine.EXPECT().HardwareCharacteristics().Return(hwc, nil)
 	s.state.EXPECT().ModelConstraints().Return(constraints.Value{Arch: strptr("arm64")}, nil)
+	s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
 
 	arg := params.DeployFromRepositoryArg{
 		CharmName: "testcharm",
@@ -198,6 +201,7 @@ func (s *validatorSuite) TestValidateEndpointBindingSuccess(c *gc.C) {
 	endpointMap := map[string]string{"to": "from"}
 	s.bindings.EXPECT().Map().Return(endpointMap)
 	s.state.EXPECT().ModelConstraints().Return(constraints.Value{Arch: strptr("arm64")}, nil)
+	s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
 
 	arg := params.DeployFromRepositoryArg{
 		CharmName:        "testcharm",
@@ -449,6 +453,7 @@ func (s *validatorSuite) TestGetCharm(c *gc.C) {
 	}
 	supportedSeries := []string{"jammy", "focal"}
 	s.repo.EXPECT().ResolveWithPreferredChannel(curl, origin).Return(resultURL, resolvedOrigin, supportedSeries, nil)
+	s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
 	// getCharm
 	expMeta := &charm.Meta{
 		Name: "test-charm",
@@ -470,9 +475,45 @@ func (s *validatorSuite) TestGetCharm(c *gc.C) {
 		CharmName: "testcharm",
 	}
 	obtainedURL, obtainedOrigin, obtainedCharm, err := s.getValidator().getCharm(arg)
-	c.Assert(err, gc.HasLen, 0)
+	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(obtainedOrigin, gc.DeepEquals, resolvedOrigin)
 	c.Assert(obtainedCharm, gc.DeepEquals, corecharm.NewCharmInfoAdapter(essMeta))
+	c.Assert(obtainedURL.String(), gc.Equals, resultURL.String())
+}
+
+func (s *validatorSuite) TestGetCharmAlreadyDeployed(c *gc.C) {
+	ctrl := s.setupMocks(c)
+	defer ctrl.Finish()
+	s.expectSimpleValidate()
+	s.state.EXPECT().ModelConstraints().Return(constraints.Value{}, nil)
+	// resolveCharm
+	curl := charm.MustParseURL("testcharm")
+	resultURL := charm.MustParseURL("ch:amd64/jammy/testcharm-4")
+	origin := corecharm.Origin{
+		Source:   "charm-hub",
+		Channel:  &charm.Channel{Risk: "stable"},
+		Platform: corecharm.Platform{Architecture: "amd64"},
+	}
+	resolvedOrigin := corecharm.Origin{
+		Source:   "charm-hub",
+		Type:     "charm",
+		Channel:  &charm.Channel{Track: "default", Risk: "stable"},
+		Platform: corecharm.Platform{Architecture: "amd64", OS: "ubuntu", Channel: "22.04"},
+		Revision: intptr(4),
+	}
+	supportedSeries := []string{"jammy", "focal"}
+	ch := mocks.NewMockCharm(ctrl)
+	s.repo.EXPECT().ResolveWithPreferredChannel(curl, origin).Return(resultURL, resolvedOrigin, supportedSeries, nil)
+	s.state.EXPECT().Charm(gomock.Any()).Return(ch, nil)
+
+	arg := params.DeployFromRepositoryArg{
+		CharmName: "testcharm",
+	}
+	obtainedURL, obtainedOrigin, obtainedCharm, err := s.getValidator().getCharm(arg)
+
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(obtainedOrigin, gc.DeepEquals, resolvedOrigin)
+	c.Assert(obtainedCharm, gc.NotNil)
 	c.Assert(obtainedURL.String(), gc.Equals, resultURL.String())
 }
 
@@ -765,7 +806,7 @@ func (s *validatorSuite) TestCaasDeployFromRepositoryValidator(c *gc.C) {
 	supportedSeries := []string{"jammy", "focal"}
 	s.repo.EXPECT().ResolveWithPreferredChannel(curl, origin).Return(resultURL, resolvedOrigin, supportedSeries, nil)
 	s.repo.EXPECT().ResolveResources(nil, corecharm.CharmID{URL: resultURL, Origin: resolvedOrigin}).Return(nil, nil)
-
+	s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
 	// getCharm
 	expMeta := &charm.Meta{
 		Name: "test-charm",
