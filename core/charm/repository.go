@@ -39,8 +39,20 @@ type Repository interface {
 
 	// ResolveResources looks at the provided repository and backend (already
 	// downloaded) resources to determine which to use. Provided (uploaded) take
-	// precedence. If charmhub has a newer resource than the back end, use that.
+	// precedence. If the repository has a newer resource than the back end, use that.
 	ResolveResources(resources []charmresource.Resource, id CharmID) ([]charmresource.Resource, error)
+
+	// ResolveForDeploy combines ResolveWithPreferredChannel, GetEssentialMetadata
+	// and listResourcesMap into 1 call for server side charm deployment.
+	// Reducing the number of required calls to a repository.
+	ResolveForDeploy(arg ResolveForDeployArg) (ResolvedDataForDeploy, error)
+
+	// ResolveResourcesForDeploy looks at the provided repository and backend (already
+	// downloaded) resources to determine which to use. Provided (uploaded) take
+	// precedence. If the repository has a newer resource than the back end, use that.
+	// Here the charm repository resource data is provided, rather than downloaded from
+	// a repository. Used for server side charm deployment.
+	ResolveResourcesForDeploy(resources []charmresource.Resource, storeResources map[string]charmresource.Resource, id CharmID) ([]charmresource.Resource, error)
 }
 
 // RepositoryFactory is a factory for charm Repositories.
@@ -83,5 +95,22 @@ type CharmID struct {
 
 	// Metadata is optional extra information about a particular model's
 	// "in-theatre" use of the charm.
-	Metadata map[string]string
+	//Metadata map[string]string
+}
+
+type ResolveForDeployArg struct {
+	BaseSelectionFunc func(Origin, Origin, []string) (Origin, error)
+	URL               *charm.URL
+	Origin            Origin
+}
+
+type ResolvedDataForDeploy struct {
+	Curl *charm.URL
+	// SupportedBases
+	//SupportedSeries   []string
+	EssentialMetadata EssentialMetadata
+
+	// Resources is a map of resource names to their current repository revision
+	// based on the supplied origin
+	Resources map[string]charmresource.Resource
 }

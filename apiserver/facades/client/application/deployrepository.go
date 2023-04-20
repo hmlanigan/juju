@@ -26,7 +26,6 @@ import (
 	"github.com/juju/juju/core/instance"
 	"github.com/juju/juju/core/network"
 	coreseries "github.com/juju/juju/core/series"
-	"github.com/juju/juju/environs/bootstrap"
 	environsconfig "github.com/juju/juju/environs/config"
 	"github.com/juju/juju/rpc/params"
 	"github.com/juju/juju/state"
@@ -162,11 +161,15 @@ func (api *DeployFromRepositoryAPI) DeployFromRepository(arg params.DeployFromRe
 // the DeployFromRepository returns. Errors are not terminal,
 // and will be collected and returned altogether.
 func (v *deployFromRepositoryValidator) resolveResources(
-	curl *charm.URL,
-	origin corecharm.Origin,
+	deployData corecharm.ResolvedDataForDeploy,
 	deployResArg map[string]string,
 	resMeta map[string]resource.Meta,
 ) ([]resource.Resource, []*params.PendingResourceUpload, error) {
+	deployRepoLogger.Tracef("resolveResources(%s, %s, %s)", pretty.Sprint(deployData), pretty.Sprint(deployResArg), pretty.Sprint(resMeta))
+	if len(resMeta) == 0 {
+		return nil, nil, nil
+	}
+
 	var pendingUploadIDs []*params.PendingResourceUpload
 	var resources []resource.Resource
 
@@ -197,12 +200,12 @@ func (v *deployFromRepositoryValidator) resolveResources(
 		}
 		resources = append(resources, r)
 	}
-
-	repo, err := v.getCharmRepository(origin.Source)
+	resolvedOrigin := deployData.EssentialMetadata.ResolvedOrigin
+	repo, err := v.getCharmRepository(resolvedOrigin.Source)
 	if err != nil {
 		return nil, nil, errors.Trace(err)
 	}
-	resolvedResources, resolveErr := repo.ResolveResources(resources, corecharm.CharmID{URL: curl, Origin: origin})
+	resolvedResources, resolveErr := repo.ResolveResourcesForDeploy(resources, deployData.Resources, corecharm.CharmID{URL: deployData.Curl, Origin: resolvedOrigin})
 
 	return resolvedResources, pendingUploadIDs, resolveErr
 }
@@ -212,6 +215,7 @@ func (v *deployFromRepositoryValidator) resolveResources(
 // processed. Errors are not terminal. It also returns the name to pendingIDs
 // map that's needed by the AddApplication.
 func (api *DeployFromRepositoryAPI) addPendingResources(appName string, resources []resource.Resource) (map[string]string, []error) {
+	deployRepoLogger.Tracef("addPendingResources(%s, %s)", appName, pretty.Sprint(resources))
 	var errs []error
 	pendingIDs := make(map[string]string)
 
@@ -348,9 +352,9 @@ func (v *deployFromRepositoryValidator) validate(arg params.DeployFromRepository
 
 	// get the charm data to validate against, either a previously deployed
 	// charm or the essential metadata from a charm to be async downloaded.
-	charmURL, resolvedOrigin, resolvedCharm, getCharmErr := v.getCharm(arg)
-	if getCharmErr != nil {
-		errs = append(errs, getCharmErr)
+	deployData, resolvedCharm, err := v.getCharm(arg)
+	if err != nil {
+		errs = append(errs, err)
 		// return any errors here, there is no need to continue with
 		// validation if we cannot find the charm.
 		return deployTemplate{}, errs
@@ -362,10 +366,10 @@ func (v *deployFromRepositoryValidator) validate(arg params.DeployFromRepository
 		errs = append(errs, rcErrs...)
 	}
 
-	dt.charmURL = charmURL
+	dt.charmURL = deployData.Curl
 	dt.dryRun = arg.DryRun
 	dt.force = arg.Force
-	dt.origin = resolvedOrigin
+	dt.origin = deployData.EssentialMetadata.ResolvedOrigin
 	dt.placement = arg.Placement
 	dt.storage = arg.Storage
 	if len(arg.EndpointBindings) > 0 {
@@ -376,7 +380,7 @@ func (v *deployFromRepositoryValidator) validate(arg params.DeployFromRepository
 		dt.endpoints = bindings.Map()
 	}
 	// resolve and validate resources
-	resources, pendingResourceUploads, resolveResErr := v.resolveResources(dt.charmURL, dt.origin, dt.resources, resolvedCharm.Meta().Resources)
+	resources, pendingResourceUploads, resolveResErr := v.resolveResources(deployData, arg.Resources, resolvedCharm.Meta().Resources)
 	if resolveResErr != nil {
 		errs = append(errs, resolveResErr)
 	}
@@ -411,6 +415,7 @@ func validateAndParseAttachStorage(input []string, numUnits int) ([]names.Storag
 }
 
 func (v *deployFromRepositoryValidator) resolvedCharmValidation(resolvedCharm charm.Charm, arg params.DeployFromRepositoryArg) (deployTemplate, []error) {
+	deployRepoLogger.Tracef("resolvedCharmValidation()")
 	errs := make([]error, 0)
 
 	var cons constraints.Value
@@ -474,7 +479,6 @@ func (v *deployFromRepositoryValidator) resolvedCharmValidation(resolvedCharm ch
 		charmSettings:     settings,
 		constraints:       cons,
 		numUnits:          numUnits,
-		resources:         arg.Resources,
 	}
 
 	return dt, errs
@@ -535,6 +539,7 @@ func (v iaasDeployFromRepositoryValidator) ValidateArg(arg params.DeployFromRepo
 }
 
 func (v *deployFromRepositoryValidator) createOrigin(arg params.DeployFromRepositoryArg) (*charm.URL, corecharm.Origin, bool, error) {
+	deployRepoLogger.Tracef("createOrigin(%q)", arg.CharmName)
 	path, err := charm.EnsureSchema(arg.CharmName, charm.CharmHub)
 	if err != nil {
 		return nil, corecharm.Origin{}, false, err
@@ -583,6 +588,7 @@ func (v *deployFromRepositoryValidator) createOrigin(arg params.DeployFromReposi
 // - If no architecture provided, use model default. Fallback
 // to DefaultArchitecture.
 func (v *deployFromRepositoryValidator) deducePlatform(arg params.DeployFromRepositoryArg) (corecharm.Platform, bool, error) {
+	deployRepoLogger.Tracef("deducePlatform(%q)", arg.CharmName)
 	argArch := arg.Cons.Arch
 	argBase := arg.Base
 	var usedModelDefaultBase bool
@@ -649,6 +655,7 @@ func (v *deployFromRepositoryValidator) deducePlatform(arg params.DeployFromRepo
 }
 
 func (v *deployFromRepositoryValidator) platformFromPlacement(placements []*instance.Placement) (corecharm.Platform, bool, error) {
+	deployRepoLogger.Tracef("platformFromPlacement()")
 	if len(placements) == 0 {
 		return corecharm.Platform{}, false, errors.NotFoundf("placements")
 	}
@@ -689,107 +696,119 @@ func (v *deployFromRepositoryValidator) platformFromPlacement(placements []*inst
 	return platform, platStrings.Size() == 1, nil
 }
 
-func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedOrigin corecharm.Origin, force, usedModelDefaultBase bool, cons constraints.Value) (*charm.URL, corecharm.Origin, error) {
+func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedOrigin corecharm.Origin, force, usedModelDefaultBase bool, cons constraints.Value) (corecharm.ResolvedDataForDeploy, error) {
+	deployRepoLogger.Tracef("resolveCharm(%s, %s)", curl, pretty.Sprint(requestedOrigin))
 	repo, err := v.getCharmRepository(requestedOrigin.Source)
 	if err != nil {
-		return nil, corecharm.Origin{}, errors.Trace(err)
+		return corecharm.ResolvedDataForDeploy{}, errors.Trace(err)
+	}
+	hml := func(requestedOrigin, resolvedOrigin corecharm.Origin, supportedSeries []string) (corecharm.Origin, error) {
+		modelCons, err := v.state.ModelConstraints()
+		if err != nil {
+			return corecharm.Origin{}, errors.Trace(err)
+		}
+
+		// The charmhub API can return "all" for architecture as it's not a real
+		// arch we don't know how to correctly model it. "all " doesn't mean use the
+		// default arch, it means use any arch which isn't quite the same. So if we
+		// do get "all" we should see if there is a clean way to resolve it.
+		if resolvedOrigin.Platform.Architecture == "all" {
+			resolvedOrigin.Platform.Architecture = arch.ConstraintArch(modelCons, nil)
+		}
+
+		var seriesFlag string
+		if requestedOrigin.Platform.OS != "" {
+			var err error
+			seriesFlag, err = coreseries.GetSeriesFromChannel(requestedOrigin.Platform.OS, requestedOrigin.Platform.Channel)
+			if err != nil {
+				return corecharm.Origin{}, errors.Trace(err)
+			}
+		}
+
+		modelCfg, err := v.model.Config()
+		if err != nil {
+			return corecharm.Origin{}, errors.Trace(err)
+		}
+
+		imageStream := modelCfg.ImageStream()
+
+		workloadSeries, err := coreseries.WorkloadSeries(jujuclock.WallClock.Now(), seriesFlag, imageStream)
+		if err != nil {
+			return corecharm.Origin{}, errors.Trace(err)
+		}
+
+		selector := corecharm.SeriesSelector{
+			SeriesFlag:          seriesFlag,
+			SupportedSeries:     supportedSeries,
+			SupportedJujuSeries: workloadSeries,
+			Force:               force,
+			Conf:                modelCfg,
+			FromBundle:          false,
+			Logger:              deployRepoLogger,
+			UsingImageID:        cons.HasImageID() || modelCons.HasImageID(),
+		}
+		err = selector.Validate()
+		if err != nil {
+			return corecharm.Origin{}, errors.Trace(err)
+		}
+
+		// Get the series to use.
+		series, err := selector.CharmSeries()
+		deployRepoLogger.Tracef("Using series %q from %v to deploy %v", series, supportedSeries, curl)
+		if charm.IsUnsupportedSeriesError(err) {
+			msg := fmt.Sprintf("%v. Use --force to deploy the charm anyway.", err)
+			if usedModelDefaultBase {
+				msg += " Used the default-series."
+			}
+			return corecharm.Origin{}, errors.Errorf(msg)
+		}
+
+		var base coreseries.Base
+		if series == coreseries.Kubernetes.String() {
+			base = coreseries.LegacyKubernetesBase()
+		} else {
+			base, err = coreseries.GetBaseFromSeries(series)
+			if err != nil {
+				return corecharm.Origin{}, errors.Trace(err)
+			}
+		}
+		resolvedOrigin.Platform.OS = base.OS
+		// Avoid using Channel.String() here instead of Channel.Track for the Platform.Channel,
+		// because String() will return "track/risk" if the channel's risk is non-empty
+		resolvedOrigin.Platform.Channel = base.Channel.Track
+
+		return resolvedOrigin, nil
 	}
 
-	resultURL, resolvedOrigin, supportedSeries, resolveErr := repo.ResolveWithPreferredChannel(curl, requestedOrigin)
+	resolveForDeployArg := corecharm.ResolveForDeployArg{
+		BaseSelectionFunc: hml,
+		URL:               curl,
+		Origin:            requestedOrigin,
+	}
+
+	deployData, resolveErr := repo.ResolveForDeploy(resolveForDeployArg)
 	if charm.IsUnsupportedSeriesError(resolveErr) {
 		if !force {
 			msg := fmt.Sprintf("%v. Use --force to deploy the charm anyway.", resolveErr)
 			if usedModelDefaultBase {
 				msg += " Used the default-series."
 			}
-			return nil, corecharm.Origin{}, errors.Errorf(msg)
+			return corecharm.ResolvedDataForDeploy{}, errors.Errorf(msg)
 		}
 	} else if resolveErr != nil {
-		return nil, corecharm.Origin{}, errors.Trace(resolveErr)
+		return corecharm.ResolvedDataForDeploy{}, errors.Trace(resolveErr)
 	}
-	modelCons, err := v.state.ModelConstraints()
-	if err != nil {
-		return nil, corecharm.Origin{}, errors.Trace(err)
-	}
-
-	// The charmhub API can return "all" for architecture as it's not a real
-	// arch we don't know how to correctly model it. "all " doesn't mean use the
-	// default arch, it means use any arch which isn't quite the same. So if we
-	// do get "all" we should see if there is a clean way to resolve it.
-	if resolvedOrigin.Platform.Architecture == "all" {
-		resolvedOrigin.Platform.Architecture = arch.ConstraintArch(modelCons, nil)
-	}
-
-	var seriesFlag string
-	if requestedOrigin.Platform.OS != "" {
-		var err error
-		seriesFlag, err = coreseries.GetSeriesFromChannel(requestedOrigin.Platform.OS, requestedOrigin.Platform.Channel)
-		if err != nil {
-			return nil, corecharm.Origin{}, errors.Trace(err)
-		}
-	}
-
-	modelCfg, err := v.model.Config()
-	if err != nil {
-		return nil, corecharm.Origin{}, errors.Trace(err)
-	}
-
-	imageStream := modelCfg.ImageStream()
-
-	workloadSeries, err := coreseries.WorkloadSeries(jujuclock.WallClock.Now(), seriesFlag, imageStream)
-	if err != nil {
-		return nil, corecharm.Origin{}, errors.Trace(err)
-	}
-
-	selector := corecharm.SeriesSelector{
-		SeriesFlag:          seriesFlag,
-		SupportedSeries:     supportedSeries,
-		SupportedJujuSeries: workloadSeries,
-		Force:               force,
-		Conf:                modelCfg,
-		FromBundle:          false,
-		Logger:              deployRepoLogger,
-		UsingImageID:        cons.HasImageID() || modelCons.HasImageID(),
-	}
-	err = selector.Validate()
-	if err != nil {
-		return nil, corecharm.Origin{}, errors.Trace(err)
-	}
-
-	// Get the series to use.
-	series, err := selector.CharmSeries()
-	deployRepoLogger.Tracef("Using series %q from %v to deploy %v", series, supportedSeries, curl)
-	if charm.IsUnsupportedSeriesError(err) {
-		msg := fmt.Sprintf("%v. Use --force to deploy the charm anyway.", err)
-		if usedModelDefaultBase {
-			msg += " Used the default-series."
-		}
-		return nil, corecharm.Origin{}, errors.Errorf(msg)
-	}
-
-	var base coreseries.Base
-	if series == coreseries.Kubernetes.String() {
-		base = coreseries.LegacyKubernetesBase()
-	} else {
-		base, err = coreseries.GetBaseFromSeries(series)
-		if err != nil {
-			return nil, corecharm.Origin{}, errors.Trace(err)
-		}
-	}
-	resolvedOrigin.Platform.OS = base.OS
-	// Avoid using Channel.String() here instead of Channel.Track for the Platform.Channel,
-	// because String() will return "track/risk" if the channel's risk is non-empty
-	resolvedOrigin.Platform.Channel = base.Channel.Track
-
-	return resultURL, resolvedOrigin, nil
+	return deployData, nil
 }
 
 // getCharm returns the charm being deployed. Either it already has been
 // used once, and we get the data from state. Or we get the essential metadata.
-func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepositoryArg) (*charm.URL, corecharm.Origin, charm.Charm, error) {
+func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepositoryArg) (corecharm.ResolvedDataForDeploy, charm.Charm, error) {
+	deployRepoLogger.Tracef("getCharm(%s)", arg.CharmName)
 	initialCurl, requestedOrigin, usedModelDefaultBase, err := v.createOrigin(arg)
 	if err != nil {
-		return nil, corecharm.Origin{}, nil, errors.Trace(err)
+		return corecharm.ResolvedDataForDeploy{}, nil, errors.Trace(err)
+		//>>>>>>> 880c479fb7 (Use existing charm in DeployFromRepository.)
 	}
 	deployRepoLogger.Tracef("from createOrigin: %s, %s", initialCurl, pretty.Sprint(requestedOrigin))
 	// TODO:
@@ -798,59 +817,41 @@ func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepository
 	// series, then call GetEssentialMetadata, which again calls ResolveCharmWithPreferredChannel
 	// then a refresh request.
 
-	charmURL, resolvedOrigin, err := v.resolveCharm(initialCurl, requestedOrigin, arg.Force, usedModelDefaultBase, arg.Cons)
+	deployData, err := v.resolveCharm(initialCurl, requestedOrigin, arg.Force, usedModelDefaultBase, arg.Cons)
 	if err != nil {
-		return nil, corecharm.Origin{}, nil, err
+		return corecharm.ResolvedDataForDeploy{}, nil, errors.Trace(err)
 	}
-	deployRepoLogger.Tracef("from resolveCharm: %s, %s", charmURL, pretty.Sprint(resolvedOrigin))
-	if resolvedOrigin.Type != "charm" {
-		return nil, corecharm.Origin{}, nil, errors.BadRequestf("%q is not a charm", arg.CharmName)
-	}
-
-	repo, err := v.getCharmRepository(corecharm.CharmHub)
-	if err != nil {
-		return nil, corecharm.Origin{}, nil, err
+	deployRepoLogger.Tracef("from resolveCharm: %s, %s", initialCurl, pretty.Sprint(deployData))
+	if deployData.EssentialMetadata.ResolvedOrigin.Type != "charm" {
+		return corecharm.ResolvedDataForDeploy{}, nil, errors.BadRequestf("%q is not a charm", arg.CharmName)
 	}
 
 	// Check if a charm doc already exists for this charm URL. If so, the
-	// charm has already been queued for download so this is a no-op. We
-	// still need to resolve and return back a suitable origin as charmhub
-	// may refer to the same blob using the same revision in different
-	// channels.
-	//
-	// We need to use GetDownloadURL instead of ResolveWithPreferredChannel
-	// to ensure that the resolved origin has the ID/Hash fields correctly
-	// populated.
-	deployedCharm, err := v.state.Charm(charmURL)
+	// charm has already been queued for download so this is a no-op.
+	deployedCharm, err := v.state.Charm(deployData.Curl)
 	if err != nil && !errors.Is(err, errors.NotFound) {
-		return nil, corecharm.Origin{}, nil, errors.Trace(err)
+		return corecharm.ResolvedDataForDeploy{}, nil, errors.Trace(err)
 	} else if err == nil {
-		_, resolvedOrigin, err = repo.GetDownloadURL(charmURL, resolvedOrigin)
-		if err != nil {
-			return nil, corecharm.Origin{}, nil, errors.Trace(err)
-		}
-		return charmURL, resolvedOrigin, deployedCharm, nil
+		return deployData, deployedCharm, nil
+	} else {
+		// This is a hack until all deploy is controller side.
+		// GetDownloadURL for charms depends on the ID not being
+		// set to use the install action for charmhub refresh.
+		// The data is returned via ResolveForDeploy so that if
+		// the charm is already deployed with a different application
+		// name, we can use the data for the new application
+		// rather than another call to GetDownloadURL and the
+		// charmhub repository.
+		deployData.EssentialMetadata.ResolvedOrigin.ID = ""
+		deployData.EssentialMetadata.ResolvedOrigin.Hash = ""
 	}
 
-	// Fetch the essential metadata that we require to deploy the charm
-	// without downloading the full archive. The remaining metadata will
-	// be populated once the charm gets downloaded.
-	essentialMeta, err := repo.GetEssentialMetadata(corecharm.MetadataRequest{
-		CharmURL: charmURL,
-		Origin:   resolvedOrigin,
-	})
-	if err != nil {
-		return nil, corecharm.Origin{}, nil, errors.Annotatef(err, "retrieving essential metadata for charm %q", charmURL)
-	}
-	metaRes := essentialMeta[0]
-	resolvedCharm := corecharm.NewCharmInfoAdapter(metaRes)
-	if resolvedCharm.Meta().Name == bootstrap.ControllerCharmName {
-		return nil, corecharm.Origin{}, nil, errors.NotSupportedf("manual deploy of the controller charm")
-	}
-	return charmURL, metaRes.ResolvedOrigin, resolvedCharm, nil
+	resolvedCharm := corecharm.NewCharmInfoAdapter(deployData.EssentialMetadata)
+	return deployData, resolvedCharm, nil
 }
 
 func (v *deployFromRepositoryValidator) appCharmSettings(appName string, trust bool, chCfg *charm.Config, configYAML string) (*config.Config, charm.Settings, error) {
+	deployRepoLogger.Tracef("appCharmSettings(%s)", appName)
 	if !trust && configYAML == "" {
 		return nil, nil, nil
 	}
