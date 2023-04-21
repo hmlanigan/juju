@@ -166,6 +166,7 @@ func (v *deployFromRepositoryValidator) resolveResources(
 	deployResArg map[string]string,
 	resMeta map[string]resource.Meta,
 ) ([]resource.Resource, []*params.PendingResourceUpload, error) {
+	deployRepoLogger.Tracef("resolveResources(%s, %s, %s)", pretty.Sprint(origin), pretty.Sprint(deployResArg), pretty.Sprint(resMeta))
 	var pendingUploadIDs []*params.PendingResourceUpload
 	var resources []resource.Resource
 
@@ -211,6 +212,7 @@ func (v *deployFromRepositoryValidator) resolveResources(
 // processed. Errors are not terminal. It also returns the name to pendingIDs
 // map that's needed by the AddApplication.
 func (api *DeployFromRepositoryAPI) addPendingResources(appName string, resources []resource.Resource) (map[string]string, []error) {
+	deployRepoLogger.Tracef("addPendingResources(%s, %s)", appName, pretty.Sprint(resources))
 	var errs []error
 	pendingIDs := make(map[string]string)
 
@@ -365,6 +367,7 @@ func (v *deployFromRepositoryValidator) validate(arg params.DeployFromRepository
 }
 
 func (v *deployFromRepositoryValidator) resolvedCharmValidation(resolvedCharm charm.Charm, arg params.DeployFromRepositoryArg) (deployTemplate, []error) {
+	deployRepoLogger.Tracef("resolvedCharmValidation()")
 	errs := make([]error, 0)
 	if resolvedCharm.Meta().Name == bootstrap.ControllerCharmName {
 		errs = append(errs, errors.NotSupportedf("manual deploy of the controller charm"))
@@ -474,6 +477,7 @@ func (v *iaasDeployFromRepositoryValidator) ValidateArg(arg params.DeployFromRep
 }
 
 func (v *deployFromRepositoryValidator) createOrigin(arg params.DeployFromRepositoryArg) (*charm.URL, corecharm.Origin, bool, error) {
+	deployRepoLogger.Tracef("createOrigin(%q)", arg.CharmName)
 	path, err := charm.EnsureSchema(arg.CharmName, charm.CharmHub)
 	if err != nil {
 		return nil, corecharm.Origin{}, false, err
@@ -522,6 +526,7 @@ func (v *deployFromRepositoryValidator) createOrigin(arg params.DeployFromReposi
 // - If no architecture provided, use model default. Fallback
 // to DefaultArchitecture.
 func (v *deployFromRepositoryValidator) deducePlatform(arg params.DeployFromRepositoryArg) (corecharm.Platform, bool, error) {
+	deployRepoLogger.Tracef("deducePlatform(%q)", arg.CharmName)
 	argArch := arg.Cons.Arch
 	argBase := arg.Base
 	var usedModelDefaultBase bool
@@ -588,6 +593,7 @@ func (v *deployFromRepositoryValidator) deducePlatform(arg params.DeployFromRepo
 }
 
 func (v *deployFromRepositoryValidator) platformFromPlacement(placements []*instance.Placement) (corecharm.Platform, bool, error) {
+	deployRepoLogger.Tracef("platformFromPlacement()")
 	if len(placements) == 0 {
 		return corecharm.Platform{}, false, errors.NotFoundf("placements")
 	}
@@ -629,6 +635,7 @@ func (v *deployFromRepositoryValidator) platformFromPlacement(placements []*inst
 }
 
 func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedOrigin corecharm.Origin, force, usedModelDefaultBase bool, cons constraints.Value) (*charm.URL, corecharm.Origin, error) {
+	deployRepoLogger.Tracef("resolveCharm(%s, %s)", curl, pretty.Sprint(requestedOrigin))
 	repo, err := v.getCharmRepository(requestedOrigin.Source)
 	if err != nil {
 		return nil, corecharm.Origin{}, errors.Trace(err)
@@ -725,7 +732,9 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 
 // getCharm returns the charm being deployed. Either it already has been
 // used once, and we get the data from state. Or we get the essential metadata.
+// <<<<<<< HEAD
 func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepositoryArg) (*charm.URL, corecharm.Origin, charm.Charm, error) {
+	deployRepoLogger.Tracef("getCharm(%s)", arg.CharmName)
 	initialCurl, requestedOrigin, usedModelDefaultBase, err := v.createOrigin(arg)
 	if err != nil {
 		return nil, corecharm.Origin{}, nil, errors.Trace(err)
@@ -785,6 +794,7 @@ func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepository
 }
 
 func (v *deployFromRepositoryValidator) appCharmSettings(appName string, trust bool, chCfg *charm.Config, configYAML string) (*config.Config, charm.Settings, error) {
+	deployRepoLogger.Tracef("appCharmSettings(%s)", appName)
 	if !trust && configYAML == "" {
 		return nil, nil, nil
 	}

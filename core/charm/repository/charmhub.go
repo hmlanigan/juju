@@ -41,6 +41,14 @@ func NewCharmHubRepository(logger Logger, chClient CharmHubClient) *CharmHubRepo
 	}
 }
 
+type ResolvedDataForDeploy struct {
+	CharmURL        *charm.URL
+	Origin          corecharm.Origin
+	SupportedSeries []string
+	transport.ResourcesResponse
+	EssentialMetadata corecharm.EssentialMetadata
+}
+
 // ResolveWithPreferredChannel defines a way using the given charm URL and
 // charm origin (platform and channel) to locate a matching charm against the
 // Charmhub API.

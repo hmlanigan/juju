@@ -160,7 +160,7 @@ func (c executeOne) String() string {
 	}
 	var revision string
 	if c.Revision != nil {
-		revision = fmt.Sprintf(" with revision: %+v", c.Revision)
+		revision = fmt.Sprintf(" with revision: %+v", *c.Revision)
 	}
 	return fmt.Sprintf("Execute One (action: %s, instanceKey: %s): using %s%s channel %v and base %s",
 		c.action, c.instanceKey, using, revision, channel, c.Base)
@@ -233,9 +233,9 @@ func (c executeOneByRevision) Ensure(responses []transport.RefreshResponse) erro
 func (c executeOneByRevision) String() string {
 	var revision string
 	if c.Revision != nil {
-		revision = fmt.Sprintf(" with revision: %+v", c.Revision)
+		revision = fmt.Sprintf(" with revision: %+v", *c.Revision)
 	}
-	return fmt.Sprintf("Install One (action: %s, instanceKey: %s): using Name %s %s",
+	return fmt.Sprintf("Install One (action: %s, instanceKey: %s): using Name %s%s",
 		c.action, c.instanceKey, c.Name, revision)
 }
 
