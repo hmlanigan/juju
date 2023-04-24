@@ -41,6 +41,9 @@ type Repository interface {
 	// downloaded) resources to determine which to use. Provided (uploaded) take
 	// precedence. If charmhub has a newer resource than the back end, use that.
 	ResolveResources(resources []charmresource.Resource, id CharmID) ([]charmresource.Resource, error)
+
+	ResolveForDeploy(arg ResolveForDeployArg) (ResolvedDataForDeploy, error)
+	ResolveResourcesTakeTwo(resources []charmresource.Resource, storeResources map[string]charmresource.Resource, id CharmID) ([]charmresource.Resource, error)
 }
 
 // RepositoryFactory is a factory for charm Repositories.
@@ -84,4 +87,22 @@ type CharmID struct {
 	// Metadata is optional extra information about a particular model's
 	// "in-theatre" use of the charm.
 	Metadata map[string]string
+}
+
+type ResolveForDeployArg struct {
+	BaseSelectionFunc func(Origin, Origin, []string) (Origin, error)
+	Curl              *charm.URL
+	Origin            Origin
+}
+
+type ResolvedDataForDeploy struct {
+	Curl   *charm.URL
+	Origin Origin
+	// SupportedBases
+	//SupportedSeries   []string
+	EssentialMetadata EssentialMetadata
+
+	// Resources is a map of resource names to their current repository revision
+	// based on the supplied origin
+	Resources map[string]charmresource.Resource
 }
