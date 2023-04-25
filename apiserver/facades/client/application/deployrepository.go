@@ -764,42 +764,26 @@ func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepository
 	// Are we deploying a charm? if not, fail fast here.
 	// TODO: add a ErrorNotACharm or the like for the juju client.
 
-	//repo, err := v.getCharmRepository(corecharm.CharmHub)
-	//if err != nil {
-	//	return nil, corecharm.Origin{}, nil, errors.Trace(err)
-	//}
-
 	// Check if a charm doc already exists for this charm URL. If so, the
-	// charm has already been queued for download so this is a no-op. We
-	// still need to resolve and return back a suitable origin as charmhub
-	// may refer to the same blob using the same revision in different
-	// channels.
-	//
-	// We need to use GetDownloadURL instead of ResolveWithPreferredChannel
-	// to ensure that the resolved origin has the ID/Hash fields correctly
-	// populated.
+	// charm has already been queued for download so this is a no-op.
 	deployedCharm, err := v.state.Charm(deployData.Curl)
 	if err != nil && !errors.Is(err, errors.NotFound) {
 		return corecharm.ResolvedDataForDeploy{}, nil, errors.Trace(err)
 	} else if err == nil {
-		//_, resolvedOrigin, err = repo.GetDownloadURL(charmURL, resolvedOrigin)
-		//if err != nil {
-		//	return nil, corecharm.Origin{}, nil, errors.Trace(err)
-		//}
 		return deployData, deployedCharm, nil
+	} else {
+		// This is a hack until all deploy is controller side.
+		// GetDownloadURL for charms depends on the ID not being
+		// set to use the install action for charmhub refresh.
+		// The data is returned via ResolveForDeploy so that if
+		// the charm is already deployed with a different application
+		// name, we can use the data for the new application
+		// rather than another call to GetDownloadURL and the
+		// charmhub repository.
+		deployData.Origin.ID = ""
+		deployData.Origin.Hash = ""
 	}
 
-	// Fetch the essential metadata that we require to deploy the charm
-	// without downloading the full archive. The remaining metadata will
-	// be populated once the charm gets downloaded.
-	//essentialMeta, err := repo.GetEssentialMetadata(corecharm.MetadataRequest{
-	//	CharmURL: charmURL,
-	//	Origin:   resolvedOrigin,
-	//})
-	//if err != nil {
-	//	return nil, corecharm.Origin{}, nil, errors.Annotatef(err, "retrieving essential metadata for charm %q", charmURL)
-	//}
-	//metaRes := essentialMeta[0]
 	resolvedCharm := corecharm.NewCharmInfoAdapter(deployData.EssentialMetadata)
 	return deployData, resolvedCharm, nil
 }
