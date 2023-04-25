@@ -226,13 +226,20 @@ func (c *CharmHubRepository) ResolveForDeploy(arg corecharm.ResolveForDeployArg)
 	} else if resolveErr != nil {
 		return corecharm.ResolvedDataForDeploy{}, errors.Trace(resolveErr)
 	}
+	loggo.GetLogger("lanigan").Criticalf("ResolveForDeploy(%s) found once %s, %s", resultURL, resolvedOrigin, pretty.Sprint(resp))
 	if arg.Origin.Platform.OS == "" && arg.Origin.Platform.Channel == "" {
-		resolvedOriginWithSeries, err := arg.BaseSelectionFunc(arg.Origin, resolvedOrigin, supportedSeries)
+		//resolvedOriginWithSeries, err := arg.BaseSelectionFunc(arg.Origin, resolvedOrigin, supportedSeries)
+		var err error
+		resolvedOrigin, err = arg.BaseSelectionFunc(arg.Origin, resolvedOrigin, supportedSeries)
 		if err != nil {
 			return corecharm.ResolvedDataForDeploy{}, errors.Trace(resolveErr)
 		}
-		resultURL, resolvedOrigin, supportedSeries, resp, resolveErr = c.heather(resultURL, resolvedOriginWithSeries)
+		//resultURL, resolvedOrigin, supportedSeries, resp, resolveErr = c.heather(resultURL, resolvedOriginWithSeries)
+		loggo.GetLogger("lanigan").Criticalf("ResolveForDeploy(%s) found twice %s, %s", resultURL, resolvedOrigin, pretty.Sprint(resp))
 	}
+	// {"context":[],"actions":[{"action":"install","instance-key":"646ab881-5654-4d26-8b1e-aa066b104e75","name":"juju-qa-test",
+	// "channel":"stable","base":{"architecture":"amd64","name":"ubuntu","channel":"20.04"}}],"fields":["bases","config-yaml",
+	// "download","id","license","metadata-yaml","name","publisher","resources","revision","summary","type","version"]}
 	resolvedOrigin.ID = resp.Entity.ID
 	resolvedOrigin.Hash = resp.Entity.Download.HashSHA256
 	essMeta, err := transformRefreshResult(resultURL, resp)
@@ -552,6 +559,7 @@ func (c *CharmHubRepository) listResourcesMap(id corecharm.CharmID) (map[string]
 			return nil, errors.Trace(err)
 		}
 	}
+	loggo.GetLogger("heather").Criticalf("listResourcesMap(%s) returns: %s", id.URL, pretty.Sprint(results))
 	return results, nil
 }
 
@@ -587,6 +595,7 @@ func (c *CharmHubRepository) resolveRepositoryResources(res charmresource.Resour
 	storeResources map[string]charmresource.Resource,
 	id corecharm.CharmID,
 ) (charmresource.Resource, error) {
+	loggo.GetLogger("heather").Criticalf("resolveRepositoryResources(%s, %s, %s)", pretty.Sprint(res), pretty.Sprint(storeResources), id)
 	storeRes, ok := storeResources[res.Name]
 	if !ok {
 		// This indicates that AddPendingResources() was called for
@@ -618,6 +627,7 @@ func (c *CharmHubRepository) resolveRepositoryResources(res charmresource.Resour
 }
 
 func (c *CharmHubRepository) resourceInfo(curl *charm.URL, origin corecharm.Origin, name string, revision int) (charmresource.Resource, error) {
+	loggo.GetLogger("heather").Criticalf("resourceInfo(%q, %q, %d)", curl, name, revision)
 	var configs []charmhub.RefreshConfig
 	var err error
 
