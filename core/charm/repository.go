@@ -95,18 +95,17 @@ type CharmID struct {
 
 	// Metadata is optional extra information about a particular model's
 	// "in-theatre" use of the charm.
-	Metadata map[string]string
+	//Metadata map[string]string
 }
 
 type ResolveForDeployArg struct {
 	BaseSelectionFunc func(Origin, Origin, []string) (Origin, error)
-	Curl              *charm.URL
+	URL               *charm.URL
 	Origin            Origin
 }
 
 type ResolvedDataForDeploy struct {
-	Curl   *charm.URL
-	Origin Origin
+	Curl *charm.URL
 	// SupportedBases
 	//SupportedSeries   []string
 	EssentialMetadata EssentialMetadata

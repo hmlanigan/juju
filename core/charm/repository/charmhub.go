@@ -12,7 +12,6 @@ import (
 	"github.com/juju/charm/v10"
 	charmresource "github.com/juju/charm/v10/resource"
 	"github.com/juju/errors"
-	"github.com/juju/loggo"
 	"github.com/kr/pretty"
 
 	"github.com/juju/juju/charmhub"
@@ -219,7 +218,7 @@ func (c *CharmHubRepository) resolveWithPreferredChannel(charmURL *charm.URL, re
 // and repositoryResources into 1 call for server side charm deployment.
 // Reducing the number of required calls to a repository.
 func (c *CharmHubRepository) ResolveForDeploy(arg corecharm.ResolveForDeployArg) (corecharm.ResolvedDataForDeploy, error) {
-	resultURL, resolvedOrigin, supportedSeries, resp, resolveErr := c.resolveWithPreferredChannel(arg.Curl, arg.Origin)
+	resultURL, resolvedOrigin, supportedSeries, resp, resolveErr := c.resolveWithPreferredChannel(arg.URL, arg.Origin)
 	if charm.IsUnsupportedSeriesError(resolveErr) {
 		msg := fmt.Sprintf("%v. Use --force to deploy the charm anyway.", resolveErr)
 		return corecharm.ResolvedDataForDeploy{}, errors.Errorf(msg)
@@ -233,9 +232,6 @@ func (c *CharmHubRepository) ResolveForDeploy(arg corecharm.ResolveForDeployArg)
 			return corecharm.ResolvedDataForDeploy{}, errors.Trace(resolveErr)
 		}
 		series, err := coreseries.GetSeriesFromChannel(resolvedOrigin.Platform.OS, resolvedOrigin.Platform.Channel)
-		if err != nil {
-			return corecharm.ResolvedDataForDeploy{}, errors.Trace(resolveErr)
-		}
 		resultURL = resultURL.WithSeries(series)
 	}
 	resolvedOrigin.ID = resp.Entity.ID
@@ -252,18 +248,11 @@ func (c *CharmHubRepository) ResolveForDeploy(arg corecharm.ResolveForDeployArg)
 
 	thing := corecharm.ResolvedDataForDeploy{
 		Curl:              resultURL,
-		Origin:            resolvedOrigin,
 		EssentialMetadata: essMeta,
 		Resources:         resourceResults,
 	}
-	loggo.GetLogger("marie").Criticalf("ResolveForDeploy(%s) returns %s", pretty.Sprint(arg), pretty.Sprint(thing))
+	c.logger.Tracef("ResolveForDeploy(%s) returns %s", pretty.Sprint(arg), pretty.Sprint(thing))
 	return thing, errors.Trace(err)
-	//return corecharm.ResolvedDataForDeploy{
-	//	Curl:              resultURL,
-	//	Origin:            resolvedOrigin,
-	//	EssentialMetadata: essMeta,
-	//	Resources:         resourceResults,
-	//}, errors.Trace(err)
 }
 
 func (c *CharmHubRepository) resolveForDeployResources(curl *charm.URL, origin corecharm.Origin, resources []transport.ResourceRevision) (map[string]charmresource.Resource, error) {

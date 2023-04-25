@@ -200,12 +200,12 @@ func (v *deployFromRepositoryValidator) resolveResources(
 		}
 		resources = append(resources, r)
 	}
-
-	repo, err := v.getCharmRepository(deployData.Origin.Source)
+	resolvedOrigin := deployData.EssentialMetadata.ResolvedOrigin
+	repo, err := v.getCharmRepository(resolvedOrigin.Source)
 	if err != nil {
 		return nil, nil, errors.Trace(err)
 	}
-	resolvedResources, resolveErr := repo.ResolveResourcesForDeploy(resources, deployData.Resources, corecharm.CharmID{URL: deployData.Curl, Origin: deployData.Origin})
+	resolvedResources, resolveErr := repo.ResolveResourcesForDeploy(resources, deployData.Resources, corecharm.CharmID{URL: deployData.Curl, Origin: resolvedOrigin})
 
 	return resolvedResources, pendingUploadIDs, resolveErr
 }
@@ -344,7 +344,7 @@ func (v *deployFromRepositoryValidator) validate(arg params.DeployFromRepository
 	dt.charmURL = deployData.Curl
 	dt.dryRun = arg.DryRun
 	dt.force = arg.Force
-	dt.origin = deployData.Origin
+	dt.origin = deployData.EssentialMetadata.ResolvedOrigin
 	dt.placement = arg.Placement
 	dt.storage = arg.Storage
 	if len(arg.EndpointBindings) > 0 {
@@ -722,7 +722,7 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 
 	resolveForDeployArg := corecharm.ResolveForDeployArg{
 		BaseSelectionFunc: hml,
-		Curl:              curl,
+		URL:               curl,
 		Origin:            requestedOrigin,
 	}
 
@@ -780,8 +780,8 @@ func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepository
 		// name, we can use the data for the new application
 		// rather than another call to GetDownloadURL and the
 		// charmhub repository.
-		deployData.Origin.ID = ""
-		deployData.Origin.Hash = ""
+		deployData.EssentialMetadata.ResolvedOrigin.ID = ""
+		deployData.EssentialMetadata.ResolvedOrigin.Hash = ""
 	}
 
 	resolvedCharm := corecharm.NewCharmInfoAdapter(deployData.EssentialMetadata)
