@@ -811,12 +811,6 @@ func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepository
 		//>>>>>>> 880c479fb7 (Use existing charm in DeployFromRepository.)
 	}
 	deployRepoLogger.Tracef("from createOrigin: %s, %s", initialCurl, pretty.Sprint(requestedOrigin))
-	// TODO:
-	// The logic in resolveCharm and getCharm can be improved as there is some
-	// duplication. We call ResolveCharmWithPreferredChannel, then pick a
-	// series, then call GetEssentialMetadata, which again calls ResolveCharmWithPreferredChannel
-	// then a refresh request.
-
 	deployData, err := v.resolveCharm(initialCurl, requestedOrigin, arg.Force, usedModelDefaultBase, arg.Cons)
 	if err != nil {
 		return corecharm.ResolvedDataForDeploy{}, nil, errors.Trace(err)
@@ -829,22 +823,21 @@ func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepository
 	// Check if a charm doc already exists for this charm URL. If so, the
 	// charm has already been queued for download so this is a no-op.
 	deployedCharm, err := v.state.Charm(deployData.Curl)
-	if err != nil && !errors.Is(err, errors.NotFound) {
-		return corecharm.ResolvedDataForDeploy{}, nil, errors.Trace(err)
-	} else if err == nil {
+	if err == nil {
 		return deployData, deployedCharm, nil
-	} else {
-		// This is a hack until all deploy is controller side.
-		// GetDownloadURL for charms depends on the ID not being
-		// set to use the install action for charmhub refresh.
-		// The data is returned via ResolveForDeploy so that if
-		// the charm is already deployed with a different application
-		// name, we can use the data for the new application
-		// rather than another call to GetDownloadURL and the
-		// charmhub repository.
-		deployData.EssentialMetadata.ResolvedOrigin.ID = ""
-		deployData.EssentialMetadata.ResolvedOrigin.Hash = ""
+	} else if err != nil && !errors.Is(err, errors.NotFound) {
+		return corecharm.ResolvedDataForDeploy{}, nil, errors.Trace(err)
 	}
+	// This is a hack until all deploy is controller side.
+	// GetDownloadURL for charms depends on the ID not being
+	// set to use the install action for charmhub refresh.
+	// The data is returned via ResolveForDeploy so that if
+	// the charm is already deployed with a different application
+	// name, we can use the data for the new application
+	// rather than another call to GetDownloadURL and the
+	// charmhub repository.
+	deployData.EssentialMetadata.ResolvedOrigin.ID = ""
+	deployData.EssentialMetadata.ResolvedOrigin.Hash = ""
 
 	resolvedCharm := corecharm.NewCharmInfoAdapter(deployData.EssentialMetadata)
 	return deployData, resolvedCharm, nil
