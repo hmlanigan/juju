@@ -205,7 +205,7 @@ func (v *deployFromRepositoryValidator) resolveResources(
 	if err != nil {
 		return nil, nil, errors.Trace(err)
 	}
-	resolvedResources, resolveErr := repo.ResolveResourcesTakeTwo(resources, deployData.Resources, corecharm.CharmID{URL: deployData.Curl, Origin: deployData.Origin})
+	resolvedResources, resolveErr := repo.ResolveResourcesForDeploy(resources, deployData.Resources, corecharm.CharmID{URL: deployData.Curl, Origin: deployData.Origin})
 
 	return resolvedResources, pendingUploadIDs, resolveErr
 }
@@ -325,7 +325,6 @@ func (v *deployFromRepositoryValidator) validate(arg params.DeployFromRepository
 	// get the charm data to validate against, either a previously deployed
 	// charm or the essential metadata from a charm to be async downloaded.
 	deployData, resolvedCharm, err := v.getCharm(arg)
-	//charmURL, resolvedOrigin, resolvedCharm, err := v.getCharm(arg)
 	if err != nil {
 		errs = append(errs, err)
 		// return any errors here, there is no need to continue with
@@ -727,7 +726,6 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 		Origin:            requestedOrigin,
 	}
 
-	//resultURL, resolvedOrigin, supportedSeries, resolveErr := repo.ResolveWithPreferredChannel(curl, requestedOrigin)
 	deployData, resolveErr := repo.ResolveForDeploy(resolveForDeployArg)
 	if charm.IsUnsupportedSeriesError(resolveErr) {
 		if !force {
@@ -758,7 +756,6 @@ func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepository
 	// series, then call GetEssentialMetadata, which again calls ResolveCharmWithPreferredChannel
 	// then a refresh request.
 
-	//charmURL, resolvedOrigin, err := v.resolveCharm(initialCurl, requestedOrigin, arg.Force, usedModelDefaultBase, arg.Cons)
 	deployData, err := v.resolveCharm(initialCurl, requestedOrigin, arg.Force, usedModelDefaultBase, arg.Cons)
 	if err != nil {
 		return corecharm.ResolvedDataForDeploy{}, nil, errors.Trace(err)
