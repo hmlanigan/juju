@@ -92,22 +92,23 @@ type CharmID struct {
 
 	// Origin holds the original source of a charm, including its channel.
 	Origin Origin
-
-	// Metadata is optional extra information about a particular model's
-	// "in-theatre" use of the charm.
-	//Metadata map[string]string
 }
 
+// ResolveForDeployArg contains arguments to use ResolveForDeploy
 type ResolveForDeployArg struct {
+	// BaseSelectionFunc is a function which when provided with the
+	// starting origin, the resolved origin and a list of series supported
+	// by the charm, returns an origin with the best platform.
+	// Used when a base is not provided directly by a user.
 	BaseSelectionFunc func(Origin, Origin, []string) (Origin, error)
 	URL               *charm.URL
 	Origin            Origin
 }
 
+// ResolvedDataForDeploy is the response data from ResolveForDeploy
 type ResolvedDataForDeploy struct {
-	Curl *charm.URL
-	// SupportedBases
-	//SupportedSeries   []string
+	URL *charm.URL
+
 	EssentialMetadata EssentialMetadata
 
 	// Resources is a map of resource names to their current repository revision

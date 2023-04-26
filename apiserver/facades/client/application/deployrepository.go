@@ -205,7 +205,7 @@ func (v *deployFromRepositoryValidator) resolveResources(
 	if err != nil {
 		return nil, nil, errors.Trace(err)
 	}
-	resolvedResources, resolveErr := repo.ResolveResourcesForDeploy(resources, deployData.Resources, corecharm.CharmID{URL: deployData.Curl, Origin: resolvedOrigin})
+	resolvedResources, resolveErr := repo.ResolveResourcesForDeploy(resources, deployData.Resources, corecharm.CharmID{URL: deployData.URL, Origin: resolvedOrigin})
 
 	return resolvedResources, pendingUploadIDs, resolveErr
 }
@@ -366,7 +366,7 @@ func (v *deployFromRepositoryValidator) validate(arg params.DeployFromRepository
 		errs = append(errs, rcErrs...)
 	}
 
-	dt.charmURL = deployData.Curl
+	dt.charmURL = deployData.URL
 	dt.dryRun = arg.DryRun
 	dt.force = arg.Force
 	dt.origin = deployData.EssentialMetadata.ResolvedOrigin
@@ -822,7 +822,7 @@ func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepository
 
 	// Check if a charm doc already exists for this charm URL. If so, the
 	// charm has already been queued for download so this is a no-op.
-	deployedCharm, err := v.state.Charm(deployData.Curl)
+	deployedCharm, err := v.state.Charm(deployData.URL)
 	if err == nil {
 		return deployData, deployedCharm, nil
 	} else if err != nil && !errors.Is(err, errors.NotFound) {

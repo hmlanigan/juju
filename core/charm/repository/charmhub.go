@@ -241,13 +241,13 @@ func (c *CharmHubRepository) ResolveForDeploy(arg corecharm.ResolveForDeployArg)
 		return corecharm.ResolvedDataForDeploy{}, errors.Trace(resolveErr)
 	}
 	essMeta.ResolvedOrigin = resolvedOrigin
-	resourceResults, err := c.resolveForDeployResources(resultURL, resolvedOrigin, resp.Entity.Resources)
+	resourceResults, err := c.resolveForDeployResources(resultURL, arg.Origin.Revision, resolvedOrigin, resp.Entity.Resources)
 	if err != nil {
 		return corecharm.ResolvedDataForDeploy{}, errors.Trace(err)
 	}
 
 	thing := corecharm.ResolvedDataForDeploy{
-		Curl:              resultURL,
+		URL:               resultURL,
 		EssentialMetadata: essMeta,
 		Resources:         resourceResults,
 	}
@@ -255,12 +255,15 @@ func (c *CharmHubRepository) ResolveForDeploy(arg corecharm.ResolveForDeployArg)
 	return thing, errors.Trace(err)
 }
 
-func (c *CharmHubRepository) resolveForDeployResources(curl *charm.URL, origin corecharm.Origin, resources []transport.ResourceRevision) (map[string]charmresource.Resource, error) {
+func (c *CharmHubRepository) resolveForDeployResources(curl *charm.URL, rev *int, origin corecharm.Origin, resources []transport.ResourceRevision) (map[string]charmresource.Resource, error) {
 	var (
 		err             error
 		resourceResults map[string]charmresource.Resource
 	)
-	if origin.Revision != nil {
+	// If a revision was included in the original origin, refresh will
+	// not return the resources. Try to find them again with just the
+	// channel.
+	if rev == nil {
 		// If we call resolveWithPreferredChannel with a specific charm
 		// revision, the response will not contain resources as they are
 		// associated with a channel. In that case, here is the alternate

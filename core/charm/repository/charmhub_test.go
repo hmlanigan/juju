@@ -143,6 +143,96 @@ func (s *charmHubRepositorySuite) TestResolveWithChannel(c *gc.C) {
 	c.Assert(obtainedSeries, jc.SameContents, []string{"focal"})
 }
 
+func (s *charmHubRepositorySuite) TestResolveForDeployWithRevisionSuccess(c *gc.C) {
+	defer s.setupMocks(c).Finish()
+	s.expectCharmRefreshInstallOneByRevisionResources(c)
+
+	revision := 16
+	curl := charm.MustParseURL("ch:wordpress")
+	origin := corecharm.Origin{
+		Source: "charm-hub",
+		Platform: corecharm.Platform{
+			Architecture: arch.DefaultArchitecture,
+			OS:           "ubuntu",
+			Channel:      "20.04",
+		},
+		Revision: &revision,
+		Channel: &charm.Channel{
+			Track: "latest",
+			Risk:  "stable",
+		},
+	}
+	arg := corecharm.ResolveForDeployArg{URL: curl, Origin: origin}
+
+	obtainedData, err := s.newClient().ResolveForDeploy(arg)
+	c.Assert(err, jc.ErrorIsNil)
+
+	curl.Revision = revision
+
+	expectedOrigin := origin
+	expectedOrigin.Type = "charm"
+	expectedOrigin.Revision = &revision
+	expectedOrigin.ID = "charmCHARMcharmCHARMcharmCHARM01"
+	expectedOrigin.Hash = "SHA256 hash"
+
+	expected := s.expectedCURL(curl, 16, arch.DefaultArchitecture, "focal")
+
+	c.Assert(obtainedData.URL, jc.DeepEquals, expected)
+	c.Assert(obtainedData.EssentialMetadata.ResolvedOrigin, jc.DeepEquals, expectedOrigin)
+	c.Assert(obtainedData.Resources, gc.HasLen, 1)
+	foundResource := obtainedData.Resources["wal-e"]
+	c.Assert(foundResource.Name, gc.Equals, "wal-e")
+	c.Assert(foundResource.Path, gc.Equals, "wal-e.snap")
+	c.Assert(foundResource.Revision, gc.Equals, 5)
+}
+
+func (s *charmHubRepositorySuite) TestResolveForDeploySuccessChooseBase(c *gc.C) {
+	defer s.setupMocks(c).Finish()
+	s.expectedRefreshInvalidPlatformError(c)
+	s.expectCharmRefreshInstallOneFromChannelFullBase(c)
+	s.expectCharmRefreshDownloadOneFromChannelFullBase(c)
+
+	curl := charm.MustParseURL("ch:wordpress")
+	origin := corecharm.Origin{
+		Source: "charm-hub",
+		Platform: corecharm.Platform{
+			Architecture: arch.DefaultArchitecture,
+		},
+		Channel: &charm.Channel{
+			Track: "latest",
+			Risk:  "stable",
+		},
+	}
+	baseSelectionFunc := func(_ corecharm.Origin, resolvedOrigin corecharm.Origin, strings []string) (corecharm.Origin, error) {
+		c.Assert(strings, jc.SameContents, []string{"focal"})
+		return resolvedOrigin, nil
+	}
+	arg := corecharm.ResolveForDeployArg{URL: curl, Origin: origin, BaseSelectionFunc: baseSelectionFunc}
+
+	obtainedData, err := s.newClient().ResolveForDeploy(arg)
+	c.Assert(err, jc.ErrorIsNil)
+
+	curl.Revision = 16
+
+	expectedOrigin := origin
+	expectedOrigin.Type = "charm"
+	expectedOrigin.Revision = &curl.Revision
+	expectedOrigin.ID = "charmCHARMcharmCHARMcharmCHARM01"
+	expectedOrigin.Hash = "SHA256 hash"
+	expectedOrigin.Platform.OS = "ubuntu"
+	expectedOrigin.Platform.Channel = "20.04"
+
+	expected := s.expectedCURL(curl, 16, arch.DefaultArchitecture, "focal")
+
+	c.Assert(obtainedData.URL, jc.DeepEquals, expected)
+	c.Assert(obtainedData.EssentialMetadata.ResolvedOrigin, jc.DeepEquals, expectedOrigin)
+	c.Assert(obtainedData.Resources, gc.HasLen, 1)
+	foundResource := obtainedData.Resources["wal-e"]
+	c.Assert(foundResource.Name, gc.Equals, "wal-e")
+	c.Assert(foundResource.Path, gc.Equals, "wal-e.snap")
+	c.Assert(foundResource.Revision, gc.Equals, 5)
+}
+
 func (s *charmHubRepositorySuite) TestResolveWithoutBase(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 	s.expectCharmRefreshInstallOneFromChannel(c)
@@ -573,10 +663,94 @@ func (s *charmHubRepositorySuite) expectCharmRefreshInstallOneFromChannel(c *gc.
 	s.expectCharmRefresh(c, cfg)
 }
 
+func (s *charmHubRepositorySuite) expectCharmRefreshInstallOneFromChannelFullBase(c *gc.C) {
+	cfg, err := charmhub.InstallOneFromChannel("wordpress", "latest/stable", charmhub.RefreshBase{
+		Architecture: arch.DefaultArchitecture, Name: "ubuntu", Channel: "20.04",
+	})
+	c.Assert(err, jc.ErrorIsNil)
+	s.expectCharmRefresh(c, cfg)
+}
+
+func (s *charmHubRepositorySuite) expectCharmRefreshDownloadOneFromChannelFullBase(c *gc.C) {
+	cfg, err := charmhub.DownloadOneFromChannel("charmCHARMcharmCHARMcharmCHARM01", "latest/stable", charmhub.RefreshBase{
+		Architecture: arch.DefaultArchitecture, Name: "ubuntu", Channel: "20.04",
+	})
+	c.Assert(err, jc.ErrorIsNil)
+	s.expectCharmRefreshWithResources(c, cfg)
+}
+
+func (s *charmHubRepositorySuite) expectCharmRefreshWithResources(c *gc.C, cfg charmhub.RefreshConfig) {
+	s.client.EXPECT().Refresh(gomock.Any(), RefreshConfigMatcher{c: c, Config: cfg}).DoAndReturn(func(ctx context.Context, cfg charmhub.RefreshConfig) ([]transport.RefreshResponse, error) {
+		id := charmhub.ExtractConfigInstanceKey(cfg)
+		return []transport.RefreshResponse{{
+			ID:          "charmCHARMcharmCHARMcharmCHARM01",
+			InstanceKey: id,
+			Entity: transport.RefreshEntity{
+				Type:     transport.CharmType,
+				ID:       "charmCHARMcharmCHARMcharmCHARM01",
+				Name:     "wordpress",
+				Revision: 16,
+				Resources: []transport.ResourceRevision{
+					resourceRevision(5),
+				},
+			},
+			EffectiveChannel: "latest/stable",
+		}}, nil
+	})
+}
+
+func (s *charmHubRepositorySuite) expectCharmRefreshInstallOneByRevisionResources(c *gc.C) {
+	cfg, err := charmhub.InstallOneFromRevision("wordpress", 16)
+	c.Assert(err, jc.ErrorIsNil)
+	s.expectCharmRefreshFullWithResources(c, cfg)
+}
+
+func (s *charmHubRepositorySuite) expectCharmRefreshFullWithResources(c *gc.C, cfg charmhub.RefreshConfig) {
+	s.client.EXPECT().Refresh(gomock.Any(), RefreshConfigMatcher{c: c, Config: cfg}).DoAndReturn(func(ctx context.Context, cfg charmhub.RefreshConfig) ([]transport.RefreshResponse, error) {
+		id := charmhub.ExtractConfigInstanceKey(cfg)
+		return []transport.RefreshResponse{{
+			ID:          "charmCHARMcharmCHARMcharmCHARM01",
+			InstanceKey: id,
+			Entity: transport.RefreshEntity{
+				Type:     transport.CharmType,
+				ID:       "charmCHARMcharmCHARMcharmCHARM01",
+				Name:     "wordpress",
+				Revision: 16,
+				Download: transport.Download{
+					HashSHA256: "SHA256 hash",
+					HashSHA384: "SHA384 hash",
+					Size:       42,
+					URL:        "ch:amd64/focal/wordpress-42",
+				},
+				//
+				Bases: []transport.Base{
+					{
+						Name:         "ubuntu",
+						Architecture: "amd64",
+						Channel:      "20.04",
+					},
+				},
+				MetadataYAML: `
+name: wordpress
+summary: Blog engine
+description: Blog engine
+`[1:],
+				ConfigYAML: `
+options:
+  blog-title: {default: My Title, description: A descriptive title used for the blog., type: string}
+`[1:],
+				Resources: []transport.ResourceRevision{
+					resourceRevision(5),
+				},
+			},
+			EffectiveChannel: "latest/stable",
+		}}, nil
+	})
+}
+
 func (s *charmHubRepositorySuite) expectCharmRefresh(c *gc.C, cfg charmhub.RefreshConfig) {
 	s.client.EXPECT().Refresh(gomock.Any(), RefreshConfigMatcher{c: c, Config: cfg}).DoAndReturn(func(ctx context.Context, cfg charmhub.RefreshConfig) ([]transport.RefreshResponse, error) {
 		id := charmhub.ExtractConfigInstanceKey(cfg)
-
 		return []transport.RefreshResponse{{
 			ID:          "charmCHARMcharmCHARMcharmCHARM01",
 			InstanceKey: id,
