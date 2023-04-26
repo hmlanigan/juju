@@ -585,6 +585,31 @@ func (s *charmHubRepositorySuite) TestResolveResourcesFromStoreNoRevision(c *gc.
 	}})
 }
 
+func (s *charmHubRepositorySuite) TestResolveResourcesForDeployFromStoreNoRevision(c *gc.C) {
+	defer s.setupMocks(c).Finish()
+
+	result, err := s.newClient().ResolveResourcesForDeploy([]charmresource.Resource{{
+		Meta:     charmresource.Meta{Name: "wal-e", Type: 1, Path: "wal-e.snap", Description: "WAL-E Snap Package"},
+		Origin:   charmresource.OriginStore,
+		Revision: -1,
+		Size:     0,
+	}}, map[string]charmresource.Resource{"wal-e": {
+		Meta:        charmresource.Meta{Name: "wal-e", Type: 1, Path: "wal-e.snap", Description: "WAL-E Snap Package"},
+		Origin:      charmresource.OriginStore,
+		Revision:    1,
+		Fingerprint: fp(c),
+		Size:        0,
+	}}, charmID())
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(result, gc.DeepEquals, []charmresource.Resource{{
+		Meta:        charmresource.Meta{Name: "wal-e", Type: 1, Path: "wal-e.snap", Description: "WAL-E Snap Package"},
+		Origin:      charmresource.OriginStore,
+		Revision:    1,
+		Fingerprint: fp(c),
+		Size:        0,
+	}})
+}
+
 func (s *charmHubRepositorySuite) TestResolveResourcesNoMatchingRevision(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 	s.expectRefresh(true)
