@@ -26,6 +26,7 @@ import (
 	"github.com/juju/juju/core/instance"
 	"github.com/juju/juju/core/network"
 	coreseries "github.com/juju/juju/core/series"
+	"github.com/juju/juju/environs/bootstrap"
 	environsconfig "github.com/juju/juju/environs/config"
 	"github.com/juju/juju/rpc/params"
 	"github.com/juju/juju/state"
@@ -840,6 +841,9 @@ func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepository
 	deployData.EssentialMetadata.ResolvedOrigin.Hash = ""
 
 	resolvedCharm := corecharm.NewCharmInfoAdapter(deployData.EssentialMetadata)
+	if resolvedCharm.Meta().Name == bootstrap.ControllerCharmName {
+		return corecharm.ResolvedDataForDeploy{}, nil, errors.NotSupportedf("manual deploy of the controller charm")
+	}
 	return deployData, resolvedCharm, nil
 }
 
