@@ -7,14 +7,14 @@ import (
 	"reflect"
 
 	"github.com/golang/mock/gomock"
-	"github.com/juju/names/v4"
-	"github.com/kr/pretty"
-	gc "gopkg.in/check.v1"
-
 	"github.com/juju/charm/v10"
 	"github.com/juju/charm/v10/resource"
 	"github.com/juju/errors"
+	"github.com/juju/names/v4"
 	jc "github.com/juju/testing/checkers"
+	"github.com/juju/utils/v3/hash"
+	"github.com/kr/pretty"
+	gc "gopkg.in/check.v1"
 
 	corecharm "github.com/juju/juju/core/charm"
 	coreconfig "github.com/juju/juju/core/config"
@@ -43,12 +43,17 @@ func (s *validatorSuite) TestValidateSuccess(c *gc.C) {
 	s.expectSimpleValidate()
 	// resolveCharm
 	curl := charm.MustParseURL("testcharm")
-	resultURL := charm.MustParseURL("ch:amd64/jammy/testcharm-4")
 	origin := corecharm.Origin{
 		Source:   "charm-hub",
 		Channel:  &charm.Channel{Risk: "stable"},
 		Platform: corecharm.Platform{Architecture: "amd64"},
 	}
+	resArgs := corecharm.ResolveForDeployArg{
+		URL:    curl,
+		Origin: origin,
+	}
+
+	resultURL := charm.MustParseURL("ch:amd64/jammy/testcharm-4")
 	resolvedOrigin := corecharm.Origin{
 		Source:   "charm-hub",
 		Type:     "charm",
@@ -56,10 +61,6 @@ func (s *validatorSuite) TestValidateSuccess(c *gc.C) {
 		Platform: corecharm.Platform{Architecture: "amd64", OS: "ubuntu", Channel: "22.04"},
 		Revision: intptr(4),
 	}
-	supportedSeries := []string{"jammy", "focal"}
-	s.repo.EXPECT().ResolveWithPreferredChannel(curl, origin).Return(resultURL, resolvedOrigin, supportedSeries, nil)
-	s.repo.EXPECT().ResolveResources(nil, corecharm.CharmID{URL: resultURL, Origin: resolvedOrigin}).Return(nil, nil)
-	// getCharm
 	expMeta := &charm.Meta{
 		Name: "test-charm",
 	}
@@ -71,11 +72,12 @@ func (s *validatorSuite) TestValidateSuccess(c *gc.C) {
 		Config:         expConfig,
 		ResolvedOrigin: resolvedOrigin,
 	}
-	s.repo.EXPECT().GetEssentialMetadata(corecharm.MetadataRequest{
-		CharmURL: resultURL,
-		Origin:   resolvedOrigin,
-	}).Return([]corecharm.EssentialMetadata{essMeta}, nil)
-	s.state.EXPECT().ModelConstraints().Return(constraints.Value{Arch: strptr("arm64")}, nil)
+	deployData := corecharm.ResolvedDataForDeploy{
+		URL:               resultURL,
+		EssentialMetadata: essMeta,
+	}
+
+	s.repo.EXPECT().ResolveForDeploy(resolveForDeployMatcher{c: c, expectedArgs: resArgs}).Return(deployData, nil)
 	s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
 
 	arg := params.DeployFromRepositoryArg{
@@ -90,6 +92,10 @@ func (s *validatorSuite) TestValidateSuccess(c *gc.C) {
 		numUnits:        1,
 		origin:          resolvedOrigin,
 	})
+}
+
+func (s *validatorSuite) expectResolveForDeploy() (*charm.URL, corecharm.Origin) {
+
 }
 
 func (s *validatorSuite) TestValidateIAASAttachStorageFail(c *gc.C) {
@@ -323,10 +329,10 @@ func (s *validatorSuite) TestResolveCharm(c *gc.C) {
 		Arch: strptr("arm64"),
 	}, nil)
 
-	obtainedCurl, obtainedOrigin, err := s.getValidator().resolveCharm(curl, origin, false, false, constraints.Value{})
+	obtained, err := s.getValidator().resolveCharm(curl, origin, false, false, constraints.Value{})
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(obtainedCurl, gc.DeepEquals, resultURL)
-	c.Assert(obtainedOrigin, gc.DeepEquals, resolvedOrigin)
+	c.Assert(obtained.URL, gc.DeepEquals, resultURL)
+	c.Assert(obtained.EssentialMetadata.ResolvedOrigin, gc.DeepEquals, resolvedOrigin)
 }
 
 func (s *validatorSuite) TestResolveCharmArchAll(c *gc.C) {
@@ -350,12 +356,12 @@ func (s *validatorSuite) TestResolveCharmArchAll(c *gc.C) {
 	s.model.EXPECT().Config().Return(config.New(config.UseDefaults, coretesting.FakeConfig()))
 	s.state.EXPECT().ModelConstraints().Return(constraints.Value{Arch: strptr("arm64")}, nil)
 
-	obtainedCurl, obtainedOrigin, err := s.getValidator().resolveCharm(curl, origin, false, false, constraints.Value{})
+	obtained, err := s.getValidator().resolveCharm(curl, origin, false, false, constraints.Value{})
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(obtainedCurl, gc.DeepEquals, resultURL)
+	c.Assert(obtained.URL, gc.DeepEquals, resultURL)
 	expectedOrigin := resolvedOrigin
 	expectedOrigin.Platform.Architecture = "arm64"
-	c.Assert(obtainedOrigin, gc.DeepEquals, expectedOrigin)
+	c.Assert(obtained.EssentialMetadata.ResolvedOrigin, gc.DeepEquals, expectedOrigin)
 }
 
 func (s *validatorSuite) TestResolveCharmUnsupportedSeriesErrorForce(c *gc.C) {
@@ -380,10 +386,10 @@ func (s *validatorSuite) TestResolveCharmUnsupportedSeriesErrorForce(c *gc.C) {
 	s.model.EXPECT().Config().Return(config.New(config.UseDefaults, coretesting.FakeConfig()))
 	s.state.EXPECT().ModelConstraints().Return(constraints.Value{Arch: strptr("arm64")}, nil)
 
-	obtainedCurl, obtainedOrigin, err := s.getValidator().resolveCharm(curl, origin, true, false, constraints.Value{})
+	obtained, err := s.getValidator().resolveCharm(curl, origin, true, false, constraints.Value{})
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(obtainedCurl, gc.DeepEquals, resultURL)
-	c.Assert(obtainedOrigin, gc.DeepEquals, resolvedOrigin)
+	c.Assert(obtained.URL, gc.DeepEquals, resultURL)
+	c.Assert(obtained.EssentialMetadata.ResolvedOrigin, gc.DeepEquals, resolvedOrigin)
 }
 
 func (s *validatorSuite) TestResolveCharmUnsupportedSeriesError(c *gc.C) {
@@ -406,7 +412,7 @@ func (s *validatorSuite) TestResolveCharmUnsupportedSeriesError(c *gc.C) {
 	newErr := charm.NewUnsupportedSeriesError("jammy", supportedSeries)
 	s.repo.EXPECT().ResolveWithPreferredChannel(curl, origin).Return(resultURL, resolvedOrigin, supportedSeries, newErr)
 
-	_, _, err := s.getValidator().resolveCharm(curl, origin, false, false, constraints.Value{})
+	_, err := s.getValidator().resolveCharm(curl, origin, false, false, constraints.Value{})
 	c.Assert(err, gc.ErrorMatches, `series "jammy" not supported by charm, supported series are: focal. Use --force to deploy the charm anyway.`)
 }
 
@@ -431,7 +437,7 @@ func (s *validatorSuite) TestResolveCharmExplicitBaseErrorWhenUserImageID(c *gc.
 	s.model.EXPECT().Config().Return(config.New(config.UseDefaults, coretesting.FakeConfig()))
 	s.state.EXPECT().ModelConstraints().Return(constraints.Value{Arch: strptr("arm64")}, nil)
 
-	_, _, err := s.getValidator().resolveCharm(curl, origin, false, false, constraints.Value{ImageID: strptr("ubuntu-bf2")})
+	_, err := s.getValidator().resolveCharm(curl, origin, false, false, constraints.Value{ImageID: strptr("ubuntu-bf2")})
 	c.Assert(err, gc.ErrorMatches, `base must be explicitly provided when image-id constraint is used`)
 }
 
@@ -459,7 +465,7 @@ func (s *validatorSuite) TestResolveCharmExplicitBaseErrorWhenModelImageID(c *gc
 		ImageID: strptr("ubuntu-bf2"),
 	}, nil)
 
-	_, _, err := s.getValidator().resolveCharm(curl, origin, false, false, constraints.Value{})
+	_, err := s.getValidator().resolveCharm(curl, origin, false, false, constraints.Value{})
 	c.Assert(err, gc.ErrorMatches, `base must be explicitly provided when image-id constraint is used`)
 }
 
@@ -549,11 +555,11 @@ func (s *validatorSuite) TestGetCharm(c *gc.C) {
 	arg := params.DeployFromRepositoryArg{
 		CharmName: "testcharm",
 	}
-	obtainedURL, obtainedOrigin, obtainedCharm, err := s.getValidator().getCharm(arg)
+	obtainedData, obtainedCharm, err := s.getValidator().getCharm(arg)
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(obtainedOrigin, gc.DeepEquals, resolvedOrigin)
+	c.Assert(obtainedData.EssentialMetadata.ResolvedOrigin, gc.DeepEquals, resolvedOrigin)
 	c.Assert(obtainedCharm, gc.DeepEquals, corecharm.NewCharmInfoAdapter(essMeta))
-	c.Assert(obtainedURL.String(), gc.Equals, resultURL.String())
+	c.Assert(obtainedData.URL.String(), gc.Equals, resultURL.String())
 }
 
 func (s *validatorSuite) TestGetCharmAlreadyDeployed(c *gc.C) {
@@ -588,12 +594,12 @@ func (s *validatorSuite) TestGetCharmAlreadyDeployed(c *gc.C) {
 	arg := params.DeployFromRepositoryArg{
 		CharmName: "testcharm",
 	}
-	obtainedURL, obtainedOrigin, obtainedCharm, err := s.getValidator().getCharm(arg)
+	obtainedData, obtainedCharm, err := s.getValidator().getCharm(arg)
 
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(obtainedOrigin, gc.DeepEquals, downloadURLOrigin)
+	c.Assert(obtainedData.EssentialMetadata.ResolvedOrigin, gc.DeepEquals, downloadURLOrigin)
 	c.Assert(obtainedCharm, gc.NotNil)
-	c.Assert(obtainedURL.String(), gc.Equals, resultURL.String())
+	c.Assert(obtainedData.URL.String(), gc.Equals, resultURL.String())
 }
 
 func (s *validatorSuite) TestGetCharmFindsBundle(c *gc.C) {
@@ -621,7 +627,7 @@ func (s *validatorSuite) TestGetCharmFindsBundle(c *gc.C) {
 	arg := params.DeployFromRepositoryArg{
 		CharmName: "testcharm",
 	}
-	_, _, _, err := s.getValidator().getCharm(arg)
+	_, _, err := s.getValidator().getCharm(arg)
 	c.Assert(errors.Is(err, errors.BadRequest), jc.IsTrue)
 }
 
@@ -667,7 +673,7 @@ func (s *validatorSuite) TestGetCharmNoJujuControllerCharm(c *gc.C) {
 	arg := params.DeployFromRepositoryArg{
 		CharmName: "testcharm",
 	}
-	_, _, _, err := s.getValidator().getCharm(arg)
+	_, _, err := s.getValidator().getCharm(arg)
 	c.Assert(errors.Is(err, errors.NotSupported), jc.IsTrue)
 }
 
@@ -958,11 +964,31 @@ func (s *validatorSuite) TestResolveResourcesSuccess(c *gc.C) {
 		Revision: 4,
 	}
 	resResult := []resource.Resource{res, res2, r4}
+
+	dataResources := map[string]resource.Resource{
+		"foo-file": {
+			Meta:     resource.Meta{Name: "foo-file", Type: 1, Path: "foo.txt", Description: "foo resource."},
+			Origin:   2,
+			Revision: 2,
+			Fingerprint: resource.Fingerprint{
+				Fingerprint: hash.Fingerprint{
+					//sum: {0xa9, 0x3b, 0xa5, 0xaa, 0x9c, 0x39, 0x87, 0xa6, 0x72, 0xfe, 0xc9, 0xc9, 0x77, 0xea, 0xef, 0x5c, 0x54, 0xba, 0x89, 0x51, 0x9b, 0xda, 0xf1, 0xb1, 0xf3, 0x3b, 0xe5, 0x1a, 0x31, 0x45, 0xbc, 0x13, 0x69, 0xb9, 0x1e, 0x15, 0x13, 0xfe, 0x94, 0x4f, 0x33, 0xd7, 0xc2, 0x5f, 0x5e, 0xd0, 0xad, 0x9c},
+				},
+			},
+			Size: 13,
+		},
+	}
 	// First one of below is the file upload for Resource 1, the second is the revision for Resource 2e
 	deployResArg := map[string]string{"foo-file": "bar", "foo-file2": "3"}
+	deployData := corecharm.ResolvedDataForDeploy{
+		URL:               curl,
+		EssentialMetadata: corecharm.EssentialMetadata{ResolvedOrigin: origin},
+		Resources:         dataResources,
+	}
 
-	s.repo.EXPECT().ResolveResources(resolveResourcesArgsMatcher{c: c, expected: &resArgs}, corecharm.CharmID{URL: curl, Origin: origin}).Return(resResult, nil)
-	resources, pendingResourceUploads, resolveResErr := s.getValidator().resolveResources(curl, origin, deployResArg, resMeta)
+	s.repo.EXPECT().ResolveResourcesForDeploy(resolveResourcesArgsMatcher{c: c, expected: &resArgs}, dataResources, corecharm.CharmID{URL: curl, Origin: origin}).Return(resResult, nil)
+	//s.repo.EXPECT().ResolveResources(resolveResourcesArgsMatcher{c: c, expected: &resArgs}, corecharm.CharmID{URL: curl, Origin: origin}).Return(resResult, nil)
+	resources, pendingResourceUploads, resolveResErr := s.getValidator().resolveResources(deployData, deployResArg, resMeta)
 	pendUp := &params.PendingResourceUpload{
 		Name:     "foo-resource",
 		Type:     "file",
@@ -991,15 +1017,14 @@ func (s *validatorSuite) TestCaasDeployFromRepositoryValidator(c *gc.C) {
 		Platform: corecharm.Platform{Architecture: "amd64", OS: "ubuntu", Channel: "22.04"},
 		Revision: intptr(4),
 	}
-	supportedSeries := []string{"jammy", "focal"}
-	s.repo.EXPECT().ResolveWithPreferredChannel(curl, origin).Return(resultURL, resolvedOrigin, supportedSeries, nil)
-	s.repo.EXPECT().ResolveResources(nil, corecharm.CharmID{URL: resultURL, Origin: resolvedOrigin}).Return(nil, nil)
-	s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
+	resolveArg := corecharm.ResolveForDeployArg{
+		URL:    curl,
+		Origin: origin,
+	}
 	// getCharm
 	expMeta := &charm.Meta{
 		Name: "test-charm",
 	}
-
 	expManifest := new(charm.Manifest)
 	expConfig := new(charm.Config)
 	essMeta := corecharm.EssentialMetadata{
@@ -1008,11 +1033,22 @@ func (s *validatorSuite) TestCaasDeployFromRepositoryValidator(c *gc.C) {
 		Config:         expConfig,
 		ResolvedOrigin: resolvedOrigin,
 	}
-	s.repo.EXPECT().GetEssentialMetadata(corecharm.MetadataRequest{
-		CharmURL: resultURL,
-		Origin:   resolvedOrigin,
-	}).Return([]corecharm.EssentialMetadata{essMeta}, nil)
-	s.state.EXPECT().ModelConstraints().Return(constraints.Value{Arch: strptr("arm64")}, nil)
+	data := corecharm.ResolvedDataForDeploy{
+		URL:               resultURL,
+		EssentialMetadata: essMeta,
+		Resources:         nil,
+	}
+	s.repo.EXPECT().ResolveForDeploy(resolveForDeployMatcher{c: c, expectedArgs: resolveArg}).Return(data, nil)
+	//supportedSeries := []string{"jammy", "focal"}
+	//s.repo.EXPECT().ResolveWithPreferredChannel(curl, origin).Return(resultURL, resolvedOrigin, supportedSeries, nil)
+	//s.repo.EXPECT().ResolveResources(nil, corecharm.CharmID{URL: resultURL, Origin: resolvedOrigin}).Return(nil, nil)
+	s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
+
+	//s.repo.EXPECT().GetEssentialMetadata(corecharm.MetadataRequest{
+	//	CharmURL: resultURL,
+	//	Origin:   resolvedOrigin,
+	//}).Return([]corecharm.EssentialMetadata{essMeta}, nil)
+	//s.state.EXPECT().ModelConstraints().Return(constraints.Value{Arch: strptr("arm64")}, nil)
 
 	arg := params.DeployFromRepositoryArg{
 		CharmName: "testcharm",
@@ -1028,6 +1064,28 @@ func (s *validatorSuite) TestCaasDeployFromRepositoryValidator(c *gc.C) {
 		numUnits:        1,
 		origin:          resolvedOrigin,
 	})
+}
+
+type resolveForDeployMatcher struct {
+	c            *gc.C
+	expectedArgs corecharm.ResolveForDeployArg
+}
+
+func (m resolveForDeployMatcher) String() string {
+	return "match ResolveForDeployArg"
+}
+
+func (m resolveForDeployMatcher) Matches(x interface{}) bool {
+	oA, ok := x.(corecharm.ResolveForDeployArg)
+	if !ok {
+		return false
+	}
+
+	eA := m.expectedArgs
+	m.c.Assert(oA.URL, gc.DeepEquals, eA.URL)
+	m.c.Assert(oA.Origin, gc.DeepEquals, eA.Origin)
+	m.c.Assert(oA.BaseSelectionFunc, gc.NotNil)
+	return true
 }
 
 func (s *validatorSuite) setupMocks(c *gc.C) *gomock.Controller {

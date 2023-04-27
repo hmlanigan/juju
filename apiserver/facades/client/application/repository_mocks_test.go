@@ -103,6 +103,21 @@ func (mr *MockRepositoryMockRecorder) ListResources(arg0, arg1 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResources", reflect.TypeOf((*MockRepository)(nil).ListResources), arg0, arg1)
 }
 
+// ResolveForDeploy mocks base method.
+func (m *MockRepository) ResolveForDeploy(arg0 charm0.ResolveForDeployArg) (charm0.ResolvedDataForDeploy, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveForDeploy", arg0)
+	ret0, _ := ret[0].(charm0.ResolvedDataForDeploy)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResolveForDeploy indicates an expected call of ResolveForDeploy.
+func (mr *MockRepositoryMockRecorder) ResolveForDeploy(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveForDeploy", reflect.TypeOf((*MockRepository)(nil).ResolveForDeploy), arg0)
+}
+
 // ResolveResources mocks base method.
 func (m *MockRepository) ResolveResources(arg0 []resource.Resource, arg1 charm0.CharmID) ([]resource.Resource, error) {
 	m.ctrl.T.Helper()
@@ -116,6 +131,21 @@ func (m *MockRepository) ResolveResources(arg0 []resource.Resource, arg1 charm0.
 func (mr *MockRepositoryMockRecorder) ResolveResources(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveResources", reflect.TypeOf((*MockRepository)(nil).ResolveResources), arg0, arg1)
+}
+
+// ResolveResourcesForDeploy mocks base method.
+func (m *MockRepository) ResolveResourcesForDeploy(arg0 []resource.Resource, arg1 map[string]resource.Resource, arg2 charm0.CharmID) ([]resource.Resource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveResourcesForDeploy", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]resource.Resource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResolveResourcesForDeploy indicates an expected call of ResolveResourcesForDeploy.
+func (mr *MockRepositoryMockRecorder) ResolveResourcesForDeploy(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveResourcesForDeploy", reflect.TypeOf((*MockRepository)(nil).ResolveResourcesForDeploy), arg0, arg1, arg2)
 }
 
 // ResolveWithPreferredChannel mocks base method.

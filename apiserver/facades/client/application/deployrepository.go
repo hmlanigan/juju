@@ -702,7 +702,7 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 	if err != nil {
 		return corecharm.ResolvedDataForDeploy{}, errors.Trace(err)
 	}
-	hml := func(requestedOrigin, resolvedOrigin corecharm.Origin, supportedSeries []string) (corecharm.Origin, error) {
+	baseSelectionFunc := func(requestedOrigin, resolvedOrigin corecharm.Origin, supportedSeries []string) (corecharm.Origin, error) {
 		modelCons, err := v.state.ModelConstraints()
 		if err != nil {
 			return corecharm.Origin{}, errors.Trace(err)
@@ -781,7 +781,7 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 	}
 
 	resolveForDeployArg := corecharm.ResolveForDeployArg{
-		BaseSelectionFunc: hml,
+		BaseSelectionFunc: baseSelectionFunc,
 		URL:               curl,
 		Origin:            requestedOrigin,
 	}
