@@ -384,7 +384,42 @@ func (s *validatorSuite) TestGetCharmAlreadyDeployed(c *gc.C) {
 	ctrl := s.setupMocks(c)
 	defer ctrl.Finish()
 	s.expectSimpleValidate()
-	resultURL, essMeta := s.expectResolveForDeploy(c)
+	curl := charm.MustParseURL("testcharm")
+	origin := corecharm.Origin{
+		Source:   "charm-hub",
+		Channel:  &charm.Channel{Risk: "stable"},
+		Platform: corecharm.Platform{Architecture: "amd64"},
+	}
+	resArgs := corecharm.ResolveForDeployArg{
+		URL:    curl,
+		Origin: origin,
+	}
+
+	resultURL := charm.MustParseURL("ch:amd64/jammy/testcharm-4")
+	resolvedOrigin := corecharm.Origin{
+		Source:   "charm-hub",
+		Type:     "charm",
+		Channel:  &charm.Channel{Track: "default", Risk: "stable"},
+		Platform: corecharm.Platform{Architecture: "amd64", OS: "ubuntu", Channel: "22.04"},
+		Revision: intptr(4),
+	}
+	expMeta := &charm.Meta{
+		Name: "test-charm",
+	}
+	expManifest := new(charm.Manifest)
+	expConfig := new(charm.Config)
+	essMeta := corecharm.EssentialMetadata{
+		Meta:           expMeta,
+		Manifest:       expManifest,
+		Config:         expConfig,
+		ResolvedOrigin: resolvedOrigin,
+	}
+	deployData := corecharm.ResolvedDataForDeploy{
+		URL:               resultURL,
+		EssentialMetadata: essMeta,
+	}
+
+	s.repo.EXPECT().ResolveForDeploy(resolveForDeployMatcher{c: c, expectedArgs: resArgs}).Return(deployData, nil)
 	ch := NewMockCharm(ctrl)
 	s.state.EXPECT().Charm(gomock.Any()).Return(ch, nil)
 
