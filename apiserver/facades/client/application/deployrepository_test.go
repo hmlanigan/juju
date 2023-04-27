@@ -41,12 +41,32 @@ var _ = gc.Suite(&validatorSuite{})
 func (s *validatorSuite) TestValidateSuccess(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 	s.expectSimpleValidate()
-	// resolveCharm
+	resultURL, essMeta := s.expectResolveForDeploy(c)
+
+	arg := params.DeployFromRepositoryArg{
+		CharmName: "testcharm",
+	}
+	dt, errs := s.getValidator().validate(arg)
+	c.Assert(errs, gc.HasLen, 0)
+	c.Assert(dt, gc.DeepEquals, deployTemplate{
+		applicationName: "test-charm",
+		charm:           corecharm.NewCharmInfoAdapter(essMeta),
+		charmURL:        resultURL,
+		numUnits:        1,
+		origin:          essMeta.ResolvedOrigin,
+	})
+}
+
+func (s *validatorSuite) expectResolveForDeploy(c *gc.C) (*charm.URL, corecharm.EssentialMetadata) {
+	return s.expectResolveForDeployWithPlatform(c, corecharm.Platform{Architecture: "amd64"})
+}
+
+func (s *validatorSuite) expectResolveForDeployWithPlatform(c *gc.C, platform corecharm.Platform) (*charm.URL, corecharm.EssentialMetadata) {
 	curl := charm.MustParseURL("testcharm")
 	origin := corecharm.Origin{
 		Source:   "charm-hub",
 		Channel:  &charm.Channel{Risk: "stable"},
-		Platform: corecharm.Platform{Architecture: "amd64"},
+		Platform: platform,
 	}
 	resArgs := corecharm.ResolveForDeployArg{
 		URL:    curl,
@@ -79,23 +99,49 @@ func (s *validatorSuite) TestValidateSuccess(c *gc.C) {
 
 	s.repo.EXPECT().ResolveForDeploy(resolveForDeployMatcher{c: c, expectedArgs: resArgs}).Return(deployData, nil)
 	s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
-
-	arg := params.DeployFromRepositoryArg{
-		CharmName: "testcharm",
-	}
-	dt, errs := s.getValidator().validate(arg)
-	c.Assert(errs, gc.HasLen, 0)
-	c.Assert(dt, gc.DeepEquals, deployTemplate{
-		applicationName: "test-charm",
-		charm:           corecharm.NewCharmInfoAdapter(essMeta),
-		charmURL:        resultURL,
-		numUnits:        1,
-		origin:          resolvedOrigin,
-	})
+	return resultURL, essMeta
 }
 
-func (s *validatorSuite) expectResolveForDeploy() (*charm.URL, corecharm.Origin) {
-
+func (s *validatorSuite) expectResolveForDeployWithPlacement(c *gc.C) (*charm.URL, corecharm.EssentialMetadata) {
+	return s.expectResolveForDeployWithPlatform(c, corecharm.Platform{Architecture: "amd64", OS: "ubuntu", Channel: "22.04"})
+	//curl := charm.MustParseURL("testcharm")
+	//origin := corecharm.Origin{
+	//	Source:   "charm-hub",
+	//	Channel:  &charm.Channel{Risk: "stable"},
+	//	Platform: corecharm.Platform{Architecture: "amd64", OS: "ubuntu", Channel: "22.04"},
+	//}
+	//resArgs := corecharm.ResolveForDeployArg{
+	//	URL:    curl,
+	//	Origin: origin,
+	//}
+	//
+	//resultURL := charm.MustParseURL("ch:amd64/jammy/testcharm-4")
+	//resolvedOrigin := corecharm.Origin{
+	//	Source:   "charm-hub",
+	//	Type:     "charm",
+	//	Channel:  &charm.Channel{Track: "default", Risk: "stable"},
+	//	Platform: corecharm.Platform{Architecture: "amd64", OS: "ubuntu", Channel: "22.04"},
+	//	Revision: intptr(4),
+	//}
+	//expMeta := &charm.Meta{
+	//	Name: "test-charm",
+	//}
+	//expManifest := new(charm.Manifest)
+	//expConfig := new(charm.Config)
+	//essMeta := corecharm.EssentialMetadata{
+	//	Meta:           expMeta,
+	//	Manifest:       expManifest,
+	//	Config:         expConfig,
+	//	ResolvedOrigin: resolvedOrigin,
+	//}
+	//deployData := corecharm.ResolvedDataForDeploy{
+	//	URL:               resultURL,
+	//	EssentialMetadata: essMeta,
+	//}
+	//
+	//s.repo.EXPECT().ResolveForDeploy(resolveForDeployMatcher{c: c, expectedArgs: resArgs}).Return(deployData, nil)
+	//s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
+	//return resultURL, essMeta
 }
 
 func (s *validatorSuite) TestValidateIAASAttachStorageFail(c *gc.C) {
@@ -113,42 +159,7 @@ func (s *validatorSuite) TestValidateIAASAttachStorageSuccess(c *gc.C) {
 func (s *validatorSuite) testValidateIAASAttachStorage(c *gc.C, argStorage []string, expectedStorageTags []names.StorageTag, expectedErr errors.ConstError) {
 	defer s.setupMocks(c).Finish()
 	s.expectSimpleValidate()
-	// resolveCharm
-	curl := charm.MustParseURL("testcharm")
-	resultURL := charm.MustParseURL("ch:amd64/jammy/testcharm-4")
-	origin := corecharm.Origin{
-		Source:   "charm-hub",
-		Channel:  &charm.Channel{Risk: "stable"},
-		Platform: corecharm.Platform{Architecture: "amd64"},
-	}
-	resolvedOrigin := corecharm.Origin{
-		Source:   "charm-hub",
-		Type:     "charm",
-		Channel:  &charm.Channel{Track: "default", Risk: "stable"},
-		Platform: corecharm.Platform{Architecture: "amd64", OS: "ubuntu", Channel: "22.04"},
-		Revision: intptr(4),
-	}
-	supportedSeries := []string{"jammy", "focal"}
-	s.repo.EXPECT().ResolveWithPreferredChannel(curl, origin).Return(resultURL, resolvedOrigin, supportedSeries, nil)
-	s.repo.EXPECT().ResolveResources(nil, corecharm.CharmID{URL: resultURL, Origin: resolvedOrigin}).Return(nil, nil)
-	// getCharm
-	expMeta := &charm.Meta{
-		Name: "test-charm",
-	}
-	expManifest := new(charm.Manifest)
-	expConfig := new(charm.Config)
-	essMeta := corecharm.EssentialMetadata{
-		Meta:           expMeta,
-		Manifest:       expManifest,
-		Config:         expConfig,
-		ResolvedOrigin: resolvedOrigin,
-	}
-	s.repo.EXPECT().GetEssentialMetadata(corecharm.MetadataRequest{
-		CharmURL: resultURL,
-		Origin:   resolvedOrigin,
-	}).Return([]corecharm.EssentialMetadata{essMeta}, nil)
-	s.state.EXPECT().ModelConstraints().Return(constraints.Value{Arch: strptr("arm64")}, nil)
-	s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
+	resultURL, essMeta := s.expectResolveForDeploy(c)
 
 	arg := params.DeployFromRepositoryArg{
 		CharmName:     "testcharm",
@@ -162,7 +173,7 @@ func (s *validatorSuite) testValidateIAASAttachStorage(c *gc.C, argStorage []str
 			charm:           corecharm.NewCharmInfoAdapter(essMeta),
 			charmURL:        resultURL,
 			numUnits:        1,
-			origin:          resolvedOrigin,
+			origin:          essMeta.ResolvedOrigin,
 			attachStorage:   expectedStorageTags,
 		})
 	} else {
@@ -174,41 +185,7 @@ func (s *validatorSuite) testValidateIAASAttachStorage(c *gc.C, argStorage []str
 func (s *validatorSuite) TestValidatePlacementSuccess(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 	s.expectSimpleValidate()
-	// resolveCharm
-	curl := charm.MustParseURL("testcharm")
-	resultURL := charm.MustParseURL("ch:amd64/jammy/testcharm-4")
-	origin := corecharm.Origin{
-		Source:   "charm-hub",
-		Channel:  &charm.Channel{Risk: "stable"},
-		Platform: corecharm.Platform{Architecture: "amd64", OS: "ubuntu", Channel: "22.04"},
-	}
-	resolvedOrigin := corecharm.Origin{
-		Source:   "charm-hub",
-		Type:     "charm",
-		Channel:  &charm.Channel{Track: "default", Risk: "stable"},
-		Platform: corecharm.Platform{Architecture: "amd64", OS: "ubuntu", Channel: "22.04"},
-		Revision: intptr(4),
-	}
-	supportedSeries := []string{"jammy", "focal"}
-	s.repo.EXPECT().ResolveWithPreferredChannel(curl, origin).Return(resultURL, resolvedOrigin, supportedSeries, nil)
-	s.repo.EXPECT().ResolveResources(nil, corecharm.CharmID{URL: resultURL, Origin: resolvedOrigin}).Return(nil, nil)
-
-	// getCharm
-	expMeta := &charm.Meta{
-		Name: "test-charm",
-	}
-	expManifest := new(charm.Manifest)
-	expConfig := new(charm.Config)
-	essMeta := corecharm.EssentialMetadata{
-		Meta:           expMeta,
-		Manifest:       expManifest,
-		Config:         expConfig,
-		ResolvedOrigin: resolvedOrigin,
-	}
-	s.repo.EXPECT().GetEssentialMetadata(corecharm.MetadataRequest{
-		CharmURL: resultURL,
-		Origin:   resolvedOrigin,
-	}).Return([]corecharm.EssentialMetadata{essMeta}, nil)
+	resultURL, essMeta := s.expectResolveForDeployWithPlacement(c)
 
 	// Placement
 	s.state.EXPECT().Machine("0").Return(s.machine, nil).Times(2)
@@ -220,8 +197,6 @@ func (s *validatorSuite) TestValidatePlacementSuccess(c *gc.C) {
 	})
 	hwc := &instance.HardwareCharacteristics{Arch: strptr("amd64")}
 	s.machine.EXPECT().HardwareCharacteristics().Return(hwc, nil)
-	s.state.EXPECT().ModelConstraints().Return(constraints.Value{Arch: strptr("arm64")}, nil)
-	s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
 
 	arg := params.DeployFromRepositoryArg{
 		CharmName: "testcharm",
@@ -234,7 +209,7 @@ func (s *validatorSuite) TestValidatePlacementSuccess(c *gc.C) {
 		charm:           corecharm.NewCharmInfoAdapter(essMeta),
 		charmURL:        resultURL,
 		numUnits:        1,
-		origin:          resolvedOrigin,
+		origin:          essMeta.ResolvedOrigin,
 		placement:       arg.Placement,
 	})
 }
@@ -242,47 +217,11 @@ func (s *validatorSuite) TestValidatePlacementSuccess(c *gc.C) {
 func (s *validatorSuite) TestValidateEndpointBindingSuccess(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 	s.expectSimpleValidate()
-	// resolveCharm
-	curl := charm.MustParseURL("testcharm")
-	resultURL := charm.MustParseURL("ch:amd64/jammy/testcharm-4")
-	origin := corecharm.Origin{
-		Source:   "charm-hub",
-		Channel:  &charm.Channel{Risk: "stable"},
-		Platform: corecharm.Platform{Architecture: "amd64"},
-	}
-	resolvedOrigin := corecharm.Origin{
-		Source:   "charm-hub",
-		Type:     "charm",
-		Channel:  &charm.Channel{Track: "default", Risk: "stable"},
-		Platform: corecharm.Platform{Architecture: "amd64", OS: "ubuntu", Channel: "22.04"},
-		Revision: intptr(4),
-	}
-	supportedSeries := []string{"jammy", "focal"}
-	s.repo.EXPECT().ResolveWithPreferredChannel(curl, origin).Return(resultURL, resolvedOrigin, supportedSeries, nil)
-	s.repo.EXPECT().ResolveResources(nil, corecharm.CharmID{URL: resultURL, Origin: resolvedOrigin}).Return(nil, nil)
-
-	// getCharm
-	expMeta := &charm.Meta{
-		Name: "test-charm",
-	}
-	expManifest := new(charm.Manifest)
-	expConfig := new(charm.Config)
-	essMeta := corecharm.EssentialMetadata{
-		Meta:           expMeta,
-		Manifest:       expManifest,
-		Config:         expConfig,
-		ResolvedOrigin: resolvedOrigin,
-	}
-	s.repo.EXPECT().GetEssentialMetadata(corecharm.MetadataRequest{
-		CharmURL: resultURL,
-		Origin:   resolvedOrigin,
-	}).Return([]corecharm.EssentialMetadata{essMeta}, nil)
+	resultURL, essMeta := s.expectResolveForDeploy(c)
 
 	// state bindings
 	endpointMap := map[string]string{"to": "from"}
 	s.bindings.EXPECT().Map().Return(endpointMap)
-	s.state.EXPECT().ModelConstraints().Return(constraints.Value{Arch: strptr("arm64")}, nil)
-	s.state.EXPECT().Charm(gomock.Any()).Return(nil, errors.NotFoundf("charm"))
 
 	arg := params.DeployFromRepositoryArg{
 		CharmName:        "testcharm",
@@ -296,7 +235,7 @@ func (s *validatorSuite) TestValidateEndpointBindingSuccess(c *gc.C) {
 		charmURL:        resultURL,
 		endpoints:       endpointMap,
 		numUnits:        1,
-		origin:          resolvedOrigin,
+		origin:          essMeta.ResolvedOrigin,
 	})
 }
 
