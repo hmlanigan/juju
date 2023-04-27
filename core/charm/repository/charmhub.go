@@ -12,6 +12,7 @@ import (
 	"github.com/juju/charm/v10"
 	charmresource "github.com/juju/charm/v10/resource"
 	"github.com/juju/errors"
+	"github.com/juju/loggo"
 	"github.com/kr/pretty"
 
 	"github.com/juju/juju/charmhub"
@@ -219,21 +220,26 @@ func (c *CharmHubRepository) resolveWithPreferredChannel(charmURL *charm.URL, re
 // Reducing the number of required calls to a repository.
 func (c *CharmHubRepository) ResolveForDeploy(arg corecharm.ResolveForDeployArg) (corecharm.ResolvedDataForDeploy, error) {
 	resultURL, resolvedOrigin, supportedSeries, resp, resolveErr := c.resolveWithPreferredChannel(arg.URL, arg.Origin)
-	if charm.IsUnsupportedSeriesError(resolveErr) {
-		msg := fmt.Sprintf("%v. Use --force to deploy the charm anyway.", resolveErr)
-		return corecharm.ResolvedDataForDeploy{}, errors.Errorf(msg)
-	} else if resolveErr != nil {
+	loggo.GetLogger("heather").Criticalf("resolveWithPreferredChannel(%s, %s) returned %q, %s, %+v, %s, %+v",
+		arg.URL, arg.Origin, resultURL, resolvedOrigin, supportedSeries, resp, resolveErr)
+	//This error not returned here
+	//if charm.IsUnsupportedSeriesError(resolveErr) {
+	//	msg := fmt.Sprintf("%v. Use --force to deploy the charm anyway.", resolveErr)
+	//	return corecharm.ResolvedDataForDeploy{}, errors.Errorf(msg)
+	//} else
+	if resolveErr != nil {
 		return corecharm.ResolvedDataForDeploy{}, errors.Trace(resolveErr)
 	}
-	if arg.Origin.Platform.OS == "" && arg.Origin.Platform.Channel == "" {
-		var err error
-		resolvedOrigin, err = arg.BaseSelectionFunc(arg.Origin, resolvedOrigin, supportedSeries)
-		if err != nil {
-			return corecharm.ResolvedDataForDeploy{}, errors.Trace(resolveErr)
-		}
-		series, err := coreseries.GetSeriesFromChannel(resolvedOrigin.Platform.OS, resolvedOrigin.Platform.Channel)
-		resultURL = resultURL.WithSeries(series)
+	// How to handle force with unsupported series error.
+	//if arg.Origin.Platform.OS == "" && arg.Origin.Platform.Channel == "" {
+	var err error
+	resolvedOrigin, err = arg.BaseSelectionFunc(arg.Origin, resolvedOrigin, supportedSeries)
+	if err != nil {
+		return corecharm.ResolvedDataForDeploy{}, errors.Trace(resolveErr)
 	}
+	series, err := coreseries.GetSeriesFromChannel(resolvedOrigin.Platform.OS, resolvedOrigin.Platform.Channel)
+	resultURL = resultURL.WithSeries(series)
+	//}
 	resolvedOrigin.ID = resp.Entity.ID
 	resolvedOrigin.Hash = resp.Entity.Download.HashSHA256
 	essMeta, err := transformRefreshResult(resultURL, resp)

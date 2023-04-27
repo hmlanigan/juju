@@ -9,6 +9,7 @@ import (
 
 	"github.com/juju/collections/set"
 	"github.com/juju/errors"
+	"github.com/juju/loggo"
 
 	"github.com/juju/juju/core/series"
 	"github.com/juju/juju/version"
@@ -111,7 +112,7 @@ func (s SeriesSelector) CharmSeries() (selectedSeries string, err error) {
 		}
 		return s.userRequested(defaultSeries)
 	}
-
+	loggo.GetLogger("lanigan").Criticalf("CharmSeries past user requested")
 	// Next fall back to the charm's list of series, filtered to what's supported
 	// by Juju. Preserve the order of the supported series from the charm
 	// metadata, as the order could be out of order compared to Ubuntu series
@@ -123,6 +124,7 @@ func (s SeriesSelector) CharmSeries() (selectedSeries string, err error) {
 		}
 	}
 	defaultSeries, err := SeriesForCharm("", supportedSeries)
+	loggo.GetLogger("lanigan").Criticalf("SeriesForCharm('', %+v) %q, %+v", supportedSeries, defaultSeries, err)
 	if err == nil {
 		return defaultSeries, nil
 	}

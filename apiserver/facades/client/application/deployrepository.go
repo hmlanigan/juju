@@ -697,13 +697,8 @@ func (v *deployFromRepositoryValidator) platformFromPlacement(placements []*inst
 	return platform, platStrings.Size() == 1, nil
 }
 
-func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedOrigin corecharm.Origin, force, usedModelDefaultBase bool, cons constraints.Value) (corecharm.ResolvedDataForDeploy, error) {
-	deployRepoLogger.Tracef("resolveCharm(%s, %s)", curl, pretty.Sprint(requestedOrigin))
-	repo, err := v.getCharmRepository(requestedOrigin.Source)
-	if err != nil {
-		return corecharm.ResolvedDataForDeploy{}, errors.Trace(err)
-	}
-	baseSelectionFunc := func(requestedOrigin, resolvedOrigin corecharm.Origin, supportedSeries []string) (corecharm.Origin, error) {
+func (v *deployFromRepositoryValidator) createBaseSelectionFunc(curl *charm.URL, force, usedModelDefaultBase bool, cons constraints.Value) func(corecharm.Origin, corecharm.Origin, []string) (corecharm.Origin, error) {
+	return func(requestedOrigin, resolvedOrigin corecharm.Origin, supportedSeries []string) (corecharm.Origin, error) {
 		modelCons, err := v.state.ModelConstraints()
 		if err != nil {
 			return corecharm.Origin{}, errors.Trace(err)
@@ -745,7 +740,7 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 			Force:               force,
 			Conf:                modelCfg,
 			FromBundle:          false,
-			Logger:              deployRepoLogger,
+			Logger:              deployRepoLogger.Child("seriesselector"),
 			UsingImageID:        cons.HasImageID() || modelCons.HasImageID(),
 		}
 		err = selector.Validate()
@@ -755,13 +750,19 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 
 		// Get the series to use.
 		series, err := selector.CharmSeries()
-		deployRepoLogger.Tracef("Using series %q from %v to deploy %v", series, supportedSeries, curl)
+		// machine-0: 18:04:37 TRACE juju.apiserver.application.deployfromrepository Using series "" from
+		// [focal bionic xenial trusty disco] to deploy
+		// ch:juju-qa-test (github.com/juju/juju/core/charm.SeriesSelector.userRequested:167:
+		// series "jammy" is not supported, supported series are: focal)
+		deployRepoLogger.Tracef("Using series %q from %v to deploy %v (%+v)", series, supportedSeries, curl, err)
 		if charm.IsUnsupportedSeriesError(err) {
 			msg := fmt.Sprintf("%v. Use --force to deploy the charm anyway.", err)
 			if usedModelDefaultBase {
 				msg += " Used the default-series."
 			}
 			return corecharm.Origin{}, errors.Errorf(msg)
+		} else if err != nil {
+			return corecharm.Origin{}, errors.Trace(err)
 		}
 
 		var base coreseries.Base
@@ -780,7 +781,15 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 
 		return resolvedOrigin, nil
 	}
+}
 
+func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedOrigin corecharm.Origin, force, usedModelDefaultBase bool, cons constraints.Value) (corecharm.ResolvedDataForDeploy, error) {
+	deployRepoLogger.Tracef("resolveCharm(%s, %s)", curl, pretty.Sprint(requestedOrigin))
+	repo, err := v.getCharmRepository(requestedOrigin.Source)
+	if err != nil {
+		return corecharm.ResolvedDataForDeploy{}, errors.Trace(err)
+	}
+	baseSelectionFunc := v.createBaseSelectionFunc(curl, force, usedModelDefaultBase, cons)
 	resolveForDeployArg := corecharm.ResolveForDeployArg{
 		BaseSelectionFunc: baseSelectionFunc,
 		URL:               curl,
