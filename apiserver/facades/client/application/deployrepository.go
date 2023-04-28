@@ -689,28 +689,34 @@ func (v *deployFromRepositoryValidator) platformFromPlacement(placements []*inst
 	return platform, platStrings.Size() == 1, nil
 }
 
-func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedOrigin corecharm.Origin, force, usedModelDefaultBase bool, cons constraints.Value) (*charm.URL, corecharm.Origin, error) {
+func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedOrigin corecharm.Origin, force, usedModelDefaultBase bool, cons constraints.Value) (corecharm.ResolvedDataForDeploy, error) {
 	repo, err := v.getCharmRepository(requestedOrigin.Source)
 	if err != nil {
-		return nil, corecharm.Origin{}, errors.Trace(err)
+		return corecharm.ResolvedDataForDeploy{}, errors.Trace(err)
 	}
 
-	resultURL, resolvedOrigin, supportedSeries, resolveErr := repo.ResolveWithPreferredChannel(curl, requestedOrigin)
+	//resultURL, resolvedOrigin, supportedSeries, resolveErr := repo.ResolveForDeploy(corecharm.CharmID{URL:curl,Origin: requestedOrigin})
+	resolvedData, resolveErr := repo.ResolveForDeploy(corecharm.CharmID{URL: curl, Origin: requestedOrigin})
 	if charm.IsUnsupportedSeriesError(resolveErr) {
 		if !force {
 			msg := fmt.Sprintf("%v. Use --force to deploy the charm anyway.", resolveErr)
 			if usedModelDefaultBase {
 				msg += " Used the default-series."
 			}
-			return nil, corecharm.Origin{}, errors.Errorf(msg)
+			return corecharm.ResolvedDataForDeploy{}, errors.Errorf(msg)
 		}
 	} else if resolveErr != nil {
-		return nil, corecharm.Origin{}, errors.Trace(resolveErr)
+		return corecharm.ResolvedDataForDeploy{}, errors.Trace(resolveErr)
 	}
+	resolvedOrigin := &resolvedData.EssentialMetadata.ResolvedOrigin
+
 	modelCons, err := v.state.ModelConstraints()
 	if err != nil {
-		return nil, corecharm.Origin{}, errors.Trace(err)
+		return corecharm.ResolvedDataForDeploy{}, errors.Trace(err)
 	}
+
+	// TODO
+	// Is it possible to have a charm with no bases in the manifest?
 
 	// The charmhub API can return "all" for architecture as it's not a real
 	// arch we don't know how to correctly model it. "all " doesn't mean use the
@@ -725,24 +731,24 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 		var err error
 		seriesFlag, err = coreseries.GetSeriesFromChannel(requestedOrigin.Platform.OS, requestedOrigin.Platform.Channel)
 		if err != nil {
-			return nil, corecharm.Origin{}, errors.Trace(err)
+			return corecharm.ResolvedDataForDeploy{}, errors.Trace(err)
 		}
 	}
 
 	modelCfg, err := v.model.Config()
 	if err != nil {
-		return nil, corecharm.Origin{}, errors.Trace(err)
+		return corecharm.ResolvedDataForDeploy{}, errors.Trace(err)
 	}
 
 	imageStream := modelCfg.ImageStream()
 
-	workloadSeries, err := coreseries.WorkloadSeries(jujuclock.WallClock.Now(), seriesFlag, imageStream)
+	workloadSeries, err := coreseries.WorkloadBases(jujuclock.WallClock.Now(), seriesFlag, imageStream)
 	if err != nil {
-		return nil, corecharm.Origin{}, errors.Trace(err)
+		return corecharm.ResolvedDataForDeploy{}, errors.Trace(err)
 	}
 
-	selector := corecharm.SeriesSelector{
-		SeriesFlag:          seriesFlag,
+	selector := corecharm.BaseSelector{
+		BaseFlag:            seriesFlag,
 		SupportedSeries:     supportedSeries,
 		SupportedJujuSeries: workloadSeries,
 		Force:               force,
@@ -753,7 +759,7 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 	}
 	err = selector.Validate()
 	if err != nil {
-		return nil, corecharm.Origin{}, errors.Trace(err)
+		return corecharm.ResolvedDataForDeploy{}, errors.Trace(err)
 	}
 
 	// Get the series to use.
@@ -764,7 +770,7 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 		if usedModelDefaultBase {
 			msg += " Used the default-series."
 		}
-		return nil, corecharm.Origin{}, errors.Errorf(msg)
+		return corecharm.ResolvedDataForDeploy{}, errors.Errorf(msg)
 	}
 
 	var base coreseries.Base
@@ -773,7 +779,7 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 	} else {
 		base, err = coreseries.GetBaseFromSeries(series)
 		if err != nil {
-			return nil, corecharm.Origin{}, errors.Trace(err)
+			return corecharm.ResolvedDataForDeploy{}, errors.Trace(err)
 		}
 	}
 	resolvedOrigin.Platform.OS = base.OS
@@ -781,7 +787,7 @@ func (v *deployFromRepositoryValidator) resolveCharm(curl *charm.URL, requestedO
 	// because String() will return "track/risk" if the channel's risk is non-empty
 	resolvedOrigin.Platform.Channel = base.Channel.Track
 
-	return resultURL, resolvedOrigin, nil
+	return resolvedData, nil
 }
 
 // getCharm returns the charm being deployed. Either it already has been
@@ -825,10 +831,10 @@ func (v *deployFromRepositoryValidator) getCharm(arg params.DeployFromRepository
 	if err != nil && !errors.Is(err, errors.NotFound) {
 		return nil, corecharm.Origin{}, nil, errors.Trace(err)
 	} else if err == nil {
-		_, resolvedOrigin, err = repo.GetDownloadURL(charmURL, resolvedOrigin)
-		if err != nil {
-			return nil, corecharm.Origin{}, nil, errors.Trace(err)
-		}
+		//_, resolvedOrigin, err = repo.GetDownloadURL(charmURL, resolvedOrigin)
+		//if err != nil {
+		//	return nil, corecharm.Origin{}, nil, errors.Trace(err)
+		//}
 		return charmURL, resolvedOrigin, deployedCharm, nil
 	}
 
@@ -868,7 +874,22 @@ func (v *deployFromRepositoryValidator) appCharmSettings(appName string, trust b
 	return appConfig, charmSettings, err
 }
 
-func (v *deployFromRepositoryValidator) getCharmRepository(src corecharm.Source) (corecharm.Repository, error) {
+type Repository interface {
+	// ListResources returns a list of resources associated with a given charm.
+	ListResources(*charm.URL, corecharm.Origin) ([]resource.Resource, error)
+
+	// ResolveResources looks at the provided repository and backend (already
+	// downloaded) resources to determine which to use. Provided (uploaded) take
+	// precedence. If charmhub has a newer resource than the back end, use that.
+	ResolveResources(resources []resource.Resource, id corecharm.CharmID) ([]resource.Resource, error)
+
+	// ResolveForDeploy does the same thing as ResolveWithPreferredChannel
+	// returning EssentialMetadata also. Resources are returned if a
+	// charm revision was not provided in the CharmID.
+	ResolveForDeploy(corecharm.CharmID) (corecharm.ResolvedDataForDeploy, error)
+}
+
+func (v *deployFromRepositoryValidator) getCharmRepository(src corecharm.Source) (Repository, error) {
 	// The following is only required for testing, as we generate api new http
 	// client here for production.
 	v.mu.Lock()

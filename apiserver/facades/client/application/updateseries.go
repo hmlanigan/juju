@@ -136,7 +136,7 @@ func (s stateSeriesValidator) ValidateApplication(application Application, base 
 	if err != nil {
 		return errors.Trace(err)
 	}
-	supportedSeries, err := corecharm.ComputedSeries(ch)
+	supportedSeries, err := corecharm.ComputedBase(ch)
 	if err != nil {
 		return errors.Trace(err)
 	}
