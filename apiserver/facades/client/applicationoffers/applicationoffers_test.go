@@ -66,13 +66,10 @@ func (s *applicationOffersSuite) setupAPI(c *gc.C) {
 	getApplicationOffers := func(interface{}) jujucrossmodel.ApplicationOffers {
 		return s.applicationOffers
 	}
-	getEnviron := func(ctx context.Context, modelUUID string) (environs.Environ, error) {
-		return s.env, nil
-	}
 	api, err := applicationoffers.CreateOffersAPI(
-		getApplicationOffers, getEnviron, getFakeControllerInfo,
+		getApplicationOffers, getFakeControllerInfo,
 		s.mockState, s.mockStatePool, s.mockModelService,
-		s.authorizer, s.authContext, apiservertesting.NoopModelCredentialInvalidatorGetter,
+		s.authorizer, s.authContext,
 		c.MkDir(), loggertesting.WrapCheckLog(c),
 	)
 	c.Assert(err, jc.ErrorIsNil)
@@ -1183,14 +1180,11 @@ func (s *consumeSuite) setupAPI(c *gc.C) {
 	getApplicationOffers := func(st interface{}) jujucrossmodel.ApplicationOffers {
 		return &mockApplicationOffers{st: st.(*mockState)}
 	}
-	getEnviron := func(ctx context.Context, modelUUID string) (environs.Environ, error) {
-		return s.env, nil
-	}
 	api, err := applicationoffers.CreateOffersAPI(
-		getApplicationOffers, getEnviron, getFakeControllerInfo,
+		getApplicationOffers, getFakeControllerInfo,
 		s.mockState, s.mockStatePool, s.mockModelService,
 		s.authorizer, s.authContext,
-		apiservertesting.NoopModelCredentialInvalidatorGetter, c.MkDir(),
+		c.MkDir(),
 		loggertesting.WrapCheckLog(c),
 	)
 	c.Assert(err, jc.ErrorIsNil)
