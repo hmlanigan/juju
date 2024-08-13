@@ -19,11 +19,8 @@ import (
 	corelogger "github.com/juju/juju/core/logger"
 	"github.com/juju/juju/core/model"
 	"github.com/juju/juju/core/permission"
-	"github.com/juju/juju/environs"
 	"github.com/juju/juju/rpc/params"
 )
-
-type environFromModelFunc func(context.Context, string) (environs.Environ, error)
 
 // OffersAPIv5 implements the cross model interface and is the concrete
 // implementation of the api end point.
