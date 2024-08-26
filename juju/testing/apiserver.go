@@ -288,7 +288,7 @@ func (s *ApiServerSuite) setupControllerModel(c *gc.C, controllerCfg controller.
 		CloudName:     DefaultCloud.Name,
 		MongoSession:  session,
 		AdminPassword: AdminSecret,
-		NewPolicy: stateenvirons.GetNewPolicyFunc(serviceFactory.Cloud(), serviceFactory.Credential(), func(modelUUID coremodel.UUID, registry storage.ProviderRegistry) state.StoragePoolGetter {
+		NewPolicy: stateenvirons.GetNewPolicyFunc(serviceFactory.Cloud(), serviceFactory.Credential(), nil, func(modelUUID coremodel.UUID, registry storage.ProviderRegistry) state.StoragePoolGetter {
 			return s.ServiceFactoryGetter(c).FactoryForModel(modelUUID).Storage(registry)
 		}),
 	}, environs.ProviderConfigSchemaSource(serviceFactory.Cloud()))

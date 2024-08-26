@@ -30,6 +30,7 @@ type environStatePolicy struct {
 	getBroker            NewCAASBrokerFunc
 	checkerMu            sync.Mutex
 	checker              deployChecker
+	modelConfigService   ModelConfigService
 	storageServiceGetter storageServiceGetter
 }
 
@@ -45,7 +46,7 @@ type storageServiceGetter func(modelUUID coremodel.UUID, registry storage.Provid
 // GetNewPolicyFunc returns a state.NewPolicyFunc that will return
 // a state.Policy implemented in terms of either environs.Environ
 // or caas.Broker and related types.
-func GetNewPolicyFunc(cloudService CloudService, credentialService CredentialService, storageServiceGetter storageServiceGetter) state.NewPolicyFunc {
+func GetNewPolicyFunc(cloudService CloudService, credentialService CredentialService, modelConfigService ModelConfigService, storageServiceGetter storageServiceGetter) state.NewPolicyFunc {
 	return func(st *state.State) state.Policy {
 		return &environStatePolicy{
 			st:                   st,
@@ -53,6 +54,7 @@ func GetNewPolicyFunc(cloudService CloudService, credentialService CredentialSer
 			credentialService:    credentialService,
 			getEnviron:           GetNewEnvironFunc(environs.New),
 			getBroker:            GetNewCAASBrokerFunc(caas.New),
+			modelConfigService:   modelConfigService,
 			storageServiceGetter: storageServiceGetter,
 		}
 	}

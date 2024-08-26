@@ -30,7 +30,12 @@ type Model interface {
 	ModelTag() names.ModelTag
 	ControllerUUID() string
 	Type() state.ModelType
-	Config() (*config.Config, error)
+}
+
+// ModelConfigService provides access to the model configuration.
+type ModelConfigService interface {
+	// ModelConfig returns the current config for the model.
+	ModelConfig(context.Context) (*config.Config, error)
 }
 
 // CredentialService provides access to credentials.
@@ -57,6 +62,9 @@ type EnvironConfigGetter struct {
 
 	// CloudService provides access to clouds.
 	CloudService CloudService
+
+	// ModelConfigService provides access to the current model's config.
+	ModelConfigService ModelConfigService
 }
 
 // CloudAPIVersion returns the cloud API version for the cloud with the given spec.
@@ -65,7 +73,7 @@ func (g EnvironConfigGetter) CloudAPIVersion(spec environscloudspec.CloudSpec) (
 	if g.Model.Type() == state.ModelTypeIAAS {
 		return "", nil
 	}
-	cfg, err := g.Config()
+	cfg, err := g.ModelConfig(context.TODO())
 	if err != nil {
 		return "", errors.Trace(err)
 	}
@@ -86,7 +94,7 @@ func (g EnvironConfigGetter) CloudAPIVersion(spec environscloudspec.CloudSpec) (
 
 // ModelConfig implements environs.EnvironConfigGetter.
 func (g EnvironConfigGetter) ModelConfig(ctx context.Context) (*config.Config, error) {
-	return g.Config()
+	return g.ModelConfigService.ModelConfig(ctx)
 }
 
 // CloudSpec implements environs.EnvironConfigGetter.
@@ -145,7 +153,7 @@ func GetNewCAASBrokerFunc(newBroker caas.NewContainerBrokerFunc) NewCAASBrokerFu
 		if err != nil {
 			return nil, errors.Trace(err)
 		}
-		cfg, err := g.Config()
+		cfg, err := g.ModelConfig(context.TODO())
 		if err != nil {
 			return nil, errors.Trace(err)
 		}

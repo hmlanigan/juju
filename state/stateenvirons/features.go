@@ -4,6 +4,8 @@
 package stateenvirons
 
 import (
+	"context"
+
 	"github.com/juju/errors"
 
 	"github.com/juju/juju/caas"
@@ -20,11 +22,11 @@ var (
 
 // SupportedFeatures returns the set of features that the model makes available
 // for charms to use.
-func SupportedFeatures(model Model, cloudService CloudService, credentialService CredentialService) (assumes.FeatureSet, error) {
+func SupportedFeatures(model Model, cloudService CloudService, credentialService CredentialService, modelConfigService ModelConfigService) (assumes.FeatureSet, error) {
 	var fs assumes.FeatureSet
 
 	// Models always include a feature flag for the current Juju version
-	modelConf, err := model.Config()
+	modelConf, err := modelConfigService.ModelConfig(context.TODO())
 	if err != nil {
 		return fs, errors.Annotate(err, "accessing model config")
 	}

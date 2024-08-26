@@ -397,6 +397,7 @@ func (c *BootstrapCommand) Run(ctx *cmd.Context) error {
 			StateNewPolicy: stateenvirons.GetNewPolicyFunc(
 				cloudGetter{cloud: &args.ControllerCloud},
 				credentialGetter{cred: args.ControllerCloudCredential},
+				nil,
 				// We don't need the storage service at bootstrap.
 				func(modelUUID model.UUID, registry storage.ProviderRegistry) state.StoragePoolGetter {
 					return noopStoragePoolGetter{}
