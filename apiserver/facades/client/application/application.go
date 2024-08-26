@@ -229,6 +229,7 @@ type DeployApplicationFunc = func(
 	common.CloudService,
 	common.CredentialService,
 	ApplicationService,
+	ModelConfigService,
 	objectstore.ObjectStore,
 	DeployApplicationParams,
 	corelogger.Logger,
@@ -586,7 +587,7 @@ func (api *APIBase) deployApplication(
 		return errors.Trace(err)
 	}
 	// TODO: replace model with model info/config services
-	_, err = api.deployApplicationFunc(ctx, api.backend, api.model, api.modelInfo, api.cloudService, api.credentialService, api.applicationService, api.store, DeployApplicationParams{
+	_, err = api.deployApplicationFunc(ctx, api.backend, api.model, api.modelInfo, api.cloudService, api.credentialService, api.applicationService, api.modelConfigService, api.store, DeployApplicationParams{
 		ApplicationName:   args.ApplicationName,
 		Charm:             api.stateCharm(ch),
 		CharmOrigin:       origin,
@@ -1056,7 +1057,7 @@ func (api *APIBase) applicationSetCharm(
 	if err != nil {
 		return errors.Annotate(err, "retrieving model")
 	}
-	if err := assertCharmAssumptions(ctx, newCharm.Meta().Assumes, model, api.cloudService, api.credentialService); err != nil {
+	if err := assertCharmAssumptions(ctx, newCharm.Meta().Assumes, model, api.cloudService, api.credentialService, api.modelConfigService); err != nil {
 		if !errors.Is(err, errors.NotSupported) || !params.Force.Force {
 			return errors.Trace(err)
 		}

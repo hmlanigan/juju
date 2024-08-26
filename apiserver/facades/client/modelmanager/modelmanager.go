@@ -81,6 +81,7 @@ type ModelManagerAPI struct {
 	modelDefaultsService ModelDefaultsService
 	cloudService         CloudService
 	credentialService    CredentialService
+	modelConfigService   ModelConfigService
 	networkService       NetworkService
 	configSchemaSource   config.ConfigSchemaSourceGetter
 	accessService        AccessService
@@ -1282,7 +1283,11 @@ func (m *ModelManagerAPI) getModelInfo(ctx context.Context, tag names.ModelTag, 
 		}
 	}
 
-	fs, err := supportedFeaturesGetter(model, m.cloudService, m.credentialService)
+	modelUUID := coremodel.UUID(model.UUID())
+	modelServiceFactory := m.serviceFactoryGetter.ServiceFactoryForModel(modelUUID)
+	modelConfigService := modelServiceFactory.Config()
+
+	fs, err := supportedFeaturesGetter(model, m.cloudService, m.credentialService, modelConfigService)
 	if err != nil {
 		return params.ModelInfo{}, err
 	}

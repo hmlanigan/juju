@@ -79,6 +79,7 @@ func DeployApplication(
 	cloudService common.CloudService,
 	credentialService common.CredentialService,
 	applicationService ApplicationService,
+	modelConfigService ModelConfigService,
 	store objectstore.ObjectStore,
 	args DeployApplicationParams,
 	logger corelogger.Logger,
@@ -100,7 +101,7 @@ func DeployApplication(
 	}
 
 	// Enforce "assumes" requirements.
-	if err := assertCharmAssumptions(ctx, args.Charm.Meta().Assumes, model, cloudService, credentialService); err != nil {
+	if err := assertCharmAssumptions(ctx, args.Charm.Meta().Assumes, model, cloudService, credentialService, modelConfigService); err != nil {
 		if !errors.Is(err, errors.NotSupported) || !args.Force {
 			return nil, errors.Trace(err)
 		}
@@ -293,13 +294,13 @@ func StateCharmOrigin(origin corecharm.Origin) (*state.CharmOrigin, error) {
 
 func assertCharmAssumptions(
 	ctx context.Context, assumesExprTree *assumes.ExpressionTree, model Model, cloudService common.CloudService,
-	credentialService common.CredentialService,
+	credentialService common.CredentialService, modelConfigService ModelConfigService,
 ) error {
 	if assumesExprTree == nil {
 		return nil
 	}
 
-	featureSet, err := SupportedFeaturesGetter(model, cloudService, credentialService)
+	featureSet, err := SupportedFeaturesGetter(model, cloudService, credentialService, modelConfigService)
 	if err != nil {
 		return errors.Annotate(err, "querying feature set supported by the model")
 	}
