@@ -232,6 +232,7 @@ func Manifold(config ManifoldConfig) dependency.Manifold {
 				systemState,
 				controllerModelServiceFactory.Cloud(),
 				controllerModelServiceFactory.Credential(),
+				controllerModelServiceFactory.Config(),
 			)
 			if err != nil {
 				_ = stTracker.Done()

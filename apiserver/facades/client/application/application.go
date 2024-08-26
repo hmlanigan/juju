@@ -150,7 +150,7 @@ func newFacadeBase(stdCtx context.Context, ctx facade.ModelContext) (*APIBase, e
 		return nil, errors.Trace(err)
 	}
 
-	prechecker, err := stateenvirons.NewInstancePrechecker(ctx.State(), serviceFactory.Cloud(), serviceFactory.Credential())
+	prechecker, err := stateenvirons.NewInstancePrechecker(ctx.State(), serviceFactory.Cloud(), serviceFactory.Credential(), serviceFactory.Config())
 	if err != nil {
 		return nil, errors.Trace(err)
 	}

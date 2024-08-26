@@ -63,13 +63,14 @@ func GetNewPolicyFunc(cloudService CloudService, credentialService CredentialSer
 // NewInstancePrechecker returns a new instance prechecker that uses the
 // specified cloudService and credentialService to create the underlying
 // deployChecker.
-func NewInstancePrechecker(st *state.State, cloudService CloudService, credentialService CredentialService) (environs.InstancePrechecker, error) {
+func NewInstancePrechecker(st *state.State, cloudService CloudService, credentialService CredentialService, modelConfigService ModelConfigService) (environs.InstancePrechecker, error) {
 	policy := &environStatePolicy{
-		st:                st,
-		cloudService:      cloudService,
-		credentialService: credentialService,
-		getEnviron:        GetNewEnvironFunc(environs.New),
-		getBroker:         GetNewCAASBrokerFunc(caas.New),
+		st:                 st,
+		cloudService:       cloudService,
+		credentialService:  credentialService,
+		modelConfigService: modelConfigService,
+		getEnviron:         GetNewEnvironFunc(environs.New),
+		getBroker:          GetNewCAASBrokerFunc(caas.New),
 	}
 	return policy.Prechecker()
 }

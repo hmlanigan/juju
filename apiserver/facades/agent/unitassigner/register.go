@@ -25,7 +25,7 @@ func newFacade(ctx facade.ModelContext) (*API, error) {
 
 	serviceFactory := ctx.ServiceFactory()
 
-	prechecker, err := stateenvirons.NewInstancePrechecker(st, serviceFactory.Cloud(), serviceFactory.Credential())
+	prechecker, err := stateenvirons.NewInstancePrechecker(st, serviceFactory.Cloud(), serviceFactory.Credential(), serviceFactory.Config())
 	if err != nil {
 		return nil, err
 	}

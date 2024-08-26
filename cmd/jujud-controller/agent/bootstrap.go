@@ -197,6 +197,20 @@ func (c cloudGetter) Cloud(_ stdcontext.Context, name string) (*jujucloud.Cloud,
 	return c.cloud, nil
 }
 
+// credentialGetter serves a fixed credential as a CredentialService instance.
+// It is needed by the state policy to create an environ when validating the
+// ops needed to set up the initial controller model.
+type modelConfigGetter struct {
+	cfg *config.Config
+}
+
+func (c modelConfigGetter) ModelConfig(_ stdcontext.Context) (*config.Config, error) {
+	if c.cfg == nil {
+		return nil, errors.NotFoundf("model config")
+	}
+	return c.cfg, nil
+}
+
 type noopStoragePoolGetter struct{}
 
 func (noopStoragePoolGetter) GetStoragePoolByName(ctx stdcontext.Context, name string) (*storage.Config, error) {
@@ -397,7 +411,7 @@ func (c *BootstrapCommand) Run(ctx *cmd.Context) error {
 			StateNewPolicy: stateenvirons.GetNewPolicyFunc(
 				cloudGetter{cloud: &args.ControllerCloud},
 				credentialGetter{cred: args.ControllerCloudCredential},
-				nil,
+				modelConfigGetter{cfg: args.ControllerModelConfig},
 				// We don't need the storage service at bootstrap.
 				func(modelUUID model.UUID, registry storage.ProviderRegistry) state.StoragePoolGetter {
 					return noopStoragePoolGetter{}
@@ -411,6 +425,7 @@ func (c *BootstrapCommand) Run(ctx *cmd.Context) error {
 					st,
 					cloudGetter{cloud: &args.ControllerCloud},
 					credentialGetter{cred: args.ControllerCloudCredential},
+					modelConfigGetter{cfg: args.ControllerModelConfig},
 				)
 			},
 			ConfigSchemaSourceGetter: configSchemaSource,

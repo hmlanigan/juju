@@ -41,7 +41,7 @@ func makeFacadeV11(stdCtx context.Context, ctx facade.ModelContext) (*MachineMan
 	st := ctx.State()
 	serviceFactory := ctx.ServiceFactory()
 
-	prechecker, err := stateenvirons.NewInstancePrechecker(st, serviceFactory.Cloud(), serviceFactory.Credential())
+	prechecker, err := stateenvirons.NewInstancePrechecker(st, serviceFactory.Cloud(), serviceFactory.Credential(), serviceFactory.Config())
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
