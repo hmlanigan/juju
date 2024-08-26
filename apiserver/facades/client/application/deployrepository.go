@@ -505,7 +505,7 @@ func (v *deployFromRepositoryValidator) resolvedCharmValidation(ctx context.Cont
 	}
 
 	// Enforce "assumes" requirements if the feature flag is enabled.
-	if err := assertCharmAssumptions(ctx, resolvedCharm.Meta().Assumes, v.model, v.cloudService, v.credentialService); err != nil {
+	if err := assertCharmAssumptions(ctx, resolvedCharm.Meta().Assumes, v.model, v.cloudService, v.credentialService, v.modelConfigService); err != nil {
 		if !errors.Is(err, errors.NotSupported) || !arg.Force {
 			errs = append(errs, err)
 		}
