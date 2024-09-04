@@ -63,9 +63,10 @@ func newFacadeV10(stdCtx context.Context, ctx facade.MultiModelContext) (*ModelM
 	serviceFactory := ctx.ServiceFactory()
 
 	configGetter := stateenvirons.EnvironConfigGetter{
-		Model:             model,
-		CloudService:      serviceFactory.Cloud(),
-		CredentialService: serviceFactory.Credential(),
+		Model:              model,
+		CloudService:       serviceFactory.Cloud(),
+		CredentialService:  serviceFactory.Credential(),
+		ModelConfigService: serviceFactory.Config(),
 	}
 	newEnviron := common.EnvironFuncForModel(model, serviceFactory.Cloud(), serviceFactory.Credential(), configGetter)
 

@@ -28,7 +28,8 @@ func newStateCAASOperatorUpgraderAPI(ctx facade.ModelContext) (*API, error) {
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	broker, err := stateenvirons.GetNewCAASBrokerFunc(caas.New)(model, ctx.ServiceFactory().Cloud(), ctx.ServiceFactory().Credential())
+	serviceFactory := ctx.ServiceFactory()
+	broker, err := stateenvirons.GetNewCAASBrokerFunc(caas.New)(model, serviceFactory.Cloud(), serviceFactory.Credential(), serviceFactory.Config())
 	if err != nil {
 		return nil, errors.Annotate(err, "getting caas client")
 	}

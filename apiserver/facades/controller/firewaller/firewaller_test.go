@@ -65,7 +65,7 @@ func (s *firewallerSuite) setupAPI(c *gc.C) {
 
 	cloudSpecAPI := cloudspec.NewCloudSpec(
 		s.resources,
-		cloudspec.MakeCloudSpecGetterForModel(st, serviceFactory.Cloud(), serviceFactory.Credential()),
+		cloudspec.MakeCloudSpecGetterForModel(st, serviceFactory.Cloud(), serviceFactory.Credential(), serviceFactory.Config()),
 		cloudspec.MakeCloudSpecWatcherForModel(st, serviceFactory.Cloud()),
 		cloudspec.MakeCloudSpecCredentialWatcherForModel(st),
 		cloudspec.MakeCloudSpecCredentialContentWatcherForModel(st, serviceFactory.Credential()),
@@ -231,7 +231,7 @@ func (s *firewallerSuite) TestAreManuallyProvisioned(c *gc.C) {
 	s.setupAPI(c)
 
 	st := s.ControllerModel(c).State()
-	m, err := st.AddOneMachine(s.InstancePrechecker(c, st), state.MachineTemplate{
+	m, err := st.AddOneMachine(state.MachineTemplate{
 		Base:       state.UbuntuBase("12.10"),
 		Jobs:       []state.MachineJob{state.JobHostUnits},
 		InstanceId: "2",

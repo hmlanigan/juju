@@ -67,10 +67,10 @@ func (s *upgraderSuite) SetUpTest(c *gc.C) {
 	var err error
 	// The first machine created is the only one allowed to
 	// JobManageModel
-	s.apiMachine, err = s.hosted.AddMachine(s.InstancePrechecker(c, s.hosted), state.UbuntuBase("12.10"), state.JobHostUnits,
+	s.apiMachine, err = s.hosted.AddMachine(state.UbuntuBase("12.10"), state.JobHostUnits,
 		state.JobManageModel)
 	c.Assert(err, jc.ErrorIsNil)
-	s.rawMachine, err = s.hosted.AddMachine(s.InstancePrechecker(c, s.hosted), state.UbuntuBase("12.10"), state.JobHostUnits)
+	s.rawMachine, err = s.hosted.AddMachine(state.UbuntuBase("12.10"), state.JobHostUnits)
 	c.Assert(err, jc.ErrorIsNil)
 
 	// The default auth is as the machine agent
@@ -88,6 +88,7 @@ func (s *upgraderSuite) SetUpTest(c *gc.C) {
 		s.controllerConfigGetter, systemState, s.hosted, s.resources, s.authorizer,
 		loggertesting.WrapCheckLog(c),
 		serviceFactory.Cloud(), serviceFactory.Credential(),
+		serviceFactory.Config(),
 		serviceFactory.Agent(),
 		s.store,
 	)
@@ -154,6 +155,7 @@ func (s *upgraderSuite) TestWatchAPIVersionApplication(c *gc.C) {
 		s.controllerConfigGetter, systemState, s.hosted, s.resources, authorizer,
 		loggertesting.WrapCheckLog(c),
 		serviceFactory.Cloud(), serviceFactory.Credential(),
+		serviceFactory.Config(),
 		serviceFactory.Agent(),
 		s.store,
 	)
@@ -202,6 +204,7 @@ func (s *upgraderSuite) TestWatchAPIVersionUnit(c *gc.C) {
 		s.controllerConfigGetter, systemState, s.hosted, s.resources, authorizer,
 		loggertesting.WrapCheckLog(c),
 		serviceFactory.Cloud(), serviceFactory.Credential(),
+		serviceFactory.Config(),
 		serviceFactory.Agent(),
 		s.store,
 	)
@@ -245,6 +248,7 @@ func (s *upgraderSuite) TestWatchAPIVersionControllerAgent(c *gc.C) {
 		s.controllerConfigGetter, systemState, s.hosted, s.resources, authorizer,
 		loggertesting.WrapCheckLog(c),
 		serviceFactory.Cloud(), serviceFactory.Credential(),
+		serviceFactory.Config(),
 		serviceFactory.Agent(),
 		s.store,
 	)
@@ -287,6 +291,7 @@ func (s *upgraderSuite) TestWatchAPIVersionRefusesWrongAgent(c *gc.C) {
 		s.controllerConfigGetter, systemState, s.hosted, s.resources, anAuthorizer,
 		loggertesting.WrapCheckLog(c),
 		serviceFactory.Cloud(), serviceFactory.Credential(),
+		serviceFactory.Config(),
 		serviceFactory.Agent(),
 		s.store,
 	)
@@ -323,6 +328,7 @@ func (s *upgraderSuite) TestToolsRefusesWrongAgent(c *gc.C) {
 		s.controllerConfigGetter, systemState, s.hosted, s.resources, anAuthorizer,
 		loggertesting.WrapCheckLog(c),
 		serviceFactory.Cloud(), serviceFactory.Credential(),
+		serviceFactory.Config(),
 		serviceFactory.Agent(),
 		s.store,
 	)
@@ -408,6 +414,7 @@ func (s *upgraderSuite) TestSetToolsRefusesWrongAgent(c *gc.C) {
 		s.controllerConfigGetter, systemState, s.hosted, s.resources, anAuthorizer,
 		loggertesting.WrapCheckLog(c),
 		serviceFactory.Cloud(), serviceFactory.Credential(),
+		serviceFactory.Config(),
 		serviceFactory.Agent(),
 		s.store,
 	)
@@ -478,6 +485,7 @@ func (s *upgraderSuite) TestDesiredVersionRefusesWrongAgent(c *gc.C) {
 		s.controllerConfigGetter, systemState, s.hosted, s.resources, anAuthorizer,
 		loggertesting.WrapCheckLog(c),
 		serviceFactory.Cloud(), serviceFactory.Credential(),
+		serviceFactory.Config(),
 		serviceFactory.Agent(),
 		s.store,
 	)
@@ -567,6 +575,7 @@ func (s *upgraderSuite) TestDesiredVersionUnrestrictedForAPIAgents(c *gc.C) {
 		s.controllerConfigGetter, systemState, s.hosted, s.resources, authorizer,
 		loggertesting.WrapCheckLog(c),
 		serviceFactory.Cloud(), serviceFactory.Credential(),
+		serviceFactory.Config(),
 		serviceFactory.Agent(),
 		s.store,
 	)

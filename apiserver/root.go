@@ -923,8 +923,12 @@ var storageRegistryGetter = func(ctx *facadeContext) func() (storage.ProviderReg
 		if err != nil {
 			return nil, errors.Trace(err)
 		}
+		servicefactory := ctx.ServiceFactory()
 		return stateenvirons.NewStorageProviderRegistryForModel(
-			dbModel, ctx.ServiceFactory().Cloud(), ctx.ServiceFactory().Credential(),
+			dbModel,
+			servicefactory.Cloud(),
+			servicefactory.Credential(),
+			servicefactory.Config(),
 			stateenvirons.GetNewEnvironFunc(environs.New),
 			stateenvirons.GetNewCAASBrokerFunc(caas.New),
 		)

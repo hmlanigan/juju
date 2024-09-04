@@ -40,7 +40,7 @@ func newStateFacadeV2(ctx facade.ModelContext) (*FacadeV2, error) {
 
 	cloudSpecAPI := cloudspec.NewCloudSpecV2(
 		resources,
-		cloudspec.MakeCloudSpecGetterForModel(ctx.State(), serviceFactory.Cloud(), serviceFactory.Credential()),
+		cloudspec.MakeCloudSpecGetterForModel(ctx.State(), serviceFactory.Cloud(), serviceFactory.Credential(), serviceFactory.Config()),
 		cloudspec.MakeCloudSpecWatcherForModel(ctx.State(), serviceFactory.Cloud()),
 		cloudspec.MakeCloudSpecCredentialWatcherForModel(ctx.State()),
 		cloudspec.MakeCloudSpecCredentialContentWatcherForModel(ctx.State(), serviceFactory.Credential()),

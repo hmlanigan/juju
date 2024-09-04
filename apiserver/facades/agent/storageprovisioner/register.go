@@ -31,7 +31,10 @@ func newFacadeV4(stdCtx context.Context, ctx facade.ModelContext) (*StorageProvi
 	}
 	serviceFactory := ctx.ServiceFactory()
 	registry, err := stateenvirons.NewStorageProviderRegistryForModel(
-		model, serviceFactory.Cloud(), serviceFactory.Credential(),
+		model,
+		serviceFactory.Cloud(),
+		serviceFactory.Credential(),
+		serviceFactory.Config(),
 		stateenvirons.GetNewEnvironFunc(environs.New),
 		stateenvirons.GetNewCAASBrokerFunc(caas.New),
 	)

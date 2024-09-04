@@ -32,11 +32,16 @@ func newFacade(ctx facade.ModelContext) (*Facade, error) {
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
+	serviceFactory := ctx.ServiceFactory()
 	facadeBackend := backend{
 		State:          st,
-		networkService: ctx.ServiceFactory().Network(),
+		networkService: serviceFactory.Network(),
 		EnvironConfigGetter: stateenvirons.EnvironConfigGetter{
-			Model: m, CloudService: ctx.ServiceFactory().Cloud(), CredentialService: ctx.ServiceFactory().Credential()},
+			Model:              m,
+			CloudService:       serviceFactory.Cloud(),
+			CredentialService:  serviceFactory.Credential(),
+			ModelConfigService: serviceFactory.Config(),
+		},
 		controllerTag: m.ControllerTag(),
 		modelTag:      m.ModelTag(),
 	}

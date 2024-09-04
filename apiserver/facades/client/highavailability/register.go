@@ -14,7 +14,6 @@ import (
 	applicationservice "github.com/juju/juju/domain/application/service"
 	"github.com/juju/juju/internal/storage"
 	oldstate "github.com/juju/juju/state"
-	"github.com/juju/juju/state/stateenvirons"
 )
 
 // Register is called to expose a package of facades onto a given registry.
@@ -54,10 +53,6 @@ func newHighAvailabilityAPI(ctx facade.ModelContext) (*HighAvailabilityAPI, erro
 	}
 
 	serviceFactory := ctx.ServiceFactory()
-	prechecker, err := stateenvirons.NewInstancePrechecker(st, serviceFactory.Cloud(), serviceFactory.Credential())
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
 
 	// For adding additional controller units, we don't need a storage registry.
 	applicationService := serviceFactory.Application(applicationservice.ApplicationServiceParams{
@@ -67,7 +62,6 @@ func newHighAvailabilityAPI(ctx facade.ModelContext) (*HighAvailabilityAPI, erro
 
 	return &HighAvailabilityAPI{
 		st:                      st,
-		prechecker:              prechecker,
 		nodeService:             serviceFactory.ControllerNode(),
 		machineService:          serviceFactory.Machine(),
 		applicationService:      applicationService,

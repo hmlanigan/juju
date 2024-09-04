@@ -36,7 +36,7 @@ func newStateFacade(ctx facade.ModelContext) (*Facade, error) {
 
 	serviceFactory := ctx.ServiceFactory()
 
-	broker, err := stateenvirons.GetNewCAASBrokerFunc(caas.New)(model, serviceFactory.Cloud(), serviceFactory.Credential())
+	broker, err := stateenvirons.GetNewCAASBrokerFunc(caas.New)(model, serviceFactory.Cloud(), serviceFactory.Credential(), serviceFactory.Config())
 	if err != nil {
 		return nil, errors.Annotate(err, "getting caas client")
 	}

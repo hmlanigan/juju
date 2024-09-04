@@ -266,7 +266,12 @@ func (s *ApiServerSuite) setupControllerModel(c *gc.C, controllerCfg controller.
 
 	// modelUUID param is not used so can pass in anything.
 	serviceFactory := s.ControllerServiceFactory(c)
-
+	storageServiceGetter := func(modelUUID coremodel.UUID, registry storage.ProviderRegistry) state.StoragePoolGetter {
+		return s.ServiceFactoryGetter(c, s.NoopObjectStore(c)).FactoryForModel(modelUUID).Storage(registry)
+	}
+	modelConfigServiceGetter := func(modelUUID coremodel.UUID) stateenvirons.ModelConfigService {
+		return s.ServiceFactoryGetter(c, s.NoopObjectStore(c)).FactoryForModel(modelUUID).Config()
+	}
 	ctrl, err := state.Initialize(state.InitializeParams{
 		Clock: clock.WallClock,
 		// Pass the minimal controller config needed for bootstrap, the rest
@@ -285,9 +290,7 @@ func (s *ApiServerSuite) setupControllerModel(c *gc.C, controllerCfg controller.
 		CloudName:     DefaultCloud.Name,
 		MongoSession:  session,
 		AdminPassword: AdminSecret,
-		NewPolicy: stateenvirons.GetNewPolicyFunc(serviceFactory.Cloud(), serviceFactory.Credential(), func(modelUUID coremodel.UUID, registry storage.ProviderRegistry) state.StoragePoolGetter {
-			return s.ServiceFactoryGetter(c, s.NoopObjectStore(c)).FactoryForModel(modelUUID).Storage(registry)
-		}),
+		NewPolicy:     stateenvirons.GetNewPolicyFunc(serviceFactory.Cloud(), serviceFactory.Credential(), modelConfigServiceGetter, storageServiceGetter),
 	}, environs.ProviderConfigSchemaSource(serviceFactory.Cloud()))
 	c.Assert(err, jc.ErrorIsNil)
 	s.controller = ctrl
@@ -387,9 +390,6 @@ func (s *ApiServerSuite) setupApiServer(c *gc.C, controllerCfg controller.Config
 func (s *ApiServerSuite) SetUpTest(c *gc.C) {
 	s.MgoSuite.SetUpTest(c)
 
-	s.InstancePrechecker = func(c *gc.C, s *state.State) environs.InstancePrechecker {
-		return state.NoopInstancePrechecker{}
-	}
 	s.ConfigSchemaSourceGetter = func(c *gc.C) environsconfig.ConfigSchemaSourceGetter {
 		return state.NoopConfigSchemaSource
 	}
@@ -516,7 +516,7 @@ func (s *ApiServerSuite) OpenAPIAsNewMachine(c *gc.C, jobs ...state.MachineJob) 
 	}
 
 	st := s.ControllerModel(c).State()
-	machine, err := st.AddMachine(state.NoopInstancePrechecker{}, state.UbuntuBase("12.10"), jobs...)
+	machine, err := st.AddMachine(state.UbuntuBase("12.10"), jobs...)
 	c.Assert(err, jc.ErrorIsNil)
 	password, err := password.RandomPassword()
 	c.Assert(err, jc.ErrorIsNil)

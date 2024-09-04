@@ -37,6 +37,7 @@ func newStorageAPI(ctx facade.ModelContext) (*StorageAPI, error) {
 			model,
 			ctx.ServiceFactory().Cloud(),
 			ctx.ServiceFactory().Credential(),
+			ctx.ServiceFactory().Config(),
 			stateenvirons.GetNewEnvironFunc(environs.New),
 			stateenvirons.GetNewCAASBrokerFunc(caas.New))
 		if err != nil {

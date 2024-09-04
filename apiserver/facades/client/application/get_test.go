@@ -58,7 +58,7 @@ func (s *getSuite) SetUpTest(c *gc.C) {
 
 	serviceFactory := s.DefaultModelServiceFactory(c)
 	envFunc := stateenvirons.GetNewEnvironFunc(environs.New)
-	env, err := envFunc(s.ControllerModel(c), serviceFactory.Cloud(), serviceFactory.Credential())
+	env, err := envFunc(s.ControllerModel(c), serviceFactory.Cloud(), serviceFactory.Credential(), serviceFactory.Config())
 	c.Assert(err, jc.ErrorIsNil)
 	registry := stateenvirons.NewStorageProviderRegistry(env)
 
@@ -68,7 +68,7 @@ func (s *getSuite) SetUpTest(c *gc.C) {
 	})
 
 	api, err := application.NewAPIBase(
-		application.GetState(st, state.NoopInstancePrechecker{}),
+		application.GetState(st),
 		nil,
 		serviceFactory.Network(),
 		storageAccess,
@@ -207,7 +207,10 @@ func (s *getSuite) TestClientApplicationGetCAASModelSmokeTest(c *gc.C) {
 
 	serviceFactory := s.DefaultModelServiceFactory(c)
 	registry, err := stateenvirons.NewStorageProviderRegistryForModel(
-		mod, serviceFactory.Cloud(), serviceFactory.Credential(),
+		mod,
+		serviceFactory.Cloud(),
+		serviceFactory.Credential(),
+		serviceFactory.Config(),
 		stateenvirons.GetNewEnvironFunc(environs.New),
 		stateenvirons.GetNewCAASBrokerFunc(caas.New),
 	)
@@ -219,7 +222,7 @@ func (s *getSuite) TestClientApplicationGetCAASModelSmokeTest(c *gc.C) {
 	})
 
 	api, err := application.NewAPIBase(
-		application.GetState(st, state.NoopInstancePrechecker{}),
+		application.GetState(st),
 		nil,
 		serviceFactory.Network(),
 		storageAccess,

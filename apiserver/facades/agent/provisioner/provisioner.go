@@ -134,9 +134,10 @@ func MakeProvisionerAPI(stdCtx context.Context, ctx facade.ModelContext) (*Provi
 	serviceFactory := ctx.ServiceFactory()
 
 	configGetter := stateenvirons.EnvironConfigGetter{
-		Model:             model,
-		CloudService:      serviceFactory.Cloud(),
-		CredentialService: serviceFactory.Credential(),
+		Model:              model,
+		CloudService:       serviceFactory.Cloud(),
+		CredentialService:  serviceFactory.Credential(),
+		ModelConfigService: serviceFactory.Config(),
 	}
 
 	modelInfoService := serviceFactory.ModelInfo()
@@ -148,7 +149,7 @@ func MakeProvisionerAPI(stdCtx context.Context, ctx facade.ModelContext) (*Provi
 
 	var env storage.ProviderRegistry
 	if isCaasModel {
-		env, err = stateenvirons.GetNewCAASBrokerFunc(caas.New)(model, serviceFactory.Cloud(), serviceFactory.Credential())
+		env, err = stateenvirons.GetNewCAASBrokerFunc(caas.New)(model, serviceFactory.Cloud(), serviceFactory.Credential(), serviceFactory.Config())
 	} else {
 		env, err = environs.GetEnviron(stdCtx, configGetter, environs.New)
 	}
