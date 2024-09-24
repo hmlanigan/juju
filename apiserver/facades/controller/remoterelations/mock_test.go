@@ -338,7 +338,7 @@ func (u *mockRelationUnit) LeaveScope() error {
 	return nil
 }
 
-func (u *mockRelationUnit) EnterScope(settings map[string]interface{}) error {
+func (u *mockRelationUnit) EnterScope(_ state.ModelConfigService, settings map[string]interface{}) error {
 	u.MethodCall(u, "EnterScope", settings)
 	if err := u.NextErr(); err != nil {
 		return err

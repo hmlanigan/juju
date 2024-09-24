@@ -89,6 +89,7 @@ func (s *CAASApplicationSuite) SetUpTest(c *gc.C) {
 		s.st, s.st,
 		s.ControllerDomainServices(c).ControllerConfig(),
 		s.applicationService,
+		s.ControllerDomainServices(c).Config(),
 		s.broker,
 		s.clock,
 		loggertesting.WrapCheckLog(c),

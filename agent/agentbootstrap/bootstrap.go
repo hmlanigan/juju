@@ -478,15 +478,18 @@ func (b *AgentBootstrap) initBootstrapMachine(
 		return nil, errors.Trace(err)
 	}
 
-	m, err := st.AddOneMachine(state.MachineTemplate{
-		Base:                    state.Base{OS: base.OS, Channel: base.Channel.String()},
-		Nonce:                   agent.BootstrapNonce,
-		Constraints:             stateParams.BootstrapMachineConstraints,
-		InstanceId:              stateParams.BootstrapMachineInstanceId,
-		HardwareCharacteristics: hardware,
-		Jobs:                    jobs,
-		DisplayName:             stateParams.BootstrapMachineDisplayName,
-	})
+	m, err := st.AddOneMachine(
+		&modelConfigShim{cfg: stateParams.ControllerModelConfig},
+		state.MachineTemplate{
+			Base:                    state.Base{OS: base.OS, Channel: base.Channel.String()},
+			Nonce:                   agent.BootstrapNonce,
+			Constraints:             stateParams.BootstrapMachineConstraints,
+			InstanceId:              stateParams.BootstrapMachineInstanceId,
+			HardwareCharacteristics: hardware,
+			Jobs:                    jobs,
+			DisplayName:             stateParams.BootstrapMachineDisplayName,
+		},
+	)
 	if err != nil {
 		return nil, errors.Annotate(err, "cannot create bootstrap machine in state")
 	}
@@ -573,4 +576,15 @@ func machineJobFromParams(job model.MachineJob) (state.MachineJob, error) {
 	default:
 		return -1, errors.Errorf("invalid machine job %q", job)
 	}
+}
+
+// modelConfigShim implements state.ModelConfigService using a constant model
+// config (namely, the controller model config sourced from the state
+// initialization params).
+type modelConfigShim struct {
+	cfg *config.Config
+}
+
+func (m *modelConfigShim) ModelConfig(stdcontext.Context) (*config.Config, error) {
+	return m.cfg, nil
 }
