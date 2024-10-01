@@ -228,7 +228,6 @@ type lineage struct {
 
 // modelSetupOps returns the transactions necessary to set up a model.
 func (st *State) modelSetupOps(controllerUUID string, args ModelArgs) ([]txn.Op, statusDoc, error) {
-	//func (st *State) modelSetupOps(controllerUUID string, providerConfigSchemaGetter config.ConfigSchemaSourceGetter, args ModelArgs, inherited *lineage) ([]txn.Op, statusDoc, error) {
 	var modelStatusDoc statusDoc
 
 	controllerModelUUID := st.controllerModelTag.Id()

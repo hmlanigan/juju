@@ -27,7 +27,6 @@ import (
 	"github.com/juju/juju/core/network"
 	"github.com/juju/juju/core/payloads"
 	"github.com/juju/juju/core/status"
-	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/internal/charm"
 	internallogger "github.com/juju/juju/internal/logger"
 	"github.com/juju/juju/internal/storage"
@@ -177,20 +176,6 @@ func (ctrl *Controller) Import(
 
 	logger.Debugf("import success")
 	return dbModel, newSt, nil
-}
-
-// HEATHER, is this handled by the domain?
-// modelConfig creates a config for the model being imported.
-func modelConfig(attrs map[string]interface{}) (*config.Config, error) {
-	// Remove obsolete and no longer supported syslog forward config.
-	for _, a := range []string{
-		"logforward-enabled", "syslog-host", "syslog-ca-cert", "syslog-client-cert", "syslog-client-key",
-		"logging-output",
-	} {
-		delete(attrs, a)
-	}
-
-	return config.New(config.NoDefaults, attrs)
 }
 
 // ImportStateMigration defines a migration for importing various entities from

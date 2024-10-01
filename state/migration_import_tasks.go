@@ -14,7 +14,6 @@ import (
 	"github.com/juju/names/v5"
 
 	"github.com/juju/juju/core/crossmodel"
-	"github.com/juju/juju/environs/config"
 )
 
 // Migration import tasks provide a boundary of isolation between the
@@ -44,16 +43,11 @@ type DocModelNamespace interface {
 
 type stateModelNamspaceShim struct {
 	description.Model
-	st                       *State
-	configSchemaSourceGetter config.ConfigSchemaSourceGetter
+	st *State
 }
 
 func (s stateModelNamspaceShim) DocID(localID string) string {
 	return s.st.docID(localID)
-}
-
-func (s stateModelNamspaceShim) ConfigSchemaSourceGetter() config.ConfigSchemaSourceGetter {
-	return s.configSchemaSourceGetter
 }
 
 // stateApplicationOfferDocumentFactoryShim is required to allow the new
