@@ -4,7 +4,6 @@
 package state_test
 
 import (
-	"context"
 	"fmt"
 	"sort"
 
@@ -62,7 +61,7 @@ func (s *MigrationImportSuite) TestExisting(c *gc.C) {
 
 	ctrlCfg := coretesting.FakeControllerConfig()
 
-	_, _, err = s.Controller.Import(out, ctrlCfg, state.NoopConfigSchemaSource)
+	_, _, err = s.Controller.Import(out, ctrlCfg)
 	c.Assert(err, jc.ErrorIs, errors.AlreadyExists)
 }
 
@@ -106,7 +105,7 @@ func (s *MigrationImportSuite) importModelDescription(
 
 	ctrlCfg := coretesting.FakeControllerConfig()
 
-	newModel, newSt, err := s.Controller.Import(in, ctrlCfg, state.NoopConfigSchemaSource)
+	newModel, newSt, err := s.Controller.Import(in, ctrlCfg)
 	c.Assert(err, jc.ErrorIsNil)
 
 	s.AddCleanup(func(c *gc.C) {
@@ -142,7 +141,7 @@ func (s *MigrationImportSuite) TestNewModel(c *gc.C) {
 
 	ctrlCfg := coretesting.FakeControllerConfig()
 
-	newModel, newSt, err := s.Controller.Import(in, ctrlCfg, state.NoopConfigSchemaSource)
+	newModel, newSt, err := s.Controller.Import(in, ctrlCfg)
 	c.Assert(err, jc.ErrorIsNil)
 	defer newSt.Close()
 
@@ -163,24 +162,6 @@ func (s *MigrationImportSuite) TestNewModel(c *gc.C) {
 	c.Check(history, gc.HasLen, 2)
 	c.Check(history[0].Status, gc.Equals, status.Busy)
 	c.Check(history[1].Status, gc.Equals, status.Available)
-
-	originalConfig, err := original.Config()
-	c.Assert(err, jc.ErrorIsNil)
-	originalAttrs := originalConfig.AllAttrs()
-
-	newConfig, err := newModel.Config()
-	c.Assert(err, jc.ErrorIsNil)
-	newAttrs := newConfig.AllAttrs()
-
-	c.Assert(newAttrs["uuid"], gc.Equals, uuid)
-	c.Assert(newAttrs["name"], gc.Equals, "new")
-
-	// Now drop the uuid and name and the rest of the attributes should match.
-	delete(newAttrs, "uuid")
-	delete(newAttrs, "name")
-	delete(originalAttrs, "uuid")
-	delete(originalAttrs, "name")
-	c.Assert(newAttrs, jc.DeepEquals, originalAttrs)
 
 	newCons, err := newSt.ModelConstraints()
 	c.Assert(err, jc.ErrorIsNil)
@@ -462,7 +443,7 @@ func (s *MigrationImportSuite) TestCharmRevSequencesNotImported(c *gc.C) {
 
 	ctrlCfg := coretesting.FakeControllerConfig()
 
-	_, newSt, err := s.Controller.Import(in, ctrlCfg, state.NoopConfigSchemaSource)
+	_, newSt, err := s.Controller.Import(in, ctrlCfg)
 	c.Assert(err, jc.ErrorIsNil)
 	defer newSt.Close()
 
@@ -534,7 +515,7 @@ func (s *MigrationImportSuite) TestApplicationsSubordinatesAfter(c *gc.C) {
 
 	ctrlCfg := coretesting.FakeControllerConfig()
 
-	_, newSt, err := s.Controller.Import(in, ctrlCfg, state.NoopConfigSchemaSource)
+	_, newSt, err := s.Controller.Import(in, ctrlCfg)
 	c.Assert(err, jc.ErrorIsNil)
 	// add the cleanup here to close the model.
 	s.AddCleanup(func(c *gc.C) {
@@ -954,37 +935,6 @@ func (s *MigrationImportSuite) TestUnitsOpenPorts(c *gc.C) {
 		ToPort:   2345,
 		Protocol: "tcp",
 	}})
-}
-
-func (s *MigrationImportSuite) TestFirewallRules(c *gc.C) {
-	ctrl := gomock.NewController(c)
-	defer ctrl.Finish()
-
-	sshCIDRs := []string{"192.168.1.0/24", "192.0.2.1/24"}
-	sshRule := state.NewMockFirewallRule(ctrl)
-	sshRule.EXPECT().WellKnownService().Return("ssh")
-	sshRule.EXPECT().WhitelistCIDRs().Return(sshCIDRs)
-
-	saasCIDRs := []string{"10.0.0.0/16"}
-	saasRule := state.NewMockFirewallRule(ctrl)
-	saasRule.EXPECT().WellKnownService().Return("juju-application-offer")
-	saasRule.EXPECT().WhitelistCIDRs().Return(saasCIDRs)
-
-	base, err := s.State.Export(map[string]string{}, state.NewObjectStore(c, s.State.ModelUUID()))
-	c.Assert(err, jc.ErrorIsNil)
-	uuid := uuid.MustNewUUID().String()
-	model := newModel(base, uuid, "new")
-	model.fwRules = []description.FirewallRule{sshRule, saasRule}
-
-	_, newSt := s.importModelDescription(c, model)
-
-	m, err := newSt.Model()
-	c.Assert(err, jc.ErrorIsNil)
-	cfg, err := m.ModelConfig(context.Background())
-	c.Assert(err, jc.ErrorIsNil)
-
-	c.Assert(cfg.SSHAllow(), gc.DeepEquals, sshCIDRs)
-	c.Assert(cfg.SAASIngressAllow(), gc.DeepEquals, saasCIDRs)
 }
 
 func (s *MigrationImportSuite) TestDestroyEmptyModel(c *gc.C) {
@@ -1765,7 +1715,7 @@ func (s *MigrationImportSuite) TestRemoteApplications(c *gc.C) {
 
 	ctrlCfg := coretesting.FakeControllerConfig()
 
-	_, newSt, err := s.Controller.Import(in, ctrlCfg, state.NoopConfigSchemaSource)
+	_, newSt, err := s.Controller.Import(in, ctrlCfg)
 	if err == nil {
 		defer newSt.Close()
 	}
@@ -1825,7 +1775,7 @@ func (s *MigrationImportSuite) TestRemoteApplicationsConsumerProxy(c *gc.C) {
 
 	ctrlCfg := coretesting.FakeControllerConfig()
 
-	_, newSt, err := s.Controller.Import(in, ctrlCfg, state.NoopConfigSchemaSource)
+	_, newSt, err := s.Controller.Import(in, ctrlCfg)
 	if err == nil {
 		defer newSt.Close()
 	}
@@ -2013,7 +1963,7 @@ func (s *MigrationImportSuite) TestImportingModelWithBlankType(c *gc.C) {
 		Cloud:              testModel.Cloud(),
 		CloudRegion:        testModel.CloudRegion(),
 	})
-	imported, newSt, err := s.Controller.Import(noTypeModel, ctrlCfg, state.NoopConfigSchemaSource)
+	imported, newSt, err := s.Controller.Import(noTypeModel, ctrlCfg)
 	c.Assert(err, jc.ErrorIsNil)
 	defer func() { _ = newSt.Close() }()
 

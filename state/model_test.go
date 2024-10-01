@@ -87,7 +87,7 @@ func (s *ModelSuite) TestNewModelSameUserSameNameFails(c *gc.C) {
 	owner := names.NewUserTag("owner")
 
 	// Create the first model.
-	model, st1, err := s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	model, st1, err := s.Controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeIAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
@@ -107,7 +107,7 @@ func (s *ModelSuite) TestNewModelSameUserSameNameFails(c *gc.C) {
 		"name": cfg.Name(),
 		"uuid": newUUID.String(),
 	})
-	_, _, err = s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	_, _, err = s.Controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeIAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
@@ -133,7 +133,7 @@ func (s *ModelSuite) TestNewModelSameUserSameNameFails(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 
 	// We should now be able to create the other model.
-	model2, st2, err := s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	model2, st2, err := s.Controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeIAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
@@ -153,7 +153,7 @@ func (s *ModelSuite) TestNewCAASModelDifferentUser(c *gc.C) {
 	owner2 := names.NewUserTag("owner2")
 
 	// Create the first model.
-	model, st1, err := s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	model, st1, err := s.Controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeCAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
@@ -175,7 +175,7 @@ func (s *ModelSuite) TestNewCAASModelDifferentUser(c *gc.C) {
 	})
 
 	// We should now be able to create the other model.
-	model2, st2, err := s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	model2, st2, err := s.Controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeCAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
@@ -193,7 +193,7 @@ func (s *ModelSuite) TestNewCAASModelSameUserFails(c *gc.C) {
 	owner := names.NewUserTag("owner")
 
 	// Create the first model.
-	model, st1, err := s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	model, st1, err := s.Controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeCAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
@@ -213,7 +213,7 @@ func (s *ModelSuite) TestNewCAASModelSameUserFails(c *gc.C) {
 		"name": cfg.Name(),
 		"uuid": newUUID.String(),
 	})
-	_, _, err = s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	_, _, err = s.Controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeCAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
@@ -239,7 +239,7 @@ func (s *ModelSuite) TestNewCAASModelSameUserFails(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 
 	// We should now be able to create the other model.
-	model2, st2, err := s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	model2, st2, err := s.Controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeCAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
@@ -256,7 +256,7 @@ func (s *ModelSuite) TestNewCAASModelSameUserFails(c *gc.C) {
 func (s *ModelSuite) TestNewModelMissingType(c *gc.C) {
 	cfg, _ := s.createTestModelConfig(c)
 	owner := names.NewUserTag("test@remote")
-	_, _, err := s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	_, _, err := s.Controller.NewModel(state.ModelArgs{
 		// No type
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
@@ -272,7 +272,7 @@ func (s *ModelSuite) TestNewModel(c *gc.C) {
 	cfg, uuid := s.createTestModelConfig(c)
 	owner := names.NewUserTag("test@remote")
 
-	model, st, err := s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	model, st, err := s.Controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeIAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
@@ -322,7 +322,7 @@ func (s *ModelSuite) TestNewModel(c *gc.C) {
 
 func (s *ModelSuite) TestNewModelRegionNameEscaped(c *gc.C) {
 	cfg, _ := s.createTestModelConfig(c)
-	model, st, err := s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	model, st, err := s.Controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeIAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dotty.region",
@@ -339,7 +339,7 @@ func (s *ModelSuite) TestNewModelImportingMode(c *gc.C) {
 	cfg, _ := s.createTestModelConfig(c)
 	owner := names.NewUserTag("test@remote")
 
-	model, st, err := s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	model, st, err := s.Controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeIAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
@@ -358,7 +358,7 @@ func (s *ModelSuite) TestSetMigrationMode(c *gc.C) {
 	cfg, _ := s.createTestModelConfig(c)
 	owner := names.NewUserTag("test@remote")
 
-	model, st, err := s.Controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	model, st, err := s.Controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeIAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
@@ -1480,7 +1480,7 @@ func (s *ModelCloudValidationSuite) TestNewModelDifferentCloud(c *gc.C) {
 	cfg, _ := createTestModelConfig(c, st.ModelUUID())
 	cfg, err = cfg.Apply(map[string]interface{}{"name": "whatever"})
 	c.Assert(err, jc.ErrorIsNil)
-	m, newSt, err := controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	m, newSt, err := controller.NewModel(state.ModelArgs{
 		Type:                    state.ModelTypeIAAS,
 		CloudName:               "another",
 		Config:                  cfg,
@@ -1508,7 +1508,7 @@ func (s *ModelCloudValidationSuite) TestNewModelMissingCloudCredentialSupportsEm
 	cfg, _ := createTestModelConfig(c, st.ModelUUID())
 	cfg, err = cfg.Apply(map[string]interface{}{"name": "whatever"})
 	c.Assert(err, jc.ErrorIsNil)
-	_, newSt, err := controller.NewModel(state.NoopConfigSchemaSource, state.ModelArgs{
+	_, newSt, err := controller.NewModel(state.ModelArgs{
 		Type:      state.ModelTypeIAAS,
 		CloudName: "dummy", CloudRegion: "dummy-region", Config: cfg, Owner: owner,
 		StorageProviderRegistry: storage.StaticProviderRegistry{},
@@ -1551,7 +1551,7 @@ func (s *ModelCloudValidationSuite) initializeState(
 		CloudName:     "dummy",
 		MongoSession:  s.Session,
 		AdminPassword: "dummy-secret",
-	}, state.NoopConfigSchemaSource)
+	})
 	c.Assert(err, jc.ErrorIsNil)
 	return controller, owner
 }

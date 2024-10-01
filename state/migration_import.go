@@ -39,7 +39,6 @@ import (
 // Import the database agnostic model representation into the database.
 func (ctrl *Controller) Import(
 	model description.Model, controllerConfig controller.Config,
-	configSchemaSourceGetter config.ConfigSchemaSourceGetter,
 ) (_ *Model, _ *State, err error) {
 	st, err := ctrl.pool.SystemState()
 	if err != nil {
@@ -93,7 +92,7 @@ func (ctrl *Controller) Import(
 		// that is now done using the new domain/credential importer.
 		args.CloudCredential = credTag
 	}
-	dbModel, newSt, err := ctrl.NewModel(configSchemaSourceGetter, args)
+	dbModel, newSt, err := ctrl.NewModel(args)
 	if err != nil {
 		return nil, nil, errors.Trace(err)
 	}
@@ -115,11 +114,10 @@ func (ctrl *Controller) Import(
 
 	// I would have loved to use import, but that is a reserved word.
 	restore := importer{
-		st:                       newSt,
-		dbModel:                  dbModel,
-		model:                    model,
-		logger:                   logger,
-		configSchemaSourceGetter: configSchemaSourceGetter,
+		st:      newSt,
+		dbModel: dbModel,
+		model:   model,
+		logger:  logger,
 	}
 	if err := restore.sequences(); err != nil {
 		return nil, nil, errors.Annotate(err, "sequences")
@@ -231,8 +229,6 @@ type importer struct {
 	// map of application name to the units of that application.
 	applicationUnits map[string]map[string]*Unit
 	charmOrigins     map[string]*CharmOrigin
-
-	configSchemaSourceGetter config.ConfigSchemaSourceGetter
 }
 
 func (i *importer) modelExtras() error {

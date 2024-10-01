@@ -3856,25 +3856,6 @@ func (s *StateSuite) prepareAgentVersionTests(c *gc.C, st *state.State) (*config
 	return modelConfig, currentVersion
 }
 
-func (s *StateSuite) changeEnviron(c *gc.C, modelConfig *config.Config, name string, value interface{}) {
-	attrs := modelConfig.AllAttrs()
-	attrs[name] = value
-	c.Assert(s.Model.UpdateModelConfig(state.NoopConfigSchemaSource, attrs, nil), gc.IsNil)
-}
-
-func assertAgentVersion(c *gc.C, st *state.State, vers, stream string) {
-	m, err := st.Model()
-	c.Assert(err, jc.ErrorIsNil)
-	modelConfig, err := m.ModelConfig(context.Background())
-	c.Assert(err, jc.ErrorIsNil)
-	agentVersion, ok := modelConfig.AgentVersion()
-	c.Assert(ok, jc.IsTrue)
-	c.Assert(agentVersion.String(), gc.Equals, vers)
-	agentStream := modelConfig.AgentStream()
-	c.Assert(agentStream, gc.Equals, stream)
-
-}
-
 func (s *StateSuite) TestSetModelAgentVersionRetriesOnConfigChange(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 

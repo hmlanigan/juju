@@ -74,7 +74,7 @@ func (s *internalStateSuite) SetUpTest(c *gc.C) {
 		NewPolicy: func(*State) Policy {
 			return internalStatePolicy{}
 		},
-	}, NoopConfigSchemaSource)
+	})
 	c.Assert(err, jc.ErrorIsNil)
 	s.controller = ctlr
 	s.pool = ctlr.StatePool()

@@ -703,11 +703,6 @@ func (s *StorageStateSuite) TestAddUnit(c *gc.C) {
 }
 
 func (s *StorageStateSuite) assertStorageUnitsAdded(c *gc.C) {
-	err := s.Model.UpdateModelConfig(state.NoopConfigSchemaSource, map[string]interface{}{
-		"storage-default-block-source": "loop-pool",
-	}, nil)
-	c.Assert(err, jc.ErrorIsNil)
-
 	// Each unit added to the application will create storage instances
 	// to satisfy the application's storage constraints.
 	ch := s.AddTestingCharm(c, "storage-block2")

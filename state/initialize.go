@@ -15,7 +15,6 @@ import (
 	"github.com/juju/juju/cloud"
 	"github.com/juju/juju/controller"
 	"github.com/juju/juju/core/status"
-	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/internal/storage"
 )
 
@@ -104,7 +103,7 @@ type InitDatabaseFunc func(*mgo.Session, string, *controller.Config) error
 // This needs to be performed only once for the initial controller model.
 // It returns unauthorizedError if access is unauthorized.
 // pull providerConfigSchema out of caller - HEATHER
-func Initialize(args InitializeParams, providerConfigSchemaGetter config.ConfigSchemaSourceGetter) (_ *Controller, err error) {
+func Initialize(args InitializeParams) (_ *Controller, err error) {
 	if err := args.Validate(); err != nil {
 		return nil, errors.Annotate(err, "validating initialization args")
 	}

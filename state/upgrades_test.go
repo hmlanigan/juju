@@ -70,7 +70,7 @@ func (s *upgradesSuite) makeModel(c *gc.C, name string, attr coretesting.Attrs) 
 	}.Merge(attr))
 	m, err := s.state.Model()
 	c.Assert(err, jc.ErrorIsNil)
-	_, st, err := s.controller.NewModel(NoopConfigSchemaSource, ModelArgs{
+	_, st, err := s.controller.NewModel(ModelArgs{
 		Type:                    ModelTypeIAAS,
 		CloudName:               "dummy",
 		CloudRegion:             "dummy-region",
