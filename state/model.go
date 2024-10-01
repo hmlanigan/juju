@@ -214,6 +214,8 @@ type ModelArgs struct {
 	CloudCredential names.CloudCredentialTag
 
 	// Config is the model config.
+	//
+	// Deprecated. ModelConfig is now handled by the model config domain.
 	Config *config.Config
 
 	// Constraints contains the initial constraints for the model.
@@ -594,11 +596,6 @@ func (m *Model) StatusHistory(filter status.StatusHistoryFilter) ([]status.Statu
 		clock:     m.st.clock(),
 	}
 	return statusHistory(args)
-}
-
-// Config returns the config for the model.
-func (m *Model) Config() (*config.Config, error) {
-	return getModelConfig(m.st.db(), m.UUID())
 }
 
 // UpdateLatestToolsVersion looks up for the latest available version of

@@ -158,9 +158,6 @@ func (ctrl *Controller) Import(
 	if err := restore.remoteApplications(); err != nil {
 		return nil, nil, errors.Annotate(err, "remoteapplications")
 	}
-	if err := restore.firewallRules(); err != nil {
-		return nil, nil, errors.Annotate(err, "firewallrules")
-	}
 	if err := restore.relations(); err != nil {
 		return nil, nil, errors.Annotate(err, "relations")
 	}
@@ -1415,27 +1412,6 @@ func (i *importer) remoteApplications() error {
 		return errors.Trace(err)
 	}
 	i.logger.Debugf("importing remote applications succeeded")
-	return nil
-}
-
-func (i *importer) firewallRules() error {
-	i.logger.Debugf("importing firewall rules")
-	migration := &ImportStateMigration{
-		src: i.model,
-		dst: i.st.db(),
-	}
-	migration.Add(func() error {
-		m := ImportFirewallRules{}
-		return m.Execute(stateModelNamspaceShim{
-			Model:                    migration.src,
-			st:                       i.st,
-			configSchemaSourceGetter: i.configSchemaSourceGetter,
-		}, i.dbModel)
-	})
-	if err := migration.Run(); err != nil {
-		return errors.Trace(err)
-	}
-	i.logger.Debugf("importing firewall rules succeeded")
 	return nil
 }
 
