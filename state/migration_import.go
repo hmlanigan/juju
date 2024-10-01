@@ -69,15 +69,10 @@ func (ctrl *Controller) Import(
 	}
 
 	// Create the model.
-	cfg, err := modelConfig(model.Config())
-	if err != nil {
-		return nil, nil, errors.Trace(err)
-	}
 	args := ModelArgs{
 		Type:                    modelType,
 		CloudName:               model.Cloud(),
 		CloudRegion:             model.CloudRegion(),
-		Config:                  cfg,
 		Owner:                   model.Owner(),
 		MigrationMode:           MigrationModeImporting,
 		EnvironVersion:          model.EnvironVersion(),
@@ -186,6 +181,7 @@ func (ctrl *Controller) Import(
 	return dbModel, newSt, nil
 }
 
+// HEATHER, is this handled by the domain?
 // modelConfig creates a config for the model being imported.
 func modelConfig(attrs map[string]interface{}) (*config.Config, error) {
 	// Remove obsolete and no longer supported syslog forward config.

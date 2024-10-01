@@ -75,7 +75,7 @@ type ModelManagerBackend interface {
 // and are reproduced here for use in tests.
 type Model interface {
 	Type() state.ModelType
-	Config() (*config.Config, error)
+	//Config() (*config.Config, error)
 	Life() state.Life
 	ModelTag() names.ModelTag
 	Owner() names.UserTag
@@ -164,12 +164,14 @@ func (st modelManagerStateShim) NewModel(args state.ModelArgs) (Model, ModelMana
 }
 
 func (st modelManagerStateShim) ModelConfigDefaultValues(cloudName string) (config.ModelDefaultAttributes, error) {
-	return st.State.ModelConfigDefaultValues(st.configSchemaSourceGetter, cloudName)
+	return config.ModelDefaultAttributes{}, nil
+	//return st.State.ModelConfigDefaultValues(st.configSchemaSourceGetter, cloudName)
 }
 
 // UpdateModelConfigDefaultValues implements the ModelManagerBackend method.
 func (st modelManagerStateShim) UpdateModelConfigDefaultValues(update map[string]interface{}, remove []string, regionSpec *environscloudspec.CloudRegionSpec) error {
-	return st.State.UpdateModelConfigDefaultValues(update, remove, regionSpec)
+	return nil
+	//return st.State.UpdateModelConfigDefaultValues(update, remove, regionSpec)
 }
 
 // ControllerTag exposes Model ControllerTag for ModelManagerBackend inteface

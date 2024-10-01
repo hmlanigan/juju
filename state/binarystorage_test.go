@@ -77,6 +77,7 @@ func (s *binaryStorageSuite) SetUpTest(c *gc.C) {
 	s.controllerModelUUID = s.State.ControllerModelUUID()
 
 	// Create a new model and store its UUID.
+	// name and uuid are needed for NewModel, won't be added to state as config.
 	s.modelUUID = uuid.MustNewUUID().String()
 	cfg := testing.CustomModelConfig(c, testing.Attrs{
 		"name": "new-model",

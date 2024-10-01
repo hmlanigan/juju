@@ -103,6 +103,7 @@ type InitDatabaseFunc func(*mgo.Session, string, *controller.Config) error
 // It also creates the initial model for the controller.
 // This needs to be performed only once for the initial controller model.
 // It returns unauthorizedError if access is unauthorized.
+// pull providerConfigSchema out of caller - HEATHER
 func Initialize(args InitializeParams, providerConfigSchemaGetter config.ConfigSchemaSourceGetter) (_ *Controller, err error) {
 	if err := args.Validate(); err != nil {
 		return nil, errors.Annotate(err, "validating initialization args")
@@ -157,12 +158,8 @@ func Initialize(args InitializeParams, providerConfigSchemaGetter config.ConfigS
 
 	modelOps, modelStatusDoc, err := st.modelSetupOps(
 		args.ControllerConfig.ControllerUUID(),
-		providerConfigSchemaGetter,
 		args.ControllerModelArgs,
-		&lineage{
-			ControllerConfig: args.ControllerInheritedConfig,
-			RegionConfig:     args.RegionInheritedConfig,
-		})
+	)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -231,7 +228,8 @@ type lineage struct {
 }
 
 // modelSetupOps returns the transactions necessary to set up a model.
-func (st *State) modelSetupOps(controllerUUID string, providerConfigSchemaGetter config.ConfigSchemaSourceGetter, args ModelArgs, inherited *lineage) ([]txn.Op, statusDoc, error) {
+func (st *State) modelSetupOps(controllerUUID string, args ModelArgs) ([]txn.Op, statusDoc, error) {
+	//func (st *State) modelSetupOps(controllerUUID string, providerConfigSchemaGetter config.ConfigSchemaSourceGetter, args ModelArgs, inherited *lineage) ([]txn.Op, statusDoc, error) {
 	var modelStatusDoc statusDoc
 
 	controllerModelUUID := st.controllerModelTag.Id()

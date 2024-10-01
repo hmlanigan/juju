@@ -13,7 +13,6 @@ import (
 	"go.uber.org/mock/gomock"
 	gc "gopkg.in/check.v1"
 
-	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/internal/uuid"
 )
 
@@ -505,102 +504,5 @@ func (s *MigrationImportTasksSuite) relationNetwork(ctrl *gomock.Controller, id,
 	entity.EXPECT().ID().Return(id)
 	entity.EXPECT().RelationKey().Return(key)
 	entity.EXPECT().CIDRS().Return(cidrs)
-	return entity
-}
-
-func (s *MigrationImportTasksSuite) TestImportFirewallRules(c *gc.C) {
-	ctrl := gomock.NewController(c)
-	defer ctrl.Finish()
-
-	entity0 := s.firewallRule(ctrl, "ssh", []string{"192.168.0.1/24", "192.168.3.0/24"})
-	entity1 := s.firewallRule(ctrl, "juju-application-offer", []string{"10.0.0.1/16"})
-
-	entities := []description.FirewallRule{
-		entity0,
-		entity1,
-	}
-
-	modelIn := NewMockFirewallRulesInput(ctrl)
-	modelIn.EXPECT().FirewallRules().Return(entities)
-	modelIn.EXPECT().ConfigSchemaSourceGetter().Return(NoopConfigSchemaSource)
-
-	modelOut := NewMockFirewallRulesOutput(ctrl)
-	modelOut.EXPECT().UpdateModelConfig(gomock.Any(), map[string]interface{}{
-		config.SSHAllowKey: "192.168.0.1/24,192.168.3.0/24",
-	}, nil)
-	modelOut.EXPECT().UpdateModelConfig(gomock.Any(), map[string]interface{}{
-		config.SAASIngressAllowKey: "10.0.0.1/16",
-	}, nil)
-
-	m := ImportFirewallRules{}
-	err := m.Execute(modelIn, modelOut)
-	c.Assert(err, jc.ErrorIsNil)
-}
-
-func (s *MigrationImportTasksSuite) TestImportFirewallRulesEmptyJujuApplicationOffer(c *gc.C) {
-	ctrl := gomock.NewController(c)
-	defer ctrl.Finish()
-
-	entity0 := s.firewallRule(ctrl, "juju-application-offer", []string{})
-
-	entities := []description.FirewallRule{
-		entity0,
-	}
-
-	model := NewMockFirewallRulesInput(ctrl)
-	model.EXPECT().FirewallRules().Return(entities)
-	model.EXPECT().ConfigSchemaSourceGetter().Return(NoopConfigSchemaSource)
-
-	// No call to UpdateModeConfig since juju-application-offer is empty
-
-	m := ImportFirewallRules{}
-	err := m.Execute(model, nil)
-	c.Assert(err, jc.ErrorIsNil)
-}
-
-func (s *MigrationImportTasksSuite) TestImportFirewallRulesWithNoEntities(c *gc.C) {
-	ctrl := gomock.NewController(c)
-	defer ctrl.Finish()
-
-	entities := []description.FirewallRule{}
-
-	model := NewMockFirewallRulesInput(ctrl)
-	model.EXPECT().FirewallRules().Return(entities)
-
-	// No call to UpdateModeConfig if there are no operations.
-
-	m := ImportFirewallRules{}
-	err := m.Execute(model, nil)
-	c.Assert(err, jc.ErrorIsNil)
-}
-
-func (s *MigrationImportTasksSuite) TestImportFirewallRulesWithTransactionRunnerReturnsError(c *gc.C) {
-	ctrl := gomock.NewController(c)
-	defer ctrl.Finish()
-
-	entity0 := s.firewallRule(ctrl, "ssh", []string{"192.168.0.1/24"})
-
-	entities := []description.FirewallRule{
-		entity0,
-	}
-
-	modelIn := NewMockFirewallRulesInput(ctrl)
-	modelIn.EXPECT().FirewallRules().Return(entities)
-	modelIn.EXPECT().ConfigSchemaSourceGetter().Return(NoopConfigSchemaSource)
-
-	modelOut := NewMockFirewallRulesOutput(ctrl)
-	modelOut.EXPECT().UpdateModelConfig(gomock.Any(), map[string]interface{}{
-		config.SSHAllowKey: "192.168.0.1/24",
-	}, nil).Return(errors.New("fail"))
-
-	m := ImportFirewallRules{}
-	err := m.Execute(modelIn, modelOut)
-	c.Assert(err, gc.ErrorMatches, "fail")
-}
-
-func (s *MigrationImportTasksSuite) firewallRule(ctrl *gomock.Controller, service string, whitelist []string) *MockFirewallRule {
-	entity := NewMockFirewallRule(ctrl)
-	entity.EXPECT().WellKnownService().Return(service)
-	entity.EXPECT().WhitelistCIDRs().Return(whitelist)
 	return entity
 }

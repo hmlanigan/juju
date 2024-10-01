@@ -116,6 +116,7 @@ func (s *ConnWithWallClockSuite) AddMetricsCharm(c *gc.C, name, metricsYaml stri
 // NewStateForModelNamed returns an new model with the given modelName, which
 // has a unique UUID, and does not need to be closed when the test completes.
 func (s *ConnWithWallClockSuite) NewStateForModelNamed(c *gc.C, modelName string) *state.State {
+	// name and uuid are needed for NewModel, won't be added to state as config.
 	cfg := testing.CustomModelConfig(c, testing.Attrs{
 		"name": modelName,
 		"uuid": uuid.MustNewUUID().String(),

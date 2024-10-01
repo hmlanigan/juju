@@ -386,23 +386,6 @@ func (s *ModelSuite) TestModelExistsNoModel(c *gc.C) {
 	c.Check(modelExists, jc.IsFalse)
 }
 
-func (s *ModelSuite) TestConfigForOtherModel(c *gc.C) {
-	otherState := s.Factory.MakeModel(c, &factory.ModelParams{Name: "other"})
-	defer otherState.Close()
-	otherModel, err := otherState.Model()
-	c.Assert(err, jc.ErrorIsNil)
-
-	// Obtain another instance of the model via the StatePool
-	model, ph, err := s.StatePool.GetModel(otherModel.UUID())
-	c.Assert(err, jc.ErrorIsNil)
-	defer ph.Release()
-
-	conf, err := model.Config()
-	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(conf.Name(), gc.Equals, "other")
-	c.Assert(conf.UUID(), gc.Equals, otherModel.UUID())
-}
-
 func (s *ModelSuite) TestAllUnits(c *gc.C) {
 	wordpress := s.Factory.MakeApplication(c, &factory.ApplicationParams{
 		Name: "wordpress",
@@ -484,30 +467,11 @@ func (s *ModelSuite) createTestModelConfig(c *gc.C) (*config.Config, string) {
 func createTestModelConfig(c *gc.C, controllerUUID string) (*config.Config, string) {
 	uuid, err := uuid.NewUUID()
 	c.Assert(err, jc.ErrorIsNil)
+	// These two values are need for adding a model.
 	return testing.CustomModelConfig(c, testing.Attrs{
 		"name": "testing",
 		"uuid": uuid.String(),
 	}), uuid.String()
-}
-
-func (s *ModelSuite) TestModelConfigSameModelAsState(c *gc.C) {
-	model, err := s.State.Model()
-	c.Assert(err, jc.ErrorIsNil)
-	cfg, err := model.Config()
-	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(cfg.UUID(), gc.Equals, s.State.ModelUUID())
-}
-
-func (s *ModelSuite) TestModelConfigDifferentModelThanState(c *gc.C) {
-	otherState := s.Factory.MakeModel(c, nil)
-	defer otherState.Close()
-	model, err := otherState.Model()
-	c.Assert(err, jc.ErrorIsNil)
-	cfg, err := model.Config()
-	c.Assert(err, jc.ErrorIsNil)
-	uuid := cfg.UUID()
-	c.Assert(uuid, gc.Equals, model.UUID())
-	c.Assert(uuid, gc.Not(gc.Equals), s.State.ModelUUID())
 }
 
 func (s *ModelSuite) TestDestroyControllerModel(c *gc.C) {

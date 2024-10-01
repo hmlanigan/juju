@@ -176,6 +176,7 @@ func (s *blockSuite) TestModelUUID(c *gc.C) {
 func (s *blockSuite) createTestModel(c *gc.C) (*state.Model, *state.State) {
 	uuid, err := uuid.NewUUID()
 	c.Assert(err, jc.ErrorIsNil)
+	// name and uuid are needed for NewModel, won't be added to state as config.
 	cfg := testing.CustomModelConfig(c, testing.Attrs{
 		"name": "testing",
 		"uuid": uuid.String(),
