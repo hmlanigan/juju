@@ -113,8 +113,6 @@ type AgentBootstrapArgs struct {
 	BootstrapDqlite           DqliteInitializerFunc
 	Provider                  ProviderFunc
 	Logger                    logger.Logger
-
-	ConfigSchemaSourceGetter config.ConfigSchemaSourceGetter
 }
 
 func (a *AgentBootstrapArgs) validate() error {
@@ -171,8 +169,6 @@ func NewAgentBootstrap(args AgentBootstrapArgs) (*AgentBootstrap, error) {
 		sharedSecret:              args.SharedSecret,
 		stateInitializationParams: args.StateInitializationParams,
 		storageProviderRegistry:   args.StorageProviderRegistry,
-
-		configSchemaSourceGetter: args.ConfigSchemaSourceGetter,
 	}, nil
 }
 

@@ -129,47 +129,6 @@ func (s *MachineSuite) TestParentId(c *gc.C) {
 	c.Assert(ok, jc.IsTrue)
 }
 
-func (s *MachineSuite) TestMachineIsManager(c *gc.C) {
-	c.Assert(s.machine0.IsManager(), jc.IsTrue)
-	c.Assert(s.machine.IsManager(), jc.IsFalse)
-}
-
-func (s *MachineSuite) TestMachineIsManualBootstrap(c *gc.C) {
-	c.Assert(s.machine.Id(), gc.Equals, "1")
-	manual, err := s.machine0.IsManual()
-	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(manual, jc.IsFalse)
-	manual, err = s.machine0.IsManual()
-	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(manual, jc.IsTrue)
-}
-
-func (s *MachineSuite) TestMachineIsManual(c *gc.C) {
-	tests := []struct {
-		instanceId instance.Id
-		nonce      string
-		isManual   bool
-	}{
-		{instanceId: "x", nonce: "y", isManual: false},
-		{instanceId: "manual:", nonce: "y", isManual: false},
-		{instanceId: "x", nonce: "manual:", isManual: true},
-		{instanceId: "x", nonce: "manual:y", isManual: true},
-		{instanceId: "x", nonce: "manual", isManual: false},
-	}
-	for _, test := range tests {
-		m, err := s.State.AddOneMachine(state.StubModelConfigService(c), state.MachineTemplate{
-			Base:       state.UbuntuBase("12.10"),
-			Jobs:       []state.MachineJob{state.JobHostUnits},
-			InstanceId: test.instanceId,
-			Nonce:      test.nonce,
-		})
-		c.Assert(err, jc.ErrorIsNil)
-		isManual, err := m.IsManual()
-		c.Assert(err, jc.ErrorIsNil)
-		c.Assert(isManual, gc.Equals, test.isManual)
-	}
-}
-
 func (s *MachineSuite) TestMachineIsContainer(c *gc.C) {
 	machine, err := s.State.AddMachine(state.StubModelConfigService(c), state.UbuntuBase("12.10"), state.JobHostUnits)
 	c.Assert(err, jc.ErrorIsNil)
