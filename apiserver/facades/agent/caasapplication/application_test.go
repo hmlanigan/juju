@@ -276,6 +276,7 @@ func (s *CAASApplicationSuite) TestFindByProviderID(c *gc.C) {
 }
 
 func (s *CAASApplicationSuite) TestAgentConf(c *gc.C) {
+
 	args := params.CAASUnitIntroductionArgs{
 		PodName: "gitlab-0",
 		PodUUID: "gitlab-uuid",
