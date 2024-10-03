@@ -74,7 +74,6 @@ type PrecheckModel interface {
 	Owner() names.UserTag
 	Life() state.Life
 	MigrationMode() state.MigrationMode
-	AgentVersion() (version.Number, error)
 	CloudCredentialTag() (names.CloudCredentialTag, bool)
 }
 

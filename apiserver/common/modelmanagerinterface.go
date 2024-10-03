@@ -39,11 +39,6 @@ type ModelManagerBackend interface {
 	GetModel(string) (Model, func() bool, error)
 	GetBackend(string) (ModelManagerBackend, func() bool, error)
 
-	ComposeNewModelConfig(
-		config.ConfigSchemaSourceGetter,
-		map[string]any,
-		*environscloudspec.CloudRegionSpec,
-	) (map[string]any, error)
 	ControllerModelTag() names.ModelTag
 	IsController() bool
 	ControllerNodes() ([]ControllerNode, error)
@@ -70,7 +65,7 @@ type ModelManagerBackend interface {
 // and are reproduced here for use in tests.
 type Model interface {
 	Type() state.ModelType
-	Config() (*config.Config, error)
+	//Config() (*config.Config, error)
 	Life() state.Life
 	ModelTag() names.ModelTag
 	Owner() names.UserTag
@@ -124,21 +119,19 @@ var _ ModelManagerBackend = (*modelManagerStateShim)(nil)
 
 type modelManagerStateShim struct {
 	*state.State
-	configSchemaSourceGetter config.ConfigSchemaSourceGetter
-	model                    *state.Model
-	pool                     *state.StatePool
-	user                     names.UserTag
+	model *state.Model
+	pool  *state.StatePool
+	user  names.UserTag
 }
 
 // NewModelManagerBackend returns a modelManagerStateShim wrapping the passed
 // state, which implements ModelManagerBackend.
-func NewModelManagerBackend(configSchemaSourceGetter config.ConfigSchemaSourceGetter, m *state.Model, pool *state.StatePool) ModelManagerBackend {
+func NewModelManagerBackend(m *state.Model, pool *state.StatePool) ModelManagerBackend {
 	return modelManagerStateShim{
-		State:                    m.State(),
-		configSchemaSourceGetter: configSchemaSourceGetter,
-		model:                    m,
-		pool:                     pool,
-		user:                     names.UserTag{},
+		State: m.State(),
+		model: m,
+		pool:  pool,
+		user:  names.UserTag{},
 	}
 }
 
@@ -146,39 +139,39 @@ func NewModelManagerBackend(configSchemaSourceGetter config.ConfigSchemaSourceGe
 // wrapping the passed state, which implements ModelManagerBackend. The
 // returned backend may emit redirect errors when attempting a model lookup for
 // a migrated model that this user had been granted access to.
-func NewUserAwareModelManagerBackend(configSchemaSourceGetter config.ConfigSchemaSourceGetter, m *state.Model, pool *state.StatePool, u names.UserTag) ModelManagerBackend {
+func NewUserAwareModelManagerBackend(m *state.Model, pool *state.StatePool, u names.UserTag) ModelManagerBackend {
 	return modelManagerStateShim{
-		State:                    m.State(),
-		configSchemaSourceGetter: configSchemaSourceGetter,
-		model:                    m,
-		pool:                     pool,
-		user:                     u,
+		State: m.State(),
+		model: m,
+		pool:  pool,
+		user:  u,
 	}
 }
 
 // NewModel implements ModelManagerBackend.
 func (st modelManagerStateShim) NewModel(args state.ModelArgs) (Model, ModelManagerBackend, error) {
 	aController := state.NewController(st.pool)
-	otherModel, otherState, err := aController.NewModel(st.configSchemaSourceGetter, args)
+	otherModel, otherState, err := aController.NewModel(args)
 	if err != nil {
 		return nil, nil, err
 	}
 	return modelShim{Model: otherModel}, modelManagerStateShim{
-		State:                    otherState,
-		configSchemaSourceGetter: st.configSchemaSourceGetter,
-		model:                    otherModel,
-		pool:                     st.pool,
-		user:                     st.user,
+		State: otherState,
+		model: otherModel,
+		pool:  st.pool,
+		user:  st.user,
 	}, nil
 }
 
 func (st modelManagerStateShim) ModelConfigDefaultValues(cloudName string) (config.ModelDefaultAttributes, error) {
-	return st.State.ModelConfigDefaultValues(st.configSchemaSourceGetter, cloudName)
+	return config.ModelDefaultAttributes{}, nil
+	//return st.State.ModelConfigDefaultValues(st.configSchemaSourceGetter, cloudName)
 }
 
 // UpdateModelConfigDefaultValues implements the ModelManagerBackend method.
 func (st modelManagerStateShim) UpdateModelConfigDefaultValues(update map[string]interface{}, remove []string, regionSpec *environscloudspec.CloudRegionSpec) error {
-	return st.State.UpdateModelConfigDefaultValues(update, remove, regionSpec)
+	return nil
+	//return st.State.UpdateModelConfigDefaultValues(update, remove, regionSpec)
 }
 
 // ControllerTag exposes Model ControllerTag for ModelManagerBackend inteface
@@ -229,11 +222,10 @@ func (st modelManagerStateShim) GetBackend(modelUUID string) (ModelManagerBacken
 		}
 	}
 	return modelManagerStateShim{
-		State:                    otherState.State,
-		configSchemaSourceGetter: st.configSchemaSourceGetter,
-		model:                    otherModel,
-		pool:                     st.pool,
-		user:                     st.user,
+		State: otherState.State,
+		model: otherModel,
+		pool:  st.pool,
+		user:  st.user,
 	}, otherState.Release, nil
 }
 

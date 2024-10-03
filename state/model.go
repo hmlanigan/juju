@@ -214,6 +214,10 @@ type ModelArgs struct {
 	CloudCredential names.CloudCredentialTag
 
 	// Config is the model config.
+	//
+	// Deprecated. ModelConfig is now handled by the model config domain.
+	// Has values necessary for creating a model, e.g. name and uuid,
+	// however will not be used to set model config in settingsC.
 	Config *config.Config
 
 	// Constraints contains the initial constraints for the model.
@@ -236,6 +240,8 @@ type ModelArgs struct {
 	PasswordHash string
 
 	// ControllerConfig is passed in enable configuration of the model.
+	//
+	// Deprecated. No longer used to add a model. All model config
 	ControllerConfig controller.Config
 }
 
@@ -270,7 +276,7 @@ func (m ModelArgs) Validate() error {
 // model document means that we have a way to represent external
 // models, perhaps for future use around cross model
 // relations.
-func (ctlr *Controller) NewModel(configSchemaGetter config.ConfigSchemaSourceGetter, args ModelArgs) (_ *Model, _ *State, err error) {
+func (ctlr *Controller) NewModel(args ModelArgs) (_ *Model, _ *State, err error) {
 	st, err := ctlr.pool.SystemState()
 	if err != nil {
 		return nil, nil, errors.Trace(err)
@@ -316,7 +322,7 @@ func (ctlr *Controller) NewModel(configSchemaGetter config.ConfigSchemaSourceGet
 	}()
 	newSt.controllerModelTag = st.controllerModelTag
 
-	modelOps, modelStatusDoc, err := newSt.modelSetupOps(st.controllerTag.Id(), configSchemaGetter, args, nil)
+	modelOps, modelStatusDoc, err := newSt.modelSetupOps(st.controllerTag.Id(), args)
 	if err != nil {
 		return nil, nil, errors.Annotate(err, "failed to create new model")
 	}
@@ -594,11 +600,6 @@ func (m *Model) StatusHistory(filter status.StatusHistoryFilter) ([]status.Statu
 		clock:     m.st.clock(),
 	}
 	return statusHistory(args)
-}
-
-// Config returns the config for the model.
-func (m *Model) Config() (*config.Config, error) {
-	return getModelConfig(m.st.db(), m.UUID())
 }
 
 // UpdateLatestToolsVersion looks up for the latest available version of

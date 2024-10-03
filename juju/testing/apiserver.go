@@ -281,8 +281,10 @@ func (s *ApiServerSuite) setupControllerModel(c *gc.C, controllerCfg controller.
 			controller.ControllerUUIDKey: controllerCfg.ControllerUUID(),
 		},
 		ControllerModelArgs: state.ModelArgs{
-			Type:            modelType,
-			Owner:           AdminUser,
+			Type:  modelType,
+			Owner: AdminUser,
+			// Pass the minimal model config needed for bootstrap, the rest
+			// should be added through the model config service.
 			Config:          controllerModelCfg,
 			CloudName:       DefaultCloud.Name,
 			CloudRegion:     DefaultCloudRegion,
@@ -292,7 +294,7 @@ func (s *ApiServerSuite) setupControllerModel(c *gc.C, controllerCfg controller.
 		MongoSession:  session,
 		AdminPassword: AdminSecret,
 		NewPolicy:     stateenvirons.GetNewPolicyFunc(domainServices.Cloud(), domainServices.Credential(), modelConfigServiceGetter, storageServiceGetter),
-	}, environs.ProviderConfigSchemaSource(domainServices.Cloud()))
+	})
 	c.Assert(err, jc.ErrorIsNil)
 	s.controller = ctrl
 
