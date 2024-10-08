@@ -53,7 +53,6 @@ import (
 	credentialstate "github.com/juju/juju/domain/credential/state"
 	servicefactorytesting "github.com/juju/juju/domain/services/testing"
 	"github.com/juju/juju/environs"
-	environsconfig "github.com/juju/juju/environs/config"
 	databasetesting "github.com/juju/juju/internal/database/testing"
 	internallease "github.com/juju/juju/internal/lease"
 	internallogger "github.com/juju/juju/internal/logger"
@@ -159,10 +158,6 @@ type ApiServerSuite struct {
 	// InstancePrechecker is used to validate instance creation.
 	// DEPRECATED: This will be removed in the future.
 	InstancePrechecker func(*gc.C, *state.State) environs.InstancePrechecker
-
-	// ConfigSchemaSourceGetter is used to provide the config schema for the model.
-	// DEPRECATED: This will be removed in the future.
-	ConfigSchemaSourceGetter func(*gc.C) environsconfig.ConfigSchemaSourceGetter
 }
 
 type noopRegisterer struct {

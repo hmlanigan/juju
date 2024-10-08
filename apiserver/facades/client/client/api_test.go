@@ -25,7 +25,6 @@ import (
 	usertesting "github.com/juju/juju/core/user/testing"
 	"github.com/juju/juju/core/version"
 	"github.com/juju/juju/domain/access/service"
-	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/internal/auth"
 	"github.com/juju/juju/internal/charm"
 	coretesting "github.com/juju/juju/internal/testing"
@@ -422,12 +421,11 @@ func (s *baseSuite) setUpScenario(c *gc.C) (entities []names.Tag) {
 	c.Assert(err, jc.ErrorIsNil)
 	add(taggedUser{tag: testing.AdminUser})
 
-	err = s.ControllerModel(c).UpdateModelConfig(
-		s.ConfigSchemaSourceGetter(c),
-		map[string]interface{}{
-			config.AgentVersionKey: "2.0.0",
-		}, nil)
-	c.Assert(err, jc.ErrorIsNil)
+	//err = s.ControllerModel(c).UpdateModelConfig(
+	//	map[string]interface{}{
+	//		config.AgentVersionKey: "2.0.0",
+	//	}, nil)
+	//c.Assert(err, jc.ErrorIsNil)
 
 	// Add another user.
 	userTag := names.NewUserTag("other")

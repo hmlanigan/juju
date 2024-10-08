@@ -991,8 +991,8 @@ func (s *modelManagerStateSuite) setupMocks(c *gc.C) *gomock.Controller {
 
 func (s *modelManagerStateSuite) setAPIUser(c *gc.C, user names.UserTag) {
 	s.authoriser.Tag = user
-	st := common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), s.ControllerModel(c), s.StatePool())
-	ctlrSt := common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), s.ControllerModel(c), s.StatePool())
+	st := common.NewModelManagerBackend(s.ControllerModel(c), s.StatePool())
+	ctlrSt := common.NewModelManagerBackend(s.ControllerModel(c), s.StatePool())
 
 	domainServices := s.ControllerDomainServices(c)
 
@@ -1021,7 +1021,6 @@ func (s *modelManagerStateSuite) setAPIUser(c *gc.C, user names.UserTag) {
 			ObjectStore:          &mockObjectStore{},
 			ApplicationService:   s.applicationService,
 		},
-		s.ConfigSchemaSourceGetter(c),
 		toolsFinder,
 		nil,
 		common.NewBlockChecker(st),
@@ -1105,14 +1104,14 @@ func (s *modelManagerStateSuite) expectCreateModelStateSuite(
 func (s *modelManagerStateSuite) TestNewAPIAcceptsClient(c *gc.C) {
 	anAuthoriser := s.authoriser
 	anAuthoriser.Tag = names.NewUserTag("external@remote")
-	st := common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), s.ControllerModel(c), s.StatePool())
+	st := common.NewModelManagerBackend(s.ControllerModel(c), s.StatePool())
 	domainServices := s.ControllerDomainServices(c)
 
 	endPoint, err := modelmanager.NewModelManagerAPI(
 		context.Background(),
 		mockCredentialShim{st},
 		nil,
-		common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), s.ControllerModel(c), s.StatePool()),
+		common.NewModelManagerBackend(s.ControllerModel(c), s.StatePool()),
 		s.controllerUUID,
 		modelmanager.Services{
 			DomainServicesGetter: s.domainServicesGetter,
@@ -1123,7 +1122,6 @@ func (s *modelManagerStateSuite) TestNewAPIAcceptsClient(c *gc.C) {
 			AccessService:        s.accessService,
 			ObjectStore:          &mockObjectStore{},
 		},
-		s.ConfigSchemaSourceGetter(c),
 		nil, nil, common.NewBlockChecker(st), anAuthoriser,
 		s.ControllerModel(c),
 	)
@@ -1134,14 +1132,14 @@ func (s *modelManagerStateSuite) TestNewAPIAcceptsClient(c *gc.C) {
 //func (s *modelManagerStateSuite) TestNewAPIRefusesNonClient(c *gc.C) {
 //	anAuthoriser := s.authoriser
 //	anAuthoriser.Tag = names.NewUnitTag("mysql/0")
-//	st := common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), s.ControllerModel(c), s.StatePool())
+//	st := common.NewModelManagerBackend(s.ControllerModel(c), s.StatePool())
 //	domainServices := s.ControllerDomainServices(c)
 //
 //	endPoint, err := modelmanager.NewModelManagerAPI(
 //		context.Background(),
 //		mockCredentialShim{st},
 //		nil,
-//		common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), s.ControllerModel(c), s.StatePool()),
+//		common.NewModelManagerBackend(s.ControllerModel(c), s.StatePool()),
 //		s.controllerUUID,
 //		modelmanager.Services{
 //			DomainServicesGetter: s.domainServicesGetter,
@@ -1152,7 +1150,6 @@ func (s *modelManagerStateSuite) TestNewAPIAcceptsClient(c *gc.C) {
 //			AccessService:        s.accessService,
 //			ObjectStore:          &mockObjectStore{},
 //		},
-//		s.ConfigSchemaSourceGetter(c),
 //		nil, nil, common.NewBlockChecker(st), anAuthoriser, s.ControllerModel(c),
 //	)
 //	c.Assert(endPoint, gc.IsNil)
@@ -1366,7 +1363,7 @@ func (s *modelManagerStateSuite) TestDestroyOwnModel(c *gc.C) {
 	defer st.Release()
 	model, err := st.Model()
 	c.Assert(err, jc.ErrorIsNil)
-	backend := common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), model, s.StatePool())
+	backend := common.NewModelManagerBackend(model, s.StatePool())
 
 	domainServices := s.ControllerDomainServices(c)
 
@@ -1374,7 +1371,7 @@ func (s *modelManagerStateSuite) TestDestroyOwnModel(c *gc.C) {
 		context.Background(),
 		mockCredentialShim{backend},
 		nil,
-		common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), s.ControllerModel(c), s.StatePool()),
+		common.NewModelManagerBackend(s.ControllerModel(c), s.StatePool()),
 		s.controllerUUID,
 		modelmanager.Services{
 			DomainServicesGetter: s.domainServicesGetter,
@@ -1385,7 +1382,6 @@ func (s *modelManagerStateSuite) TestDestroyOwnModel(c *gc.C) {
 			AccessService:        s.accessService,
 			ObjectStore:          &mockObjectStore{},
 		},
-		s.ConfigSchemaSourceGetter(c),
 		nil, nil, common.NewBlockChecker(backend), s.authoriser,
 		s.ControllerModel(c),
 	)
@@ -1434,7 +1430,7 @@ func (s *modelManagerStateSuite) TestAdminDestroysOtherModel(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 
 	s.authoriser.Tag = jujutesting.AdminUser
-	backend := common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), model, s.StatePool())
+	backend := common.NewModelManagerBackend(model, s.StatePool())
 
 	domainServices := s.ControllerDomainServices(c)
 
@@ -1442,7 +1438,7 @@ func (s *modelManagerStateSuite) TestAdminDestroysOtherModel(c *gc.C) {
 		context.Background(),
 		mockCredentialShim{backend},
 		nil,
-		common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), s.ControllerModel(c), s.StatePool()),
+		common.NewModelManagerBackend(s.ControllerModel(c), s.StatePool()),
 		s.controllerUUID,
 		modelmanager.Services{
 			DomainServicesGetter: s.domainServicesGetter,
@@ -1453,7 +1449,6 @@ func (s *modelManagerStateSuite) TestAdminDestroysOtherModel(c *gc.C) {
 			AccessService:        s.accessService,
 			ObjectStore:          &mockObjectStore{},
 		},
-		s.ConfigSchemaSourceGetter(c),
 		nil, nil, common.NewBlockChecker(backend), s.authoriser,
 		s.ControllerModel(c),
 	)
@@ -1493,12 +1488,12 @@ func (s *modelManagerStateSuite) TestDestroyModelErrors(c *gc.C) {
 
 	domainServices := s.ControllerDomainServices(c)
 
-	backend := common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), model, s.StatePool())
+	backend := common.NewModelManagerBackend(model, s.StatePool())
 	s.modelmanager, err = modelmanager.NewModelManagerAPI(
 		context.Background(),
 		mockCredentialShim{backend},
 		nil,
-		common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), s.ControllerModel(c), s.StatePool()),
+		common.NewModelManagerBackend(s.ControllerModel(c), s.StatePool()),
 		s.controllerUUID,
 		modelmanager.Services{
 			DomainServicesGetter: s.domainServicesGetter,
@@ -1509,7 +1504,6 @@ func (s *modelManagerStateSuite) TestDestroyModelErrors(c *gc.C) {
 			AccessService:        s.accessService,
 			ObjectStore:          &mockObjectStore{},
 		},
-		s.ConfigSchemaSourceGetter(c),
 		nil, nil, common.NewBlockChecker(backend), s.authoriser, s.ControllerModel(c),
 	)
 	c.Assert(err, jc.ErrorIsNil)
@@ -1597,12 +1591,12 @@ func (s *modelManagerStateSuite) TestModelInfoForMigratedModel(c *gc.C) {
 
 	anAuthoriser := s.authoriser
 	anAuthoriser.Tag = user
-	st := common.NewUserAwareModelManagerBackend(s.ConfigSchemaSourceGetter(c), model, s.StatePool(), user)
+	st := common.NewUserAwareModelManagerBackend(model, s.StatePool(), user)
 	endPoint, err := modelmanager.NewModelManagerAPI(
 		context.Background(),
 		mockCredentialShim{st},
 		nil,
-		common.NewModelManagerBackend(s.ConfigSchemaSourceGetter(c), s.ControllerModel(c), s.StatePool()),
+		common.NewModelManagerBackend(s.ControllerModel(c), s.StatePool()),
 		s.controllerUUID,
 		modelmanager.Services{
 			DomainServicesGetter: s.domainServicesGetter,
@@ -1613,7 +1607,6 @@ func (s *modelManagerStateSuite) TestModelInfoForMigratedModel(c *gc.C) {
 			AccessService:        s.accessService,
 			ObjectStore:          &mockObjectStore{},
 		},
-		s.ConfigSchemaSourceGetter(c),
 		nil, nil, common.NewBlockChecker(st), anAuthoriser,
 		s.ControllerModel(c),
 	)
