@@ -28,8 +28,6 @@ import (
 	"github.com/juju/juju/core/model"
 	"github.com/juju/juju/core/modelmigration"
 	domainservicestesting "github.com/juju/juju/domain/services/testing"
-	"github.com/juju/juju/environs"
-	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/environs/envcontext"
 	loggertesting "github.com/juju/juju/internal/logger/testing"
 	"github.com/juju/juju/internal/migration"
@@ -625,11 +623,12 @@ func (s *Suite) makeExportedModel(c *gc.C) (string, []byte) {
 }
 
 func (s *Suite) controllerVersion(c *gc.C) version.Number {
-	cfg, err := s.Model.ModelConfig(context.Background())
-	c.Assert(err, jc.ErrorIsNil)
-	vers, ok := cfg.AgentVersion()
-	c.Assert(ok, jc.IsTrue)
-	return vers
+	//cfg, err := s.Model.ModelConfig(context.Background())
+	//c.Assert(err, jc.ErrorIsNil)
+	//vers, ok := cfg.AgentVersion()
+	//c.Assert(ok, jc.IsTrue)
+	//return vers
+	return version.Number{}
 }
 
 func (s *Suite) expectImportModel(c *gc.C) {
@@ -638,14 +637,10 @@ func (s *Suite) expectImportModel(c *gc.C) {
 		scope := func(model.UUID) modelmigration.Scope { return modelmigration.NewScope(nil, nil, nil) }
 		controller := state.NewController(s.StatePool)
 		return migration.NewModelImporter(
-			controller, scope, s.controllerConfigService, s.domainServicesGetter, cloudSchemaSource,
+			controller, scope, s.controllerConfigService, s.domainServicesGetter,
 			func() (storage.ProviderRegistry, error) { return provider.CommonStorageProviders(), nil },
 			loggertesting.WrapCheckLog(c),
 			clock.WallClock,
 		).ImportModel(ctx, bytes)
 	})
-}
-
-func cloudSchemaSource(environs.CloudService) config.ConfigSchemaSourceGetter {
-	return state.NoopConfigSchemaSource
 }

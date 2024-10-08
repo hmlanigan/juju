@@ -219,7 +219,6 @@ func (s *modelInfoSuite) getAPI(c *gc.C) (*modelmanager.ModelManagerAPI, *gomock
 			SecretBackendService: s.mockSecretBackendService,
 			MachineService:       s.mockMachineService,
 		},
-		state.NoopConfigSchemaSource,
 		nil, nil, common.NewBlockChecker(s.st),
 		&s.authorizer, s.st.model,
 	)
@@ -258,7 +257,6 @@ func (s *modelInfoSuite) getAPIWithUser(c *gc.C, user names.UserTag) (*modelmana
 			SecretBackendService: s.mockSecretBackendService,
 			MachineService:       s.mockMachineService,
 		},
-		state.NoopConfigSchemaSource,
 		nil, nil,
 		common.NewBlockChecker(s.st), s.authorizer, s.st.model,
 	)

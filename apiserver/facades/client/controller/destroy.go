@@ -12,7 +12,6 @@ import (
 	apiservererrors "github.com/juju/juju/apiserver/errors"
 	corelogger "github.com/juju/juju/core/logger"
 	"github.com/juju/juju/core/permission"
-	"github.com/juju/juju/environs"
 	"github.com/juju/juju/rpc/params"
 )
 
@@ -41,7 +40,7 @@ func (c *ControllerAPI) DestroyController(ctx context.Context, args params.Destr
 	// models but set the controller to dying to prevent new
 	// models sneaking in. If we are not destroying hosted models,
 	// this will fail if any hosted models are found.
-	backend := common.NewModelManagerBackend(environs.ProviderConfigSchemaSource(c.cloudService), model, c.statePool)
+	backend := common.NewModelManagerBackend(model, c.statePool)
 	return errors.Trace(common.DestroyController(
 		ctx,
 		backend, args.DestroyModels, args.DestroyStorage,

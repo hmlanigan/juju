@@ -393,10 +393,6 @@ func (s *ApiServerSuite) setupApiServer(c *gc.C, controllerCfg controller.Config
 func (s *ApiServerSuite) SetUpTest(c *gc.C) {
 	s.MgoSuite.SetUpTest(c)
 
-	s.ConfigSchemaSourceGetter = func(c *gc.C) environsconfig.ConfigSchemaSourceGetter {
-		return state.NoopConfigSchemaSource
-	}
-
 	if s.Clock == nil {
 		s.Clock = testclock.NewClock(time.Now())
 	}

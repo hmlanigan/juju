@@ -40,7 +40,6 @@ import (
 	"github.com/juju/juju/domain/access"
 	accesserrors "github.com/juju/juju/domain/access/errors"
 	modelerrors "github.com/juju/juju/domain/model/errors"
-	"github.com/juju/juju/environs"
 	"github.com/juju/juju/environs/bootstrap"
 	"github.com/juju/juju/internal/docker"
 	"github.com/juju/juju/internal/migration"
@@ -203,7 +202,7 @@ func NewControllerAPI(
 			externalControllerService,
 		),
 		ModelStatusAPI: common.NewModelStatusAPI(
-			common.NewModelManagerBackend(environs.ProviderConfigSchemaSource(cloudService), model, pool),
+			common.NewModelManagerBackend(model, pool),
 			machineService,
 			authorizer,
 			apiUser,

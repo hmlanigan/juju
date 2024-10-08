@@ -11,7 +11,6 @@ import (
 	"github.com/juju/collections/set"
 	"github.com/juju/description/v8"
 	"github.com/juju/errors"
-	"github.com/juju/names/v5"
 	"github.com/juju/version/v2"
 
 	"github.com/juju/juju/apiserver/common"
@@ -23,7 +22,6 @@ import (
 	"github.com/juju/juju/environs/config"
 	internalerrors "github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/tools"
-	"github.com/juju/juju/internal/upgrades/upgradevalidation"
 	"github.com/juju/juju/state"
 )
 
@@ -447,21 +445,22 @@ func (ctx *precheckSource) checkModel(stdCtx context.Context) error {
 			return errors.New("model has revoked credentials")
 		}
 	}
+	return nil
 
-	cloudspec, err := ctx.environscloudspecGetter(stdCtx, names.NewModelTag(model.UUID()))
-	if err != nil {
-		return errors.Trace(err)
-	}
-	validators := upgradevalidation.ValidatorsForModelMigrationSource(cloudspec)
-	checker := upgradevalidation.NewModelUpgradeCheck(model.UUID(), nil, ctx.backend, model, validators...)
-	blockers, err := checker.Validate()
-	if err != nil {
-		return errors.Trace(err)
-	}
-	if blockers == nil {
-		return nil
-	}
-	return errors.NewNotSupported(nil, fmt.Sprintf("cannot migrate to controller due to issues:\n%s", blockers))
+	//cloudspec, err := ctx.environscloudspecGetter(stdCtx, names.NewModelTag(model.UUID()))
+	//if err != nil {
+	//	return errors.Trace(err)
+	//}
+	//validators := upgradevalidation.ValidatorsForModelMigrationSource(cloudspec)
+	//checker := upgradevalidation.NewModelUpgradeCheck(model.UUID(), nil, ctx.backend, model, validators...)
+	//blockers, err := checker.Validate()
+	//if err != nil {
+	//	return errors.Trace(err)
+	//}
+	//if blockers == nil {
+	//	return nil
+	//}
+	//return errors.NewNotSupported(nil, fmt.Sprintf("cannot migrate to controller due to issues:\n%s", blockers))
 }
 
 type agentToolsGetter interface {

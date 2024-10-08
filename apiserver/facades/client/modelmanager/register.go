@@ -83,7 +83,7 @@ func newFacadeV10(stdCtx context.Context, ctx facade.MultiModelContext) (*ModelM
 	toolsFinder := common.NewToolsFinder(controllerConfigService, st, urlGetter, newEnviron, ctx.ControllerObjectStore())
 
 	apiUser, _ := auth.GetAuthTag().(names.UserTag)
-	backend := common.NewUserAwareModelManagerBackend(configSchemaSource, model, pool, apiUser)
+	backend := common.NewUserAwareModelManagerBackend(model, pool, apiUser)
 
 	secretBackendService := domainServices.SecretBackend()
 	return NewModelManagerAPI(
@@ -92,7 +92,7 @@ func newFacadeV10(stdCtx context.Context, ctx facade.MultiModelContext) (*ModelM
 		func(modelUUID coremodel.UUID, legacyState facade.LegacyStateExporter) ModelExporter {
 			return ctx.ModelExporter(modelUUID, legacyState)
 		},
-		common.NewModelManagerBackend(configSchemaSource, ctrlModel, pool),
+		common.NewModelManagerBackend(ctrlModel, pool),
 		controllerUUID,
 		Services{
 			DomainServicesGetter: domainServicesGetter{ctx: ctx},
@@ -106,6 +106,7 @@ func newFacadeV10(stdCtx context.Context, ctx facade.MultiModelContext) (*ModelM
 			NetworkService:       domainServices.Network(),
 			MachineService:       domainServices.Machine(),
 			ApplicationService:   domainServices.Application(service.ApplicationServiceParams{}),
+			AgentService:         domainServices.Agent(),
 		},
 		configSchemaSource,
 		toolsFinder,

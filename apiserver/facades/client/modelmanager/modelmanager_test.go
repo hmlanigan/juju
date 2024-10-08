@@ -236,7 +236,6 @@ func (s *modelManagerSuite) setUpAPI(c *gc.C) *gomock.Controller {
 			AccessService:        s.accessService,
 			ObjectStore:          &mockObjectStore{},
 		},
-		state.NoopConfigSchemaSource,
 		nil, newBroker, common.NewBlockChecker(s.st),
 		s.authoriser, s.st.model,
 	)
@@ -261,7 +260,6 @@ func (s *modelManagerSuite) setUpAPI(c *gc.C) *gomock.Controller {
 			ApplicationService:   s.applicationService,
 			ObjectStore:          &mockObjectStore{},
 		},
-		state.NoopConfigSchemaSource,
 		nil, newBroker, common.NewBlockChecker(s.caasSt),
 		s.authoriser, s.st.model,
 	)
@@ -748,7 +746,6 @@ func (s *modelManagerSuite) TestDumpModel(c *gc.C) {
 			AccessService:        s.accessService,
 			ObjectStore:          &mockObjectStore{},
 		},
-		state.NoopConfigSchemaSource,
 		nil, nil, common.NewBlockChecker(s.st),
 		s.authoriser, s.st.model,
 	)

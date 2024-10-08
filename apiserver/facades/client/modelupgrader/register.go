@@ -16,7 +16,6 @@ import (
 	apiservererrors "github.com/juju/juju/apiserver/errors"
 	"github.com/juju/juju/apiserver/facade"
 	coremodel "github.com/juju/juju/core/model"
-	"github.com/juju/juju/environs"
 	"github.com/juju/juju/internal/docker/registry"
 	"github.com/juju/juju/state/stateenvirons"
 )
@@ -74,10 +73,8 @@ func newFacadeV1(ctx facade.ModelContext) (*ModelUpgraderAPI, error) {
 	}
 	environscloudspecGetter := cloudspec.MakeCloudSpecGetter(pool, cloudService, credentialService, modelConfigServiceGetter)
 
-	configSchemaSource := environs.ProviderConfigSchemaSource(cloudService)
-
 	apiUser, _ := auth.GetAuthTag().(names.UserTag)
-	backend := common.NewUserAwareModelManagerBackend(configSchemaSource, model, pool, apiUser)
+	backend := common.NewUserAwareModelManagerBackend(model, pool, apiUser)
 	return NewModelUpgraderAPI(
 		systemState.ControllerTag(),
 		statePoolShim{StatePool: pool},

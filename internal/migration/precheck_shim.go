@@ -4,8 +4,6 @@
 package migration
 
 import (
-	"context"
-
 	"github.com/juju/errors"
 	"github.com/juju/replicaset/v3"
 	"github.com/juju/version/v2"
@@ -41,20 +39,21 @@ func (s *precheckShim) IsMigrationActive(modelUUID string) (bool, error) {
 
 // AgentVersion implements PrecheckBackend.
 func (s *precheckShim) AgentVersion() (version.Number, error) {
-	model, err := s.State.Model()
-	if err != nil {
-		return version.Zero, errors.Trace(err)
-	}
-	cfg, err := model.ModelConfig(context.TODO())
-	if err != nil {
-		return version.Zero, errors.Trace(err)
-	}
-
-	vers, ok := cfg.AgentVersion()
-	if !ok {
-		return version.Zero, errors.New("no model agent version")
-	}
-	return vers, nil
+	return version.Number{}, errors.NotImplementedf("temp change - heather")
+	//model, err := s.State.Model()
+	//if err != nil {
+	//	return version.Zero, errors.Trace(err)
+	//}
+	//cfg, err := model.ModelConfig(context.TODO())
+	//if err != nil {
+	//	return version.Zero, errors.Trace(err)
+	//}
+	//
+	//vers, ok := cfg.AgentVersion()
+	//if !ok {
+	//	return version.Zero, errors.New("no model agent version")
+	//}
+	//return vers, nil
 }
 
 // AllMachines implements PrecheckBackend.

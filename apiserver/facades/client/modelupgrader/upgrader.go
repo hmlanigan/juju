@@ -158,10 +158,10 @@ func (m *ModelUpgraderAPI) UpgradeModel(ctx stdcontext.Context, arg params.Upgra
 	}
 	defer st.Release()
 
-	controllerCfg, err := m.controllerConfigService.ControllerConfig(ctx)
-	if err != nil {
-		return result, errors.Trace(err)
-	}
+	//controllerCfg, err := m.controllerConfigService.ControllerConfig(ctx)
+	//if err != nil {
+	//	return result, errors.Trace(err)
+	//}
 	model, err := st.Model()
 	if err != nil {
 		return result, errors.Trace(err)
@@ -172,71 +172,71 @@ func (m *ModelUpgraderAPI) UpgradeModel(ctx stdcontext.Context, arg params.Upgra
 		return result, nil
 	}
 
-	currentVersion, err := model.AgentVersion()
-	if err != nil {
-		return result, errors.Trace(err)
-	}
-
-	// For non controller models, we use the exact controller
-	// model version to upgrade to, unless an explicit target
-	// has been specified.
-	useControllerVersion := false
-	if !model.IsControllerModel() {
-		ctrlModel, err := m.statePool.ControllerModel()
-		if err != nil {
-			return result, errors.Trace(err)
-		}
-		vers, err := ctrlModel.AgentVersion()
-		if err != nil {
-			return result, errors.Trace(err)
-		}
-		if targetVersion == version.Zero || targetVersion.Compare(vers) == 0 {
-			targetVersion = vers
-			useControllerVersion = true
-		} else if vers.Compare(targetVersion.ToPatch()) < 0 {
-			return result, errors.Errorf("cannot upgrade to a version %q greater than that of the controller %q", targetVersion, vers)
-		}
-	}
-	if !useControllerVersion {
-		m.logger.Debugf("deciding target version for model upgrade, from %q to %q for stream %q", currentVersion, targetVersion, arg.AgentStream)
-		args := common.FindAgentsParams{
-			AgentStream:   arg.AgentStream,
-			ControllerCfg: controllerCfg,
-			ModelType:     model.Type(),
-		}
-		if targetVersion == version.Zero {
-			args.MajorVersion = currentVersion.Major
-			args.MinorVersion = currentVersion.Minor
-		} else {
-			args.Number = targetVersion
-		}
-		targetVersion, err = m.decideVersion(ctx, currentVersion, args)
-		if errors.Is(errors.Cause(err), errors.NotFound) || errors.Is(errors.Cause(err), errors.AlreadyExists) {
-			result.Error = apiservererrors.ServerError(err)
-			return result, nil
-		}
-
-		if err != nil {
-			return result, errors.Trace(err)
-		}
-	}
+	//currentVersion, err := model.AgentVersion()
+	//if err != nil {
+	//	return result, errors.Trace(err)
+	//}
+	//
+	//// For non controller models, we use the exact controller
+	//// model version to upgrade to, unless an explicit target
+	//// has been specified.
+	//useControllerVersion := false
+	//if !model.IsControllerModel() {
+	//	ctrlModel, err := m.statePool.ControllerModel()
+	//	if err != nil {
+	//		return result, errors.Trace(err)
+	//	}
+	//	vers, err := ctrlModel.AgentVersion()
+	//	if err != nil {
+	//		return result, errors.Trace(err)
+	//	}
+	//	if targetVersion == version.Zero || targetVersion.Compare(vers) == 0 {
+	//		targetVersion = vers
+	//		useControllerVersion = true
+	//	} else if vers.Compare(targetVersion.ToPatch()) < 0 {
+	//		return result, errors.Errorf("cannot upgrade to a version %q greater than that of the controller %q", targetVersion, vers)
+	//	}
+	//}
+	//if !useControllerVersion {
+	//	m.logger.Debugf("deciding target version for model upgrade, from %q to %q for stream %q", currentVersion, targetVersion, arg.AgentStream)
+	//	args := common.FindAgentsParams{
+	//		AgentStream:   arg.AgentStream,
+	//		ControllerCfg: controllerCfg,
+	//		ModelType:     model.Type(),
+	//	}
+	//	if targetVersion == version.Zero {
+	//		args.MajorVersion = currentVersion.Major
+	//		args.MinorVersion = currentVersion.Minor
+	//	} else {
+	//		args.Number = targetVersion
+	//	}
+	//	targetVersion, err = m.decideVersion(ctx, currentVersion, args)
+	//	if errors.Is(errors.Cause(err), errors.NotFound) || errors.Is(errors.Cause(err), errors.AlreadyExists) {
+	//		result.Error = apiservererrors.ServerError(err)
+	//		return result, nil
+	//	}
+	//
+	//	if err != nil {
+	//		return result, errors.Trace(err)
+	//	}
+	//}
 
 	// Before changing the agent version to trigger an upgrade or downgrade,
 	// we'll do a very basic check to ensure the environment is accessible.
-	envOrBroker, err := m.newEnviron(ctx)
-	if err != nil {
-		return result, errors.Trace(err)
-	}
-	invalidatorFunc, err := m.credentialInvalidatorGetter()
-	if err != nil {
-		return result, errors.Trace(err)
-	}
-	callCtx := envcontext.WithCredentialInvalidator(ctx, invalidatorFunc)
-	if err := preCheckEnvironForUpgradeModel(
-		callCtx, envOrBroker, model.IsControllerModel(), currentVersion, targetVersion, m.logger,
-	); err != nil {
-		return result, errors.Trace(err)
-	}
+	//envOrBroker, err := m.newEnviron(ctx)
+	//if err != nil {
+	//	return result, errors.Trace(err)
+	//}
+	//invalidatorFunc, err := m.credentialInvalidatorGetter()
+	//if err != nil {
+	//	return result, errors.Trace(err)
+	//}
+	//callCtx := envcontext.WithCredentialInvalidator(ctx, invalidatorFunc)
+	//if err := preCheckEnvironForUpgradeModel(
+	//	callCtx, envOrBroker, model.IsControllerModel(), currentVersion, targetVersion, m.logger,
+	//); err != nil {
+	//	return result, errors.Trace(err)
+	//}
 
 	if err := m.validateModelUpgrade(ctx, false, modelTag, targetVersion, st, model); err != nil {
 		result.Error = apiservererrors.ServerError(err)
@@ -338,30 +338,30 @@ func (m *ModelUpgraderAPI) validateModelUpgrade(
 		}
 	}()
 
-	cloudspec, err := m.environscloudspecGetter(ctx, modelTag)
-	if err != nil {
-		return errors.Trace(err)
-	}
+	//cloudspec, err := m.environscloudspecGetter(ctx, modelTag)
+	//if err != nil {
+	//	return errors.Trace(err)
+	//}
 
 	isControllerModel := model.IsControllerModel()
 	if !isControllerModel {
-		validators := upgradevalidation.ValidatorsForModelUpgrade(force, targetVersion, cloudspec)
-		checker := upgradevalidation.NewModelUpgradeCheck(modelTag.Id(), m.statePool, st, model, validators...)
-		blockers, err = checker.Validate()
-		if err != nil {
-			return errors.Trace(err)
-		}
+		//validators := upgradevalidation.ValidatorsForModelUpgrade(force, targetVersion, cloudspec)
+		//checker := upgradevalidation.NewModelUpgradeCheck(modelTag.Id(), m.statePool, st, model, validators...)
+		//blockers, err = checker.Validate()
+		//if err != nil {
+		//	return errors.Trace(err)
+		//}
 		return
 	}
 
-	checker := upgradevalidation.NewModelUpgradeCheck(
-		modelTag.Id(), m.statePool, st, model,
-		upgradevalidation.ValidatorsForControllerModelUpgrade(targetVersion, cloudspec)...,
-	)
-	blockers, err = checker.Validate()
-	if err != nil {
-		return errors.Trace(err)
-	}
+	//checker := upgradevalidation.NewModelUpgradeCheck(
+	//	modelTag.Id(), m.statePool, st, model,
+	//	upgradevalidation.ValidatorsForControllerModelUpgrade(targetVersion, cloudspec)...,
+	//)
+	//blockers, err = checker.Validate()
+	//if err != nil {
+	//	return errors.Trace(err)
+	//}
 
 	modelUUIDs, err := st.AllModelUUIDs()
 	if err != nil {
@@ -388,26 +388,26 @@ func (m *ModelUpgraderAPI) validateModelUpgrade(
 			continue
 		}
 
-		cloudspec, err := m.environscloudspecGetter(ctx, names.NewModelTag(modelUUID))
-		if err != nil {
-			return errors.Trace(err)
-		}
-		validators := upgradevalidation.ModelValidatorsForControllerModelUpgrade(targetVersion, cloudspec)
+		//cloudspec, err := m.environscloudspecGetter(ctx, names.NewModelTag(modelUUID))
+		//if err != nil {
+		//	return errors.Trace(err)
+		//}
+		//validators := upgradevalidation.ModelValidatorsForControllerModelUpgrade(targetVersion, cloudspec)
 
-		checker := upgradevalidation.NewModelUpgradeCheck(modelUUID, m.statePool, st, model, validators...)
-		blockersForModel, err := checker.Validate()
-		if err != nil {
-			return errors.Annotatef(err, "validating model %q for controller upgrade", model.Name())
-		}
-		if blockersForModel == nil {
-			// all good.
-			continue
-		}
-		if blockers == nil {
-			blockers = blockersForModel
-			continue
-		}
-		blockers.Join(blockersForModel)
+		//checker := upgradevalidation.NewModelUpgradeCheck(modelUUID, m.statePool, st, model, validators...)
+		//blockersForModel, err := checker.Validate()
+		//if err != nil {
+		//	return errors.Annotatef(err, "validating model %q for controller upgrade", model.Name())
+		//}
+		//if blockersForModel == nil {
+		//	// all good.
+		//	continue
+		//}
+		//if blockers == nil {
+		//	blockers = blockersForModel
+		//	continue
+		//}
+		//blockers.Join(blockersForModel)
 	}
 	return
 }

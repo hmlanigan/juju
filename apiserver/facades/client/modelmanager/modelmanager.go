@@ -76,6 +76,8 @@ type ModelManagerAPI struct {
 	modelDefaultsService ModelDefaultsService
 	cloudService         CloudService
 	credentialService    CredentialService
+	agentService         ModelAgentService
+	modelConfigService   ModelConfigService
 	applicationService   ApplicationService
 	networkService       NetworkService
 	machineService       MachineService
@@ -102,7 +104,6 @@ func NewModelManagerAPI(
 	ctlrSt common.ModelManagerBackend,
 	controllerUUID uuid.UUID,
 	services Services,
-	configSchemaSource config.ConfigSchemaSourceGetter,
 	toolsFinder common.ToolsFinder,
 	getBroker newCaasBrokerFunc,
 	blockChecker common.BlockCheckerInterface,
@@ -134,7 +135,6 @@ func NewModelManagerAPI(
 		networkService:       services.NetworkService,
 		machineService:       services.MachineService,
 		applicationService:   services.ApplicationService,
-		configSchemaSource:   configSchemaSource,
 		store:                services.ObjectStore,
 		getBroker:            getBroker,
 		check:                blockChecker,
@@ -1149,16 +1149,20 @@ func (m *ModelManagerAPI) getModelInfo(ctx context.Context, tag names.ModelTag, 
 		}
 		return !ignoreNotFoundError || !(errors.Is(thisErr, errors.NotFound) || errors.Is(thisErr, modelerrors.NotFound))
 	}
-	cfg, err := model.Config()
+	cfg, err := m.modelConfigService.ModelConfig(ctx)
 	if shouldErr(err) {
 		return params.ModelInfo{}, errors.Trace(err)
 	}
 	if err == nil {
 		info.ProviderType = cfg.Type()
+	}
 
-		if agentVersion, exists := cfg.AgentVersion(); exists {
-			info.AgentVersion = &agentVersion
-		}
+	agentVersion, err := m.agentService.GetModelAgentVersion(ctx)
+	if shouldErr(err) {
+		return params.ModelInfo{}, errors.Annotate(err, "getting model agent version")
+	}
+	if err == nil {
+		info.AgentVersion = &agentVersion
 	}
 
 	status, err := model.Status()
