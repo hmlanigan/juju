@@ -16,7 +16,6 @@ import (
 	"github.com/juju/juju/caas"
 	coremodel "github.com/juju/juju/core/model"
 	"github.com/juju/juju/domain/application/service"
-	"github.com/juju/juju/environs"
 	"github.com/juju/juju/internal/uuid"
 	"github.com/juju/juju/state/stateenvirons"
 )
@@ -75,8 +74,6 @@ func newFacadeV10(stdCtx context.Context, ctx facade.MultiModelContext) (*ModelM
 		return nil, errors.Trace(err)
 	}
 
-	configSchemaSource := environs.ProviderConfigSchemaSource(domainServices.Cloud())
-
 	controllerConfigService := domainServices.ControllerConfig()
 
 	urlGetter := common.NewToolsURLGetter(modelUUID, systemState)
@@ -108,7 +105,6 @@ func newFacadeV10(stdCtx context.Context, ctx facade.MultiModelContext) (*ModelM
 			ApplicationService:   domainServices.Application(service.ApplicationServiceParams{}),
 			AgentService:         domainServices.Agent(),
 		},
-		configSchemaSource,
 		toolsFinder,
 		caas.New,
 		common.NewBlockChecker(backend),

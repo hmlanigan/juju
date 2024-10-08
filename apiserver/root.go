@@ -954,7 +954,6 @@ func (ctx *facadeContext) ModelImporter() facade.ModelImporter {
 		ctx.migrationScope,
 		ctx.DomainServices().ControllerConfig(),
 		ctx.r.domainServicesGetter,
-		environs.ProviderConfigSchemaSource,
 		storageRegistryGetter(ctx),
 		ctx.Logger(),
 		ctx.r.clock,
