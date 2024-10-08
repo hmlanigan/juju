@@ -294,7 +294,6 @@ func (s *modelManagerSuite) setAPIUser(c *gc.C, user names.UserTag) {
 			ApplicationService:   s.applicationService,
 			ObjectStore:          &mockObjectStore{},
 		},
-		state.NoopConfigSchemaSource,
 		nil, newBroker, common.NewBlockChecker(s.st),
 		s.authoriser, s.st.model,
 	)
