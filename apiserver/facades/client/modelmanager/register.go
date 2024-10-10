@@ -103,7 +103,6 @@ func newFacadeV10(stdCtx context.Context, ctx facade.MultiModelContext) (*ModelM
 			NetworkService:       domainServices.Network(),
 			MachineService:       domainServices.Machine(),
 			ApplicationService:   domainServices.Application(service.ApplicationServiceParams{}),
-			AgentService:         domainServices.Agent(),
 		},
 		toolsFinder,
 		caas.New,

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/juju/description/v8"
-	"github.com/juju/version/v2"
 
 	"github.com/juju/juju/apiserver/common"
 	"github.com/juju/juju/apiserver/facade"
@@ -134,6 +133,10 @@ type ModelInfoService interface {
 
 	// DeleteModel is responsible for deleting a model during model migration.
 	DeleteModel(context.Context) error
+
+	// GetModelInfo returns the readonly model information for the model in
+	// question.
+	GetModelInfo(context.Context) (coremodel.ReadOnlyModel, error)
 }
 
 // ModelExporter defines a interface for exporting models.
@@ -213,12 +216,6 @@ type ApplicationService interface {
 	GetSupportedFeatures(ctx context.Context) (assumes.FeatureSet, error)
 }
 
-// ModelAgentService provides access to the Juju agent version for the model.
-type ModelAgentService interface {
-	// GetModelAgentVersion returns the agent version for the current model.
-	GetModelAgentVersion(ctx context.Context) (version.Number, error)
-}
-
 // Services holds the services needed by the model manager api.
 type Services struct {
 	// DomainServicesGetter is an interface for interacting with a factory for
@@ -249,8 +246,8 @@ type Services struct {
 	// ApplicationService is an interface for interacting with the application
 	// service.
 	ApplicationService ApplicationService
-	// AgentService ccess to the Juju agent version for the model.
-	AgentService ModelAgentService
+	// ModelConfigService is an interface for interacting with the config service.
+	ModelConfigService ModelConfigService
 }
 
 type domainServicesGetter struct {

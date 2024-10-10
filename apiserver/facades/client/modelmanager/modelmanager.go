@@ -76,7 +76,6 @@ type ModelManagerAPI struct {
 	modelDefaultsService ModelDefaultsService
 	cloudService         CloudService
 	credentialService    CredentialService
-	agentService         ModelAgentService
 	modelConfigService   ModelConfigService
 	applicationService   ApplicationService
 	networkService       NetworkService
@@ -145,6 +144,7 @@ func NewModelManagerAPI(
 		model:                m,
 		modelService:         services.ModelService,
 		modelDefaultsService: services.ModelDefaultsService,
+		modelConfigService:   services.ModelConfigService,
 		accessService:        services.AccessService,
 		secretBackendService: services.SecretBackendService,
 		controllerUUID:       controllerUUID,
@@ -1149,20 +1149,16 @@ func (m *ModelManagerAPI) getModelInfo(ctx context.Context, tag names.ModelTag, 
 		}
 		return !ignoreNotFoundError || !(errors.Is(thisErr, errors.NotFound) || errors.Is(thisErr, modelerrors.NotFound))
 	}
-	cfg, err := m.modelConfigService.ModelConfig(ctx)
+
+	modelDomainServices := m.domainServicesGetter.DomainServicesForModel(coremodel.UUID(modelUUID))
+	modelInfoService := modelDomainServices.ModelInfo()
+	modelInfo, err := modelInfoService.GetModelInfo(ctx)
 	if shouldErr(err) {
 		return params.ModelInfo{}, errors.Trace(err)
 	}
 	if err == nil {
-		info.ProviderType = cfg.Type()
-	}
-
-	agentVersion, err := m.agentService.GetModelAgentVersion(ctx)
-	if shouldErr(err) {
-		return params.ModelInfo{}, errors.Annotate(err, "getting model agent version")
-	}
-	if err == nil {
-		info.AgentVersion = &agentVersion
+		info.AgentVersion = &modelInfo.AgentVersion
+		info.ProviderType = modelInfo.CloudType
 	}
 
 	status, err := model.Status()

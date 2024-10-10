@@ -1015,6 +1015,7 @@ func (s *modelManagerStateSuite) setAPIUser(c *gc.C, user names.UserTag) {
 			CloudService:         domainServices.Cloud(),
 			CredentialService:    domainServices.Credential(),
 			ModelService:         s.modelService,
+			ModelConfigService:   domainServices.Config(),
 			ModelDefaultsService: nil,
 			AccessService:        s.accessService,
 			ObjectStore:          &mockObjectStore{},
@@ -1085,7 +1086,7 @@ func (s *modelManagerStateSuite) expectCreateModelStateSuite(
 	modelInfoService := mocks.NewMockModelInfoService(ctrl)
 	networkService := mocks.NewMockNetworkService(ctrl)
 	modelConfigService := mocks.NewMockModelConfigService(ctrl)
-	modelDomainServices.EXPECT().ModelInfo().Return(modelInfoService)
+	modelDomainServices.EXPECT().ModelInfo().Return(modelInfoService).AnyTimes()
 	modelDomainServices.EXPECT().Network().Return(networkService)
 	modelDomainServices.EXPECT().Config().Return(modelConfigService).AnyTimes()
 
@@ -1093,6 +1094,18 @@ func (s *modelManagerStateSuite) expectCreateModelStateSuite(
 	modelInfoService.EXPECT().CreateModel(gomock.Any(), s.controllerUUID)
 	modelConfigService.EXPECT().SetModelConfig(gomock.Any(), gomock.Any())
 	modelConfigService.EXPECT().ModelConfig(gomock.Any()).Return(cfg, nil).AnyTimes()
+	modelInfoService.EXPECT().GetModelInfo(gomock.Any()).Return(coremodel.ReadOnlyModel{
+		UUID:            "",
+		AgentVersion:    jujuversion.Current,
+		ControllerUUID:  uuid.UUID{},
+		Name:            "",
+		Type:            "",
+		Cloud:           "dummy",
+		CloudType:       "",
+		CloudRegion:     "dummy-region",
+		CredentialOwner: user.Name{},
+		CredentialName:  "",
+	}, nil)
 	networkService.EXPECT().ReloadSpaces(gomock.Any())
 
 	// Called as part of getModelInfo which returns information to the user
@@ -1376,7 +1389,8 @@ func (s *modelManagerStateSuite) TestDestroyOwnModel(c *gc.C) {
 			DomainServicesGetter: s.domainServicesGetter,
 			CloudService:         domainServices.Cloud(),
 			CredentialService:    domainServices.Credential(),
-			ModelService:         nil,
+			ModelService:         domainServices.Model(),
+			ModelConfigService:   domainServices.Config(), // HEATHER
 			ModelDefaultsService: nil,
 			AccessService:        s.accessService,
 			ObjectStore:          &mockObjectStore{},
@@ -1559,6 +1573,7 @@ func (s *modelManagerStateSuite) TestModelInfoForMigratedModel(c *gc.C) {
 	f, release := s.NewFactory(c, s.ControllerModelUUID())
 	defer release()
 
+	f.WithModelConfigService()
 	modelState := f.MakeModel(c, &factory.ModelParams{
 		Owner: user,
 	})
