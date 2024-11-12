@@ -78,9 +78,13 @@ func (e *exportOperation) Setup(scope modelmigration.Scope) error {
 		state.NewApplicationState(scope.ModelDB(), e.logger),
 		NoopDeleteSecretState{},
 		state.NewCharmState(scope.ModelDB()),
+		state.NewResourceState(scope.ModelDB(), e.logger),
 		corestorage.ConstModelStorageRegistry(func() storage.ProviderRegistry {
 			return storage.NotImplementedProviderRegistry{}
 		}),
+		// TODO: Wire through an objectstoreGetter when implementing
+		// model migration for resources if needed.
+		nil,
 		e.logger,
 	)
 	return nil

@@ -175,11 +175,13 @@ func (s *ModelFactory) Application() *applicationservice.WatchableService {
 			s.logger.Child("application"),
 		),
 		applicationstate.NewCharmState(changestream.NewTxnRunnerFactory(s.modelDB)),
+		applicationstate.NewResourceState(changestream.NewTxnRunnerFactory(s.modelDB), s.logger.Child("resource")),
 		domain.NewWatcherFactory(s.modelDB, s.logger.Child("application")),
 		s.modelUUID,
 		modelagentstate.NewState(changestream.NewTxnRunnerFactory(s.controllerDB)),
 		providertracker.ProviderRunner[applicationservice.Provider](s.providerFactory, s.modelUUID.String()),
 		s.storageRegistry,
+		s.objectstore,
 		s.logger.Child("application"),
 	)
 }

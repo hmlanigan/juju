@@ -71,9 +71,11 @@ func (i *importOperation) Setup(scope modelmigration.Scope) error {
 		applicationstate.NewApplicationState(scope.ModelDB(), i.logger),
 		secretstate.NewState(scope.ModelDB(), i.logger),
 		applicationstate.NewCharmState(scope.ModelDB()),
+		nil, // Resources are not required for Port model migration.
 		corestorage.ConstModelStorageRegistry(func() storage.ProviderRegistry {
 			return storage.NotImplementedProviderRegistry{}
 		}),
+		nil, // Resources are not required for Port model migration.
 		i.logger,
 	)
 	return nil
