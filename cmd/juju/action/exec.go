@@ -115,6 +115,13 @@ Since juju exec creates tasks, you can query for the status of commands
 started with juju run by calling 
 "juju operations --machines <id>,... --actions juju-exec".
 
+To queue a tast to be run in the background without waiting for it to finish,
+use the --background option.
+
+To set the maximum time to wait for a task to complete, use the --wait option.
+
+The --wait and --background options are mutually exclusive.
+
 If you need to pass options to the command being run, you must precede the
 command and its arguments with "--", to tell "juju exec" to stop processing
 those arguments. For example:

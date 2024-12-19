@@ -5,6 +5,7 @@ package action
 
 import (
 	"strings"
+	"time"
 
 	"github.com/juju/clock"
 	"github.com/juju/cmd/v3"
@@ -25,7 +26,8 @@ func NewRunCommand() cmd.Command {
 			logMessageHandler: func(ctx *cmd.Context, msg string) {
 				ctx.Infof(msg)
 			},
-			clock: clock.WallClock,
+			clock:       clock.WallClock,
+			defaultWait: 60 * time.Second,
 		},
 	})
 }
@@ -55,6 +57,8 @@ To queue a action to be run in the background without waiting for it to finish,
 use the --background option.
 
 To set the maximum time to wait for a action to complete, use the --wait option.
+
+The --wait and --background options are mutually exclusive.
 
 By default, a single action will output its failure message if the action fails,
 followed by any results set by the action. For multiple actions, each action's

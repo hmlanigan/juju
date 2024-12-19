@@ -87,22 +87,19 @@ func (c *runCommandBase) SetFlags(f *gnuflag.FlagSet) {
 // e.g. exec to define its own formatting flags.
 func (c *runCommandBase) setNonFormatFlags(f *gnuflag.FlagSet) {
 	c.ActionCommandBase.SetFlags(f)
-	f.BoolVar(&c.background, "background", false, "Run the task in the background")
-	f.DurationVar(&c.wait, "wait", 0, "Maximum wait time for a task to complete")
+	f.BoolVar(&c.background, "background", false, "Run the task in the background, ")
+	f.DurationVar(&c.wait, "wait", c.defaultWait, "Maximum wait time for a task to complete")
 	f.BoolVar(&c.noColor, "no-color", false, "Disable ANSI color codes in output")
 	f.BoolVar(&c.color, "color", false, "Use ANSI color codes in output")
 	f.BoolVar(&c.utc, "utc", false, "Show times in UTC")
 }
 
 func (c *runCommandBase) Init(_ []string) error {
-	if c.background && c.wait > 0 {
+	if c.background && c.wait != c.defaultWait {
 		return errors.New("cannot specify both --wait and --background")
 	}
-	if !c.background && c.wait == 0 {
-		c.wait = c.defaultWait
-		if c.wait == 0 {
-			c.wait = 60 * time.Second
-		}
+	if c.background {
+		c.wait = 0
 	}
 
 	return nil
