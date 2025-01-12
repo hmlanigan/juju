@@ -101,7 +101,6 @@ func (c *runCommandBase) Init(_ []string) error {
 	if c.background {
 		c.wait = 0
 	}
-
 	return nil
 }
 

@@ -232,9 +232,9 @@ func (s *RunSuite) TestInit(c *gc.C) {
 				c.Check(command.Args(), jc.DeepEquals, t.expectKVArgs)
 				c.Check(command.ParseStrings(), gc.Equals, t.expectParseStrings)
 				if t.expectWait != 0 {
-					c.Check(command.Wait(), gc.Equals, t.expectWait)
+					c.Assert(command.Wait(), gc.Equals, t.expectWait, gc.Commentf("one"))
 				} else {
-					c.Check(command.Wait(), gc.Equals, 60*time.Second)
+					c.Assert(command.Wait(), gc.Equals, 60*time.Second, gc.Commentf("two"))
 				}
 			} else {
 				c.Check(err, gc.ErrorMatches, t.expectError)
