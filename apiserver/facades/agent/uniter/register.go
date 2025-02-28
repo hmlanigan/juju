@@ -63,8 +63,9 @@ func newUniterAPI(stdCtx context.Context, ctx facade.ModelContext) (*UniterAPI, 
 			ModelInfoService:        domainServices.ModelInfo(),
 			NetworkService:          domainServices.Network(),
 			PortService:             domainServices.Port(),
-			SecretService:           domainServices.Secret(),
-			UnitStateService:        domainServices.UnitState(),
+			//relationService:         domainServices.Relation(), HEATHER
+			SecretService:    domainServices.Secret(),
+			UnitStateService: domainServices.UnitState(),
 		},
 	)
 }
@@ -209,6 +210,7 @@ func newUniterAPIWithServices(
 		modelInfoService:        services.ModelInfoService,
 		networkService:          services.NetworkService,
 		portService:             services.PortService,
+		relationService:         services.RelationService,
 		secretService:           services.SecretService,
 		unitStateService:        services.UnitStateService,
 	}, nil

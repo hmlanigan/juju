@@ -38,6 +38,7 @@ type Services struct {
 	ModelInfoService        ModelInfoService
 	NetworkService          NetworkService
 	PortService             PortService
+	RelationService         RelationService
 	SecretService           SecretService
 	UnitStateService        UnitStateService
 }

@@ -1862,11 +1862,10 @@ func (u *UniterAPI) getOneRelationById(ctx context.Context, relID int, modelUUID
 	tag := u.auth.GetAuthTag()
 	switch tag.(type) {
 	case names.UnitTag:
-		unit, err := u.st.Unit(tag.Id())
+		applicationName, err = names.UnitApplication(tag.Id())
 		if err != nil {
 			return nothing, err
 		}
-		applicationName = unit.ApplicationName()
 	case names.ApplicationTag:
 		applicationName = tag.Id()
 	default:
@@ -1925,6 +1924,11 @@ func (u *UniterAPI) prepareRelationResult(
 		} else {
 			otherAppName = v.ApplicationName
 		}
+	}
+	// Only an application in the relation can request this data.
+	if unitEp.ApplicationName != applicationName {
+		return params.RelationResultV2{},
+			internalerrors.Errorf("application %q is not part of the relation", applicationName)
 	}
 	otherApplication := params.RelatedApplicationDetails{
 		ApplicationName: otherAppName,
