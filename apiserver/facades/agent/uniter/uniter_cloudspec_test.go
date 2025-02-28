@@ -37,23 +37,22 @@ func (s *cloudSpecUniterSuite) SetUpTest(c *gc.C) {
 
 func (s *cloudSpecUniterSuite) TestGetCloudSpecReturnsSpecWhenTrusted(c *gc.C) {
 	domainServices := s.ControllerDomainServices(c)
-
 	facadeContext := s.facadeContext(c)
-	applicationService := domainServices.Application()
-	uniterAPI, err := uniter.NewUniterAPIWithServices(
-		context.Background(), facadeContext,
-		domainServices.ControllerConfig(),
-		domainServices.Config(),
-		domainServices.ModelInfo(),
-		domainServices.Secret(),
-		domainServices.Network(),
-		domainServices.Machine(),
-		domainServices.Cloud(),
-		domainServices.Credential(),
-		applicationService,
-		domainServices.UnitState(),
-		domainServices.Port(),
-	)
+	services := uniter.Services{
+		ApplicationService:      domainServices.Application(),
+		CloudService:            domainServices.Cloud(),
+		CredentialService:       domainServices.Credential(),
+		ControllerConfigService: domainServices.ControllerConfig(),
+		MachineService:          domainServices.Machine(),
+		ModelConfigService:      domainServices.Config(),
+		ModelInfoService:        domainServices.ModelInfo(),
+		NetworkService:          domainServices.Network(),
+		PortService:             domainServices.Port(),
+		SecretService:           domainServices.Secret(),
+		UnitStateService:        domainServices.UnitState(),
+	}
+
+	uniterAPI, err := uniter.NewUniterAPIWithServices(context.Background(), facadeContext, services)
 	c.Assert(err, jc.ErrorIsNil)
 	result, err := uniterAPI.CloudSpec(context.Background())
 	c.Assert(err, jc.ErrorIsNil)
@@ -74,22 +73,20 @@ func (s *cloudSpecUniterSuite) TestCloudAPIVersion(c *gc.C) {
 	facadeContext.State_ = cm.State()
 
 	domainServices := facadeContext.DomainServices()
-	applicationService := domainServices.Application()
-
-	uniterAPI, err := uniter.NewUniterAPIWithServices(
-		context.Background(), facadeContext,
-		domainServices.ControllerConfig(),
-		domainServices.Config(),
-		domainServices.ModelInfo(),
-		domainServices.Secret(),
-		domainServices.Network(),
-		domainServices.Machine(),
-		domainServices.Cloud(),
-		domainServices.Credential(),
-		applicationService,
-		domainServices.UnitState(),
-		domainServices.Port(),
-	)
+	services := uniter.Services{
+		ApplicationService:      domainServices.Application(),
+		CloudService:            domainServices.Cloud(),
+		CredentialService:       domainServices.Credential(),
+		ControllerConfigService: domainServices.ControllerConfig(),
+		MachineService:          domainServices.Machine(),
+		ModelConfigService:      domainServices.Config(),
+		ModelInfoService:        domainServices.ModelInfo(),
+		NetworkService:          domainServices.Network(),
+		PortService:             domainServices.Port(),
+		SecretService:           domainServices.Secret(),
+		UnitStateService:        domainServices.UnitState(),
+	}
+	uniterAPI, err := uniter.NewUniterAPIWithServices(context.Background(), facadeContext, services)
 	c.Assert(err, jc.ErrorIsNil)
 	uniter.SetNewContainerBrokerFunc(uniterAPI, func(context.Context, environs.OpenParams, environs.CredentialInvalidator) (caas.Broker, error) {
 		return &fakeBroker{}, nil
