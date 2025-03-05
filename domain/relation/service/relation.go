@@ -109,6 +109,11 @@ func (s *Service) GetApplicationEndpoints(ctx context.Context, id application.ID
 	return nil, errors.NotImplemented
 }
 
+// GetRelationByID returns the relation uuid based on the relation ID.
+func (s *Service) GetRelationByID(ctx context.Context, relationID int) (corerelation.UUID, error) {
+	return "", errors.NotImplemented
+}
+
 // GetRelatedEndpoints returns the endpoints of the relation with which
 // units of the named application will establish relations.
 func (s *Service) GetRelatedEndpoints(
@@ -183,21 +188,21 @@ func (s *Service) GetRelationKey(ctx context.Context, relationUUID corerelation.
 	return ""
 }
 
-// GetRelationStatus returns the status of the given relation.
-func (s *Service) GetRelationStatus(
-	ctx context.Context,
-	relationUUID corerelation.UUID,
-) (corestatus.StatusInfo, error) {
-	return corestatus.StatusInfo{}, errors.NotImplemented
-}
-
-// / GetRelationsStatusForUnit returns RelationUnitStatus for
+// GetRelationsStatusesForUnit returns RelationUnitStatus for
 // any relation the unit is part of.
 func (s *Service) GetRelationsStatusForUnit(
 	ctx context.Context,
 	unitUUID unit.UUID,
 ) ([]relation.RelationUnitStatus, error) {
 	return []relation.RelationUnitStatus{}, errors.NotImplemented
+}
+
+// GetRelationStatus returns the status of the given relation.
+func (s *Service) GetRelationStatus(
+	ctx context.Context,
+	relationUUID corerelation.UUID,
+) (corestatus.StatusInfo, error) {
+	return corestatus.StatusInfo{}, errors.NotImplemented
 }
 
 // GetRelationTag returns the tag for the given relation UUID.
@@ -216,7 +221,17 @@ func (s *Service) GetRelationUnit(
 	return "", errors.NotImplemented
 }
 
-// GetRelationApplicationSettings returns the unit settings for the
+// GetRelationUnitByID returns the relation unit UUID for the given unit for the
+// given relation.
+func (s *Service) GetRelationUnitByID(
+	ctx context.Context,
+	relationID int,
+	unitName string,
+) (corerelation.UnitUUID, error) {
+	return "", errors.NotImplemented
+}
+
+// GetRelationUnitSettings returns the unit settings for the
 // given unit and relation identifier combination.
 func (s *Service) GetRelationUnitSettings(
 	ctx context.Context,
@@ -280,7 +295,7 @@ func (s *Service) RelationUnitValid(ctx context.Context, relationUnitUUID corere
 // SetRelationStatus sets the status of the relation to the status provided.
 func (s *Service) SetRelationStatus(
 	ctx context.Context,
-	relationID int,
+	relationUUID corerelation.UUID,
 	info corestatus.StatusInfo,
 ) error {
 	return errors.NotImplemented

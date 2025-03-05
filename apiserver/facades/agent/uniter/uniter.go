@@ -1751,82 +1751,76 @@ func (u *UniterAPI) WatchRelationUnits(ctx context.Context, args params.Relation
 // SetRelationStatus updates the status of the specified relations.
 func (u *UniterAPI) SetRelationStatus(ctx context.Context, args params.RelationStatusArgs) (params.ErrorResults, error) {
 	var statusResults params.ErrorResults
-
-	unitCache := make(map[string]*state.Unit)
-	getUnit := func(tag string) (*state.Unit, error) {
-		if unit, ok := unitCache[tag]; ok {
-			return unit, nil
-		}
-		unitTag, err := names.ParseUnitTag(tag)
-		if err != nil {
-			return nil, errors.Trace(err)
-		}
-		unit, err := u.st.Unit(unitTag.Id())
-		if errors.Is(err, errors.NotFound) {
-			return nil, apiservererrors.ErrPerm
-		}
-		if err != nil {
-			return nil, errors.Trace(err)
-		}
-		unitCache[tag] = unit
-		return unit, nil
-	}
-
-	checker := u.leadershipChecker
-	changeOne := func(arg params.RelationStatusArg) error {
-		// TODO(wallyworld) - the token should be passed to SetStatus() but the
-		// interface method doesn't allow for that yet.
-		unitTag := arg.UnitTag
-		if unitTag == "" {
-			// Older clients don't pass in the unit tag explicitly.
-			unitTag = u.auth.GetAuthTag().String()
-		}
-		unit, err := getUnit(unitTag)
-		if err != nil {
-			return err
-		}
-		token := checker.LeadershipCheck(unit.ApplicationName(), unit.Name())
-		if err := token.Check(); err != nil {
-			return errors.Trace(err)
-		}
-
-		rel, err := u.st.Relation(arg.RelationId)
-		if errors.Is(err, errors.NotFound) {
-			return apiservererrors.ErrPerm
-		} else if err != nil {
-			return errors.Trace(err)
-		}
-		_, err = rel.Unit(unit)
-		if errors.Is(err, errors.NotFound) {
-			return apiservererrors.ErrPerm
-		} else if err != nil {
-			return errors.Trace(err)
-		}
-		// If we are transitioning from "suspending" to "suspended",
-		// we retain any existing message so that if the user has
-		// previously specified a reason for suspending, it is retained.
-		message := arg.Message
-		if message == "" && arg.Status == params.Suspended {
-			current, err := rel.Status()
-			if err != nil {
-				return errors.Trace(err)
-			}
-			if current.Status == status.Suspending {
-				message = current.Message
-			}
-		}
-		return rel.SetStatus(status.StatusInfo{
-			Status:  status.Status(arg.Status),
-			Message: message,
-		})
-	}
 	results := make([]params.ErrorResult, len(args.Args))
 	for i, arg := range args.Args {
-		err := changeOne(arg)
+		unitTag, err := names.ParseUnitTag(arg.UnitTag)
+		if err != nil {
+			results[i].Error = apiservererrors.ServerError(err)
+			continue
+		}
+		appName, err := names.UnitApplication(unitTag.Id())
+		if err != nil {
+			results[i].Error = apiservererrors.ServerError(err)
+			continue
+		}
+		token := u.leadershipChecker.LeadershipCheck(appName, unitTag.Id())
+		if err := token.Check(); err != nil {
+			results[i].Error = apiservererrors.ServerError(err)
+			continue
+		}
+
+		err = u.oneSetRelationStatus(ctx, unitTag, arg.RelationId,
+			arg.Status, arg.Message)
 		results[i].Error = apiservererrors.ServerError(err)
 	}
 	statusResults.Results = results
 	return statusResults, nil
+}
+
+func (u *UniterAPI) oneSetRelationStatus(
+	ctx context.Context,
+	unitTag names.UnitTag,
+	relID int,
+	relStatus params.RelationStatusValue,
+	message string,
+) error {
+	// Verify the unit and relation exist before continuing.
+	_, err := u.applicationService.GetUnitUUID(ctx, coreunit.Name(unitTag.Id()))
+	if errors.Is(err, errors.NotFound) {
+		return apiservererrors.ErrPerm
+	} else if err != nil {
+		return internalerrors.Capture(err)
+	}
+
+	relationUUID, err := u.relationService.GetRelationByID(ctx, relID)
+	if errors.Is(err, errors.NotFound) {
+		return apiservererrors.ErrPerm
+	} else if err != nil {
+		return internalerrors.Capture(err)
+	}
+
+	// If we are transitioning from "suspending" to "suspended",
+	// we retain any existing message so that if the user has
+	// previously specified a reason for suspending, it is retained.
+	if message == "" && relStatus == params.Suspended {
+		current, err := u.relationService.GetRelationStatus(ctx, relationUUID)
+		if err != nil {
+			return internalerrors.Capture(err)
+		}
+		if current.Status == status.Suspending {
+			message = current.Message
+		}
+	}
+	// TODO(wallyworld) - the token should be passed to SetStatus() but the
+	// interface method doesn't allow for that yet.
+	err = u.relationService.SetRelationStatus(ctx, relationUUID, status.StatusInfo{
+		Status:  status.Status(relStatus),
+		Message: message,
+	})
+	if err != nil {
+		return internalerrors.Capture(err)
+	}
+	return nil
 }
 
 func (u *UniterAPI) getUnit(tag names.UnitTag) (*state.Unit, error) {

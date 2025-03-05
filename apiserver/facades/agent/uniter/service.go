@@ -223,6 +223,9 @@ type RelationService interface {
 		applicationID coreapplication.ID,
 	) (map[string]string, error)
 
+	// GetRelationByID returns the relation uuid based on the relation ID.
+	GetRelationByID(ctx context.Context, relationID int) (corerelation.UUID, error)
+
 	// GetRelationDetails returns the relation details requested by the uniter
 	// for a relation.
 	GetRelationDetails(ctx context.Context, relationID int) (relation.RelationDetails, error)
@@ -236,17 +239,28 @@ type RelationService interface {
 	) (relation.RelationDetails, error)
 
 	// GetRelationEndpoints returns all endpoints for the given relation UUID.
-	GetRelationEndpoints(ctx context.Context, id corerelation.UUID) ([]internalrelation.Endpoint, error)
+	GetRelationEndpoints(ctx context.Context, relationUUID corerelation.UUID) ([]internalrelation.Endpoint, error)
 
 	// GetRelationsStatusesForUnit returns RelationUnitStatus for
 	// any relation the unit is part of.
 	GetRelationsStatusForUnit(ctx context.Context, unitUUID coreunit.UUID) ([]relation.RelationUnitStatus, error)
+
+	// GetRelationStatus returns the status of the given relation.
+	GetRelationStatus(ctx context.Context, relationUUID corerelation.UUID) (corestatus.StatusInfo, error)
 
 	// GetRelationUnit returns the relation unit UUID for the given unit within
 	// the given relation.
 	GetRelationUnit(
 		ctx context.Context,
 		relationUUID corerelation.UUID,
+		unitName string,
+	) (corerelation.UnitUUID, error)
+
+	// GetRelationUnitByID returns the relation unit UUID for the given unit for the
+	// given relation.
+	GetRelationUnitByID(
+		ctx context.Context,
+		relationID int,
 		unitName string,
 	) (corerelation.UnitUUID, error)
 
@@ -261,4 +275,11 @@ type RelationService interface {
 	// Key. The relation key is a ordered space separated string of the
 	// endpoint names of a the relation.
 	GetRelationUUIDFromKey(ctx context.Context, relationKey corerelation.Key) (corerelation.UUID, error)
+
+	// SetRelationStatus sets the status of the relation to the status provided.
+	SetRelationStatus(
+		ctx context.Context,
+		relationUUID corerelation.UUID,
+		info corestatus.StatusInfo,
+	) error
 }

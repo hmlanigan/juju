@@ -22,6 +22,7 @@ import (
 	"github.com/juju/juju/core/model"
 	corerelation "github.com/juju/juju/core/relation"
 	relationtesting "github.com/juju/juju/core/relation/testing"
+	"github.com/juju/juju/core/status"
 	"github.com/juju/juju/core/unit"
 	unittesting "github.com/juju/juju/core/unit/testing"
 	domaincharm "github.com/juju/juju/domain/application/charm"
@@ -725,7 +726,7 @@ func (s *uniterRelationSuite) TestRelationsStatus(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	unitUUID := unittesting.GenUnitUUID(c)
-	s.expectGetUnitUUID(s.wordpressUnitTag.Id(), unitUUID)
+	s.expectGetUnitUUID(s.wordpressUnitTag.Id(), unitUUID, nil)
 	relTagOne := names.NewRelationTag("mysql:database wordpress:mysql")
 	relTagTwo := names.NewRelationTag("redis:endpoint wordpress:endpoint")
 	expectedRelationUnitStatus := []params.RelationUnitStatus{
@@ -787,6 +788,129 @@ func (s *uniterRelationSuite) TestRelationsStatusErrUnauthorized(c *gc.C) {
 	}
 
 }
+
+func (s *uniterRelationSuite) TestSetRelationsStatusLeader(c *gc.C) {
+	// arrange
+	defer s.setupMocks(c).Finish()
+	s.leadershipChecker.isLeader = true
+	unitUUID := unittesting.GenUnitUUID(c)
+	s.expectGetUnitUUID(s.wordpressUnitTag.Id(), unitUUID, nil)
+	relID := 42
+	relationUUID := relationtesting.GenRelationUUID(c)
+	s.expectGetRelationByID(relID, relationUUID, nil)
+	relStatus := status.StatusInfo{
+		Status: status.Joined,
+	}
+	s.expectSetRelationStatus(relationUUID, relStatus)
+
+	// act
+	args := params.RelationStatusArgs{
+		Args: []params.RelationStatusArg{
+			{UnitTag: s.wordpressUnitTag.String(), RelationId: relID, Status: params.Joined},
+		},
+	}
+	result, err := s.uniter.SetRelationStatus(context.Background(), args)
+
+	// assert
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(result, gc.DeepEquals, params.ErrorResults{Results: []params.ErrorResult{{}}})
+}
+
+func (s *uniterRelationSuite) TestSetRelationsStatusLeaderSuspended(c *gc.C) {
+	// arrange
+	defer s.setupMocks(c).Finish()
+	s.leadershipChecker.isLeader = true
+	unitUUID := unittesting.GenUnitUUID(c)
+	s.expectGetUnitUUID(s.wordpressUnitTag.Id(), unitUUID, nil)
+	relID := 42
+	relationUUID := relationtesting.GenRelationUUID(c)
+	s.expectGetRelationByID(relID, relationUUID, nil)
+	currentStatus := status.StatusInfo{
+		Status:  status.Suspending,
+		Message: "message test",
+	}
+	s.expectGetRelationStatus(relationUUID, currentStatus)
+	relStatus := status.StatusInfo{
+		Status:  status.Suspended,
+		Message: currentStatus.Message,
+	}
+	s.expectSetRelationStatus(relationUUID, relStatus)
+
+	// act
+	args := params.RelationStatusArgs{
+		Args: []params.RelationStatusArg{
+			{UnitTag: s.wordpressUnitTag.String(), RelationId: relID, Status: params.Suspended},
+		},
+	}
+	result, err := s.uniter.SetRelationStatus(context.Background(), args)
+
+	// assert
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(result, gc.DeepEquals, params.ErrorResults{Results: []params.ErrorResult{{}}})
+}
+
+func (s *uniterRelationSuite) TestSetRelationsStatusErrors(c *gc.C) {
+	// arrange
+	//defer s.setupMocks(c).Finish()
+
+	errAuthTests := []struct {
+		description string
+		arg         params.RelationStatusArg
+		arrange     func()
+		err         string
+	}{
+		{
+			description: "tag wrong unit: not wordpress",
+			arg:         params.RelationStatusArg{UnitTag: "foo"},
+			arrange:     func() {},
+			err:         "\"foo\" is not a valid tag",
+		}, {
+			description: "correct unit tag, not leader",
+			arg:         params.RelationStatusArg{UnitTag: s.wordpressUnitTag.String()},
+			arrange:     func() {},
+			err:         "\"wordpress/0\" is not leader of \"wordpress\"",
+		}, {
+			description: "leader unit not found",
+			arg:         params.RelationStatusArg{UnitTag: s.wordpressUnitTag.String()},
+			arrange: func() {
+				s.leadershipChecker.isLeader = true
+				unitUUID := unittesting.GenUnitUUID(c)
+				s.expectGetUnitUUID(s.wordpressUnitTag.Id(), unitUUID, errors.NotFound)
+			},
+			err: "\"wordpress/0\" is not leader of \"wordpress\"",
+		}, {
+			description: "relation not found when set",
+			arg:         params.RelationStatusArg{UnitTag: s.wordpressUnitTag.String(), RelationId: 42, Status: params.Joined},
+			arrange: func() {
+				s.leadershipChecker.isLeader = true
+				unitUUID := unittesting.GenUnitUUID(c)
+				s.expectGetUnitUUID(s.wordpressUnitTag.Id(), unitUUID, nil)
+				s.expectGetRelationByID(42, "", errors.NotFound)
+			},
+		},
+	}
+
+	for i, tc := range errAuthTests {
+		c.Logf("test %d: %s", i, tc.description)
+		ctrl := s.setupMocks(c)
+		// act
+		args := params.RelationStatusArgs{Args: []params.RelationStatusArg{tc.arg}}
+		result, err := s.uniter.SetRelationStatus(context.Background(), args)
+
+		// assert
+		if c.Check(err, jc.ErrorIsNil) {
+			if !c.Check(result.Results, gc.HasLen, 1) {
+				ctrl.Finish()
+				continue
+			}
+			c.Check(result.Results[0].Error, gc.ErrorMatches, tc.err)
+		}
+		ctrl.Finish()
+	}
+
+}
+
+func (s *uniterRelationSuite) TestSetRelationsStatusNotLeader(c *gc.C) {}
 
 func (s *uniterRelationSuite) setupMocks(c *gc.C) *gomock.Controller {
 	ctrl := gomock.NewController(c)
@@ -949,8 +1073,8 @@ func (s *uniterRelationSuite) expectGetRelationUnitSettings(uuid corerelation.Un
 	s.relationService.EXPECT().GetRelationUnitSettings(gomock.Any(), uuid).Return(settings, nil)
 }
 
-func (s *uniterRelationSuite) expectGetUnitUUID(name string, unitUUID unit.UUID) {
-	s.applicationService.EXPECT().GetUnitUUID(gomock.Any(), unit.Name(name)).Return(unitUUID, nil)
+func (s *uniterRelationSuite) expectGetUnitUUID(name string, unitUUID unit.UUID, err error) {
+	s.applicationService.EXPECT().GetUnitUUID(gomock.Any(), unit.Name(name)).Return(unitUUID, err)
 }
 
 func (s *uniterRelationSuite) expectedGetRelationsStatusForUnit(uuid unit.UUID, input []params.RelationUnitStatus) {
@@ -967,12 +1091,26 @@ func (s *uniterRelationSuite) expectedGetRelationsStatusForUnit(uuid unit.UUID, 
 	s.relationService.EXPECT().GetRelationsStatusForUnit(gomock.Any(), uuid).Return(expectedStatuses, nil)
 }
 
+func (s *uniterRelationSuite) expectGetRelationByID(relID int, relUUID corerelation.UUID, err error) {
+	s.relationService.EXPECT().GetRelationByID(gomock.Any(), relID).Return(relUUID, err)
+}
+
+func (s *uniterRelationSuite) expectSetRelationStatus(relUUID corerelation.UUID, relStatus status.StatusInfo) {
+	s.relationService.EXPECT().SetRelationStatus(gomock.Any(), relUUID, relStatus).Return(nil)
+}
+
+func (s *uniterRelationSuite) expectGetRelationStatus(uuid corerelation.UUID, currentStatus status.StatusInfo) {
+	s.relationService.EXPECT().GetRelationStatus(gomock.Any(), uuid).Return(currentStatus, nil)
+}
+
 type fakeLeadershipChecker struct {
 	isLeader bool
 }
 
-// Temporarily make the static analysis happy until the tests are finished
-// and using leadership.
+func (f *fakeLeadershipChecker) LeadershipCheck(applicationName, unitName string) leadership.Token {
+	return &token{isLeader: f.isLeader, unit: unitName, application: applicationName}
+}
+
 type token struct {
 	isLeader          bool
 	unit, application string
@@ -983,8 +1121,4 @@ func (t *token) Check() error {
 		return leadership.NewNotLeaderError(t.unit, t.application)
 	}
 	return nil
-}
-
-func (f *fakeLeadershipChecker) LeadershipCheck(applicationName, unitName string) leadership.Token {
-	return &token{isLeader: f.isLeader, unit: unitName, application: applicationName}
 }
