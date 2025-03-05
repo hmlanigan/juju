@@ -1176,12 +1176,8 @@ func (u *UniterAPI) oneUnitRelationStatus(ctx context.Context, unit names.UnitTa
 	}
 	ruStatus := make([]params.RelationUnitStatus, len(unitStatuses))
 	for i, uStatus := range unitStatuses {
-		relTag, err := names.ParseRelationTag(uStatus.Key.String())
-		if err != nil {
-			return nil, internalerrors.Capture(err)
-		}
 		ruStatus[i] = params.RelationUnitStatus{
-			RelationTag: relTag.String(),
+			RelationTag: names.NewRelationTag(uStatus.Key.String()).String(),
 			InScope:     uStatus.InScope,
 			Suspended:   uStatus.Suspended,
 		}

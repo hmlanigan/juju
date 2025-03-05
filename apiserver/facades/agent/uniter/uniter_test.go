@@ -950,7 +950,7 @@ func (s *uniterRelationSuite) expectGetRelationUnitSettings(uuid corerelation.Un
 }
 
 func (s *uniterRelationSuite) expectGetUnitUUID(name string, unitUUID unit.UUID) {
-	s.applicationService.EXPECT().GetUnitUUID(gomock.Any(), name).Return(unitUUID, nil)
+	s.applicationService.EXPECT().GetUnitUUID(gomock.Any(), unit.Name(name)).Return(unitUUID, nil)
 }
 
 func (s *uniterRelationSuite) expectedGetRelationsStatusForUnit(uuid unit.UUID, input []params.RelationUnitStatus) {
