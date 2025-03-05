@@ -968,6 +968,45 @@ func (c *MockRelationServiceGetRelationUnitSettingsCall) DoAndReturn(f func(cont
 	return c
 }
 
+// GetRelationsStatusForUnit mocks base method.
+func (m *MockRelationService) GetRelationsStatusForUnit(arg0 context.Context, arg1 unit.UUID) ([]relation0.RelationUnitStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRelationsStatusForUnit", arg0, arg1)
+	ret0, _ := ret[0].([]relation0.RelationUnitStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRelationsStatusForUnit indicates an expected call of GetRelationsStatusForUnit.
+func (mr *MockRelationServiceMockRecorder) GetRelationsStatusForUnit(arg0, arg1 any) *MockRelationServiceGetRelationsStatusForUnitCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationsStatusForUnit", reflect.TypeOf((*MockRelationService)(nil).GetRelationsStatusForUnit), arg0, arg1)
+	return &MockRelationServiceGetRelationsStatusForUnitCall{Call: call}
+}
+
+// MockRelationServiceGetRelationsStatusForUnitCall wrap *gomock.Call
+type MockRelationServiceGetRelationsStatusForUnitCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRelationServiceGetRelationsStatusForUnitCall) Return(arg0 []relation0.RelationUnitStatus, arg1 error) *MockRelationServiceGetRelationsStatusForUnitCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRelationServiceGetRelationsStatusForUnitCall) Do(f func(context.Context, unit.UUID) ([]relation0.RelationUnitStatus, error)) *MockRelationServiceGetRelationsStatusForUnitCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRelationServiceGetRelationsStatusForUnitCall) DoAndReturn(f func(context.Context, unit.UUID) ([]relation0.RelationUnitStatus, error)) *MockRelationServiceGetRelationsStatusForUnitCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockModelInfoService is a mock of ModelInfoService interface.
 type MockModelInfoService struct {
 	ctrl     *gomock.Controller

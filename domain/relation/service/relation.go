@@ -14,6 +14,7 @@ import (
 	"github.com/juju/juju/core/logger"
 	corerelation "github.com/juju/juju/core/relation"
 	corestatus "github.com/juju/juju/core/status"
+	"github.com/juju/juju/core/unit"
 	"github.com/juju/juju/core/watcher"
 	"github.com/juju/juju/domain/relation"
 	relationerrors "github.com/juju/juju/domain/relation/errors"
@@ -188,6 +189,15 @@ func (s *Service) GetRelationStatus(
 	relationUUID corerelation.UUID,
 ) (corestatus.StatusInfo, error) {
 	return corestatus.StatusInfo{}, errors.NotImplemented
+}
+
+// / GetRelationsStatusForUnit returns RelationUnitStatus for
+// any relation the unit is part of.
+func (s *Service) GetRelationsStatusForUnit(
+	ctx context.Context,
+	unitUUID unit.UUID,
+) ([]relation.RelationUnitStatus, error) {
+	return []relation.RelationUnitStatus{}, errors.NotImplemented
 }
 
 // GetRelationTag returns the tag for the given relation UUID.

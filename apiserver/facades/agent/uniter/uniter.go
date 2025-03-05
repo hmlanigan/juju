@@ -1150,43 +1150,6 @@ func (u *UniterAPI) RelationsStatus(ctx context.Context, args params.Entities) (
 		return params.RelationUnitStatusResults{}, err
 	}
 
-	oneRelationUnitStatus := func(rel *state.Relation, unit *state.Unit) (params.RelationUnitStatus, error) {
-		rus := params.RelationUnitStatus{
-			RelationTag: rel.Tag().String(),
-			Suspended:   rel.Suspended(),
-		}
-		ru, err := rel.Unit(unit)
-		if err != nil {
-			return params.RelationUnitStatus{}, errors.Trace(err)
-		}
-		inScope, err := ru.InScope()
-		if err != nil {
-			return params.RelationUnitStatus{}, errors.Trace(err)
-		}
-		rus.InScope = inScope
-		return rus, nil
-	}
-
-	relationResults := func(unit *state.Unit) ([]params.RelationUnitStatus, error) {
-		var ruStatus []params.RelationUnitStatus
-		app, err := unit.Application()
-		if err != nil {
-			return nil, errors.Trace(err)
-		}
-		relations, err := app.Relations()
-		if err != nil {
-			return nil, errors.Trace(err)
-		}
-		for _, rel := range relations {
-			rus, err := oneRelationUnitStatus(rel, unit)
-			if err != nil {
-				return nil, errors.Trace(err)
-			}
-			ruStatus = append(ruStatus, rus)
-		}
-		return ruStatus, nil
-	}
-
 	for i, entity := range args.Entities {
 		tag, err := names.ParseUnitTag(entity.Tag)
 		if err != nil {
@@ -1195,15 +1158,35 @@ func (u *UniterAPI) RelationsStatus(ctx context.Context, args params.Entities) (
 		}
 		err = apiservererrors.ErrPerm
 		if canRead(tag) {
-			var unit *state.Unit
-			unit, err = u.getUnit(tag)
-			if err == nil {
-				result.Results[i].RelationResults, err = relationResults(unit)
-			}
+			result.Results[i].RelationResults, err = u.oneUnitRelationStatus(ctx, tag)
 		}
 		result.Results[i].Error = apiservererrors.ServerError(err)
 	}
 	return result, nil
+}
+
+func (u *UniterAPI) oneUnitRelationStatus(ctx context.Context, unit names.UnitTag) ([]params.RelationUnitStatus, error) {
+	unitUUID, err := u.applicationService.GetUnitUUID(ctx, coreunit.Name(unit.Id()))
+	if err != nil {
+		return nil, internalerrors.Capture(err)
+	}
+	unitStatuses, err := u.relationService.GetRelationsStatusForUnit(ctx, unitUUID)
+	if err != nil {
+		return nil, internalerrors.Capture(err)
+	}
+	ruStatus := make([]params.RelationUnitStatus, len(unitStatuses))
+	for i, uStatus := range unitStatuses {
+		relTag, err := names.ParseRelationTag(uStatus.Key.String())
+		if err != nil {
+			return nil, internalerrors.Capture(err)
+		}
+		ruStatus[i] = params.RelationUnitStatus{
+			RelationTag: relTag.String(),
+			InScope:     uStatus.InScope,
+			Suspended:   uStatus.Suspended,
+		}
+	}
+	return ruStatus, nil
 }
 
 // Life returns the life status of the specified applications or units.

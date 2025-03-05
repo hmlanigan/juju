@@ -65,6 +65,12 @@ type EndpointRelationData struct {
 	UnitRelationData map[string]RelationData
 }
 
+type RelationUnitStatus struct {
+	Key       corerelation.Key
+	InScope   bool
+	Suspended bool
+}
+
 // Watcher is implemented by all watchers; the actual
 // changes channel is returned by a watcher-specific
 // Changes method.

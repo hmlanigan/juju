@@ -22,6 +22,8 @@ import (
 	"github.com/juju/juju/core/model"
 	corerelation "github.com/juju/juju/core/relation"
 	relationtesting "github.com/juju/juju/core/relation/testing"
+	"github.com/juju/juju/core/unit"
+	unittesting "github.com/juju/juju/core/unit/testing"
 	domaincharm "github.com/juju/juju/domain/application/charm"
 	applicationerrors "github.com/juju/juju/domain/application/errors"
 	"github.com/juju/juju/domain/relation"
@@ -718,6 +720,74 @@ func (s *uniterRelationSuite) TestReadRemoteApplicationSettingsWithLocalApplicat
 	})
 }
 
+func (s *uniterRelationSuite) TestRelationsStatus(c *gc.C) {
+	// arrange
+	defer s.setupMocks(c).Finish()
+
+	unitUUID := unittesting.GenUnitUUID(c)
+	s.expectGetUnitUUID(s.wordpressUnitTag.Id(), unitUUID)
+	relTagOne := names.NewRelationTag("mysql:database wordpress:mysql")
+	relTagTwo := names.NewRelationTag("redis:endpoint wordpress:endpoint")
+	expectedRelationUnitStatus := []params.RelationUnitStatus{
+		{
+			RelationTag: relTagOne.String(),
+			InScope:     true,
+			Suspended:   false,
+		}, {
+			RelationTag: relTagTwo.String(),
+			InScope:     true,
+			Suspended:   true,
+		},
+	}
+	s.expectedGetRelationsStatusForUnit(unitUUID, expectedRelationUnitStatus)
+
+	// act
+	args := params.Entities{Entities: []params.Entity{{Tag: s.wordpressUnitTag.String()}}}
+	result, err := s.uniter.RelationsStatus(context.Background(), args)
+
+	// assert
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(result, gc.DeepEquals, params.RelationUnitStatusResults{
+		Results: []params.RelationUnitStatusResult{
+			{RelationResults: expectedRelationUnitStatus},
+		},
+	})
+}
+
+func (s *uniterRelationSuite) TestRelationsStatusErrUnauthorized(c *gc.C) {
+	// arrange
+	defer s.setupMocks(c).Finish()
+
+	errAuthTests := []struct {
+		description string
+		arg         params.Entity
+	}{
+		{
+			description: "tag not unit kind",
+			arg:         params.Entity{Tag: "machine-0"},
+		}, {
+			description: "tag wrong unit: not wordpress",
+			arg:         params.Entity{Tag: "unit-mysql-0"},
+		},
+	}
+
+	for i, tc := range errAuthTests {
+		c.Logf("test %d: %s", i, tc.description)
+		// act
+		args := params.Entities{Entities: []params.Entity{tc.arg}}
+		result, err := s.uniter.RelationsStatus(context.Background(), args)
+
+		// assert
+		if c.Check(err, jc.ErrorIsNil) {
+			if !c.Check(result.Results, gc.HasLen, 1) {
+				continue
+			}
+			c.Check(result.Results[0].Error, gc.DeepEquals, apiservertesting.ErrUnauthorized)
+		}
+	}
+
+}
+
 func (s *uniterRelationSuite) setupMocks(c *gc.C) *gomock.Controller {
 	ctrl := gomock.NewController(c)
 
@@ -877,6 +947,24 @@ func (s *uniterRelationSuite) expectGetRelationUnit(relUUID corerelation.UUID, u
 
 func (s *uniterRelationSuite) expectGetRelationUnitSettings(uuid corerelation.UnitUUID, settings map[string]string) {
 	s.relationService.EXPECT().GetRelationUnitSettings(gomock.Any(), uuid).Return(settings, nil)
+}
+
+func (s *uniterRelationSuite) expectGetUnitUUID(name string, unitUUID unit.UUID) {
+	s.applicationService.EXPECT().GetUnitUUID(gomock.Any(), name).Return(unitUUID, nil)
+}
+
+func (s *uniterRelationSuite) expectedGetRelationsStatusForUnit(uuid unit.UUID, input []params.RelationUnitStatus) {
+	expectedStatuses := make([]relation.RelationUnitStatus, len(input))
+	for i, in := range input {
+		// The caller created the tag, programing error if this fails.
+		tag, _ := names.ParseRelationTag(in.RelationTag)
+		expectedStatuses[i] = relation.RelationUnitStatus{
+			Key:       corerelation.Key(tag.Id()),
+			InScope:   in.InScope,
+			Suspended: in.Suspended,
+		}
+	}
+	s.relationService.EXPECT().GetRelationsStatusForUnit(gomock.Any(), uuid).Return(expectedStatuses, nil)
 }
 
 type fakeLeadershipChecker struct {

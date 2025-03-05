@@ -238,6 +238,10 @@ type RelationService interface {
 	// GetRelationEndpoints returns all endpoints for the given relation UUID.
 	GetRelationEndpoints(ctx context.Context, id corerelation.UUID) ([]internalrelation.Endpoint, error)
 
+	// GetRelationsStatusesForUnit returns RelationUnitStatus for
+	// any relation the unit is part of.
+	GetRelationsStatusForUnit(ctx context.Context, unitUUID coreunit.UUID) ([]relation.RelationUnitStatus, error)
+
 	// GetRelationUnit returns the relation unit UUID for the given unit within
 	// the given relation.
 	GetRelationUnit(
