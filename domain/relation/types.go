@@ -16,7 +16,7 @@ import (
 )
 
 // GetRelationEndpointUUIDArgs represents the arguments required to retrieve
-// the UUID of a relation endpoint.
+// the RelationUUID of a relation endpoint.
 type GetRelationEndpointUUIDArgs struct {
 	// ApplicationID identifies the unique identifier of the application
 	// associated with the expected endpoint.
@@ -216,4 +216,20 @@ func NaturalKey(endpoints []Endpoint) corerelation.Key {
 		endpointNames = append(endpointNames, ep.String())
 	}
 	return corerelation.Key(strings.Join(endpointNames, " "))
+}
+
+// OtherApplicationForWatcher provides data needed to emit an event from
+// the PrincipalLifeSuspendedStatus watcher on other endpoints in a
+// relation.
+type OtherApplicationForWatcher struct {
+	ApplicationID application.ID
+	Subordinate   bool
+}
+
+// RelationLifeSuspendedData contains the necessary data to notify in
+// WatchLifeSuspendedStatus.
+type RelationLifeSuspendedData struct {
+	Endpoints []Endpoint
+	Life      life.Value
+	Suspended bool
 }

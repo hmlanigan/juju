@@ -4,16 +4,22 @@
 package state
 
 import (
+	coreapplication "github.com/juju/juju/core/application"
 	"github.com/juju/juju/domain/relation"
 	"github.com/juju/juju/internal/charm"
 )
+
+// applicationID is used to get the ID of an application.
+type applicationID struct {
+	ID coreapplication.ID `db:"uuid"`
+}
 
 type relationUUID struct {
 	UUID string `db:"uuid"`
 }
 
 type relationIDAndUUID struct {
-	// UUID is the UUID of the relation.
+	// UUID is the UUID of the relation.domain/relation/state/relation_test.go
 	UUID string `db:"uuid"`
 	// ID is the numeric ID of the relation
 	ID int `db:"relation_id"`
@@ -67,4 +73,26 @@ func (e endpoint) toRelationEndpoint() relation.Endpoint {
 			Scope:     charm.RelationScope(e.Scope),
 		},
 	}
+}
+
+// uuids is a helpful struct for bulk db queries.
+type uuids []string
+
+// otherApplicationsForWatcher contains data required by
+// WatchLifeSuspendedStatus watchers.
+type otherApplicationsForWatcher struct {
+	AppID       coreapplication.ID `db:"application_uuid"`
+	Subordinate bool               `db:"subordinate"`
+}
+
+type matchPrincipalSubordinateApps struct {
+	Principal   coreapplication.ID `db:"principal_uuid"`
+	Subordinate coreapplication.ID `db:"subordinate_uuid"`
+}
+
+type watcherMapperData struct {
+	RelationUUID string `db:"uuid"`
+	AppUUID      string `db:"application_uuid"`
+	Life         string `db:"value"`
+	Suspended    string `db:"name"`
 }

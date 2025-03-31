@@ -14,6 +14,14 @@ const (
 	// being operated on does not exist.
 	ApplicationNotFound = errors.ConstError("application not found")
 
+	// ApplicationNotFoundForRelation indicates that the application is not part of
+	// the relation.
+	ApplicationNotFoundForRelation = errors.ConstError("application not found for relation")
+
+	// ApplicationNotSubordinate the application is either not a subordinate
+	// or is not found.
+	ApplicationNotSubordinate = errors.ConstError("application not a subordinate")
+
 	// PotentialRelationUnitNotValid describes an error that occurs during
 	// EnterScope pre-checks to ensure the created relation unit will be valid.
 	//
@@ -29,15 +37,15 @@ const (
 	// relation does not exist.
 	RelationNotFound = errors.ConstError("relation not found")
 
-	// RelationUUIDNotValid describes an error when the relation UUID is
+	// RelationUUIDNotValid describes an error when the relation RelationUUID is
 	// not valid.
-	RelationUUIDNotValid = errors.ConstError("relation UUID not valid")
+	RelationUUIDNotValid = errors.ConstError("relation RelationUUID not valid")
 
 	// RelationKeyNotValid describes an error when the relation key is
 	// not valid.
 	RelationKeyNotValid = errors.ConstError("relation key not valid")
 
-	// UnitUUIDNotValid describes an error when the unit UUID is
+	// UnitUUIDNotValid describes an error when the unit RelationUUID is
 	// not valid.
-	UnitUUIDNotValid = errors.ConstError("unit UUID not valid")
+	UnitUUIDNotValid = errors.ConstError("unit RelationUUID not valid")
 )

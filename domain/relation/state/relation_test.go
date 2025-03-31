@@ -111,7 +111,7 @@ func (s *relationSuite) TestGetRelationUUIDByIDNotFound(c *gc.C) {
 	c.Assert(err, jc.ErrorIs, relationerrors.RelationNotFound)
 }
 
-// TestGetRelationEndpointUUID validates that the correct relation endpoint UUID
+// TestGetRelationEndpointUUID validates that the correct relation endpoint RelationUUID
 // is retrieved for given application and relation ids.
 func (s *relationSuite) TestGetRelationEndpointUUID(c *gc.C) {
 	// Arrange: create relation endpoint.
@@ -123,7 +123,7 @@ func (s *relationSuite) TestGetRelationEndpointUUID(c *gc.C) {
 		s.fakeCharmRelationProvidesUUID)
 	s.addRelationEndpoint(c, relationEndpointUUID, relationUUID, applicationEndpointUUID)
 
-	// Act: get the relation endpoint UUID.
+	// Act: get the relation endpoint RelationUUID.
 	uuid, err := s.state.GetRelationEndpointUUID(context.Background(), relation.GetRelationEndpointUUIDArgs{
 		ApplicationID: coreapplication.ID(s.fakeApplicationUUID1),
 		RelationUUID:  corerelation.UUID(relationUUID),
@@ -136,7 +136,7 @@ func (s *relationSuite) TestGetRelationEndpointUUID(c *gc.C) {
 }
 
 // TestGetRelationEndpointUUIDRelationNotFound verifies that attempting to retrieve
-// a relation endpoint UUID for a nonexistent relation returns RelationNotFound.
+// a relation endpoint RelationUUID for a nonexistent relation returns RelationNotFound.
 func (s *relationSuite) TestGetRelationEndpointUUIDRelationNotFound(c *gc.C) {
 	// Arrange: nothing to do, no relations.
 
@@ -151,7 +151,7 @@ func (s *relationSuite) TestGetRelationEndpointUUIDRelationNotFound(c *gc.C) {
 }
 
 // TestGetRelationEndpointUUIDApplicationNotFound verifies that attempting to
-// fetch a relation endpoint UUID with a non-existent application ID returns
+// fetch a relation endpoint RelationUUID with a non-existent application ID returns
 // the ApplicationNotFound error.
 func (s *relationSuite) TestGetRelationEndpointUUIDApplicationNotFound(c *gc.C) {
 	// Arrange: nothing to do, will fail on application fetch anyway.
@@ -167,7 +167,7 @@ func (s *relationSuite) TestGetRelationEndpointUUIDApplicationNotFound(c *gc.C) 
 }
 
 // TestGetRelationEndpointUUIDRelationEndPointNotFound verifies that attempting
-// to fetch a relation endpoint UUID for an existing relation without a
+// to fetch a relation endpoint RelationUUID for an existing relation without a
 // corresponding endpoint returns the RelationEndpointNotFound error.
 func (s *relationSuite) TestGetRelationEndpointUUIDRelationEndPointNotFound(c *gc.C) {
 	// Arrange: add a relation, but no relation endpoint between apps and relation.
@@ -233,8 +233,10 @@ func (s *relationSuite) TestGetRelationEndpoints(c *gc.C) {
 	// Assert:
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(endpoints, gc.HasLen, 2)
-	c.Check(endpoints[0], gc.DeepEquals, endpoint1)
-	c.Check(endpoints[1], gc.DeepEquals, endpoint2)
+	c.Check(endpoints, jc.SameContents, []relation.Endpoint{
+		endpoint1,
+		endpoint2,
+	})
 }
 
 func (s *relationSuite) TestGetRelationEndpointsPeer(c *gc.C) {
@@ -343,10 +345,10 @@ func (s *relationSuite) TestGetRelationEndpointsTooManyEndpoints(c *gc.C) {
 
 func (s *relationSuite) TestGetRelationEndpointsRelationNotFound(c *gc.C) {
 	// Arrange: Create relationUUID.
-	relationUUID := corerelationtesting.GenRelationUUID(c).String()
+	relationUUID := corerelationtesting.GenRelationUUID(c)
 
 	// Act: Get relation endpoints.
-	_, err := s.state.GetRelationEndpoints(context.Background(), corerelation.UUID(relationUUID))
+	_, err := s.state.GetRelationEndpoints(context.Background(), relationUUID)
 
 	// Assert:
 	c.Assert(err, jc.ErrorIs, relationerrors.RelationNotFound)
@@ -394,7 +396,7 @@ func (s *relationSuite) TestGetRegularRelationUUIDByEndpointIdentifiers(c *gc.C)
 	s.addRelationEndpoint(c, relationEndpointUUID1, expectedRelationUUID, applicationEndpointUUID1)
 	s.addRelationEndpoint(c, relationEndpointUUID2, expectedRelationUUID, applicationEndpointUUID2)
 
-	// Act: Get relation UUID from endpoints.
+	// Act: Get relation RelationUUID from endpoints.
 	uuid, err := s.state.GetRegularRelationUUIDByEndpointIdentifiers(
 		context.Background(),
 		relation.EndpointIdentifier{
@@ -439,7 +441,7 @@ func (s *relationSuite) TestGetRegularRelationUUIDByEndpointIdentifiersRelationN
 	s.addRelation(c, expectedRelationUUID)
 	s.addRelationEndpoint(c, relationEndpointUUID1, expectedRelationUUID, applicationEndpointUUID1)
 
-	// Act: Try and get relation UUID from endpoints.
+	// Act: Try and get relation RelationUUID from endpoints.
 	_, err := s.state.GetRegularRelationUUIDByEndpointIdentifiers(
 		context.Background(),
 		relation.EndpointIdentifier{
@@ -457,7 +459,7 @@ func (s *relationSuite) TestGetRegularRelationUUIDByEndpointIdentifiersRelationN
 }
 
 func (s *relationSuite) TestGetRegularRelationUUIDByEndpointIdentifiersRelationNotFound(c *gc.C) {
-	// Act: Try and get relation UUID from endpoints.
+	// Act: Try and get relation RelationUUID from endpoints.
 	_, err := s.state.GetRegularRelationUUIDByEndpointIdentifiers(
 		context.Background(),
 		relation.EndpointIdentifier{
@@ -498,7 +500,7 @@ func (s *relationSuite) TestGetPeerRelationUUIDByEndpointIdentifiers(c *gc.C) {
 	s.addRelation(c, expectedRelationUUID)
 	s.addRelationEndpoint(c, relationEndpointUUID1, expectedRelationUUID, applicationEndpointUUID1)
 
-	// Act: Get relation UUID from endpoint.
+	// Act: Get relation RelationUUID from endpoint.
 	_, err := s.state.GetPeerRelationUUIDByEndpointIdentifiers(
 		context.Background(),
 		relation.EndpointIdentifier{
@@ -555,7 +557,7 @@ func (s *relationSuite) TestGetPeerRelationUUIDByEndpointIdentifiersRelationNotF
 	s.addRelationEndpoint(c, relationEndpointUUID1, expectedRelationUUID, applicationEndpointUUID1)
 	s.addRelationEndpoint(c, relationEndpointUUID2, expectedRelationUUID, applicationEndpointUUID2)
 
-	// Act: Try and get relation UUID from endpoint.
+	// Act: Try and get relation RelationUUID from endpoint.
 	_, err := s.state.GetPeerRelationUUIDByEndpointIdentifiers(
 		context.Background(),
 		relation.EndpointIdentifier{
@@ -569,7 +571,7 @@ func (s *relationSuite) TestGetPeerRelationUUIDByEndpointIdentifiersRelationNotF
 }
 
 func (s *relationSuite) TestGetPeerRelationUUIDByEndpointIdentifiersNotFound(c *gc.C) {
-	// Act: Try and get relation UUID from endpoint.
+	// Act: Try and get relation RelationUUID from endpoint.
 	_, err := s.state.GetPeerRelationUUIDByEndpointIdentifiers(
 		context.Background(),
 		relation.EndpointIdentifier{
@@ -790,8 +792,293 @@ func (s *relationSuite) TestGetRelationDetailsNotFound(c *gc.C) {
 	// Assert:
 	c.Assert(err, jc.ErrorIs, relationerrors.RelationNotFound)
 }
+func (s *relationSuite) TestWatchLifeSuspendedStatusMapperData(c *gc.C) {
+	// Arrange: add a relation with a single endpoint which is suspended
+	relationUUID := corerelationtesting.GenRelationUUID(c)
+	relationEndpointUUID1 := uuid.MustNewUUID().String()
+	applicationEndpointUUID1 := uuid.MustNewUUID().String()
+	charmRelationUUID1 := uuid.MustNewUUID().String()
+	endpoint1 := relation.Endpoint{
+		ApplicationName: s.fakeApplicationName1,
+		Relation: internalcharm.Relation{
+			Name:      "fake-endpoint-name-1",
+			Role:      internalcharm.RoleProvider,
+			Interface: "database",
+			Optional:  true,
+			Limit:     20,
+			Scope:     internalcharm.ScopeGlobal,
+		},
+	}
 
-// addApplication adds a new application to the database with the specified UUID and name.
+	charmRelationUUID2 := uuid.MustNewUUID().String()
+	applicationEndpointUUID2 := uuid.MustNewUUID().String()
+	relationEndpointUUID2 := uuid.MustNewUUID().String()
+	endpoint2 := relation.Endpoint{
+		ApplicationName: s.fakeApplicationName2,
+		Relation: internalcharm.Relation{
+			Name:      "fake-endpoint-name-2",
+			Role:      internalcharm.RoleRequirer,
+			Interface: "database",
+			Optional:  false,
+			Limit:     10,
+			Scope:     internalcharm.ScopeGlobal,
+		},
+	}
+	s.addCharmRelation(c, s.fakeCharmUUID1, charmRelationUUID1, endpoint1.Relation)
+	s.addCharmRelation(c, s.fakeCharmUUID2, charmRelationUUID2, endpoint2.Relation)
+	s.addApplicationEndpoint(c, applicationEndpointUUID1, s.fakeApplicationUUID1, charmRelationUUID1)
+	s.addApplicationEndpoint(c, applicationEndpointUUID2, s.fakeApplicationUUID2, charmRelationUUID2)
+	s.addRelation(c, relationUUID.String())
+	s.addRelationEndpoint(c, relationEndpointUUID1, relationUUID.String(), applicationEndpointUUID1)
+	s.addRelationEndpoint(c, relationEndpointUUID2, relationUUID.String(), applicationEndpointUUID2)
+	s.addRelationStatus(c, relationUUID.String(), corestatus.Suspended)
+
+	// Act:
+	result, err := s.state.WatchLifeSuspendedStatusMapperData(
+		context.Background(),
+		relationUUID,
+		coreapplication.ID(s.fakeApplicationUUID1),
+	)
+
+	// Assert:
+	c.Assert(err, jc.ErrorIsNil)
+	c.Check(result.Life, jc.DeepEquals, corelife.Alive)
+	c.Check(result.Suspended, jc.IsTrue)
+	c.Check(result.Endpoints, jc.SameContents, []relation.Endpoint{
+		endpoint1,
+		endpoint2,
+	})
+}
+
+func (s *relationSuite) TestWatchLifeSuspendedStatusMapperDataWrongApp(c *gc.C) {
+	// Arrange: add a relation with a single endpoint. Make the
+	// call to WatchLifeSuspendedStatusMapperData with a different
+	// application.
+	relationUUID := corerelationtesting.GenRelationUUID(c)
+	relationEndpointUUID := uuid.MustNewUUID().String()
+	applicationEndpointUUID := uuid.MustNewUUID().String()
+	s.addRelation(c, relationUUID.String())
+	s.addApplicationEndpoint(c, applicationEndpointUUID, s.fakeApplicationUUID1,
+		s.fakeCharmRelationProvidesUUID)
+	s.addRelationEndpoint(c, relationEndpointUUID, relationUUID.String(), applicationEndpointUUID)
+
+	// Act:
+	_, err := s.state.WatchLifeSuspendedStatusMapperData(
+		context.Background(),
+		relationUUID,
+		coreapplicationtesting.GenApplicationUUID(c),
+	)
+
+	// Assert:
+	c.Assert(err, jc.ErrorIs, relationerrors.ApplicationNotFoundForRelation)
+}
+
+func (s *relationSuite) TestGetPrincipalApplicationID(c *gc.C) {
+	// Arrange:
+	principalUUID := s.fakeApplicationUUID1
+	subordinateUUID := s.fakeApplicationUUID2
+	relationUUID := corerelationtesting.GenRelationUUID(c)
+	principalRelationEndpointUUID := uuid.MustNewUUID().String()
+	principalApplicationEndpointUUID := uuid.MustNewUUID().String()
+	principalCharmRelationUUID := uuid.MustNewUUID().String()
+	principalEndpoint := relation.Endpoint{
+		ApplicationName: s.fakeApplicationName1,
+		Relation: internalcharm.Relation{
+			Name:      "fake-endpoint-name-1",
+			Role:      internalcharm.RoleProvider,
+			Interface: "database",
+			Optional:  true,
+			Limit:     20,
+			Scope:     internalcharm.ScopeGlobal,
+		},
+	}
+
+	subordinateCharmRelationUUID := uuid.MustNewUUID().String()
+	subordinateApplicationEndpointUUID := uuid.MustNewUUID().String()
+	subordinateRelationEndpointUUID := uuid.MustNewUUID().String()
+	subordinateEndpoint := relation.Endpoint{
+		ApplicationName: s.fakeApplicationName2,
+		Relation: internalcharm.Relation{
+			Name:      "fake-endpoint-name-2",
+			Role:      internalcharm.RoleRequirer,
+			Interface: "database",
+			Optional:  false,
+			Limit:     10,
+			Scope:     internalcharm.ScopeContainer,
+		},
+	}
+	s.addCharmMetadata(c, s.fakeCharmUUID1, false)
+	s.addCharmMetadata(c, s.fakeCharmUUID2, true)
+	s.addCharmRelation(c, s.fakeCharmUUID1, principalCharmRelationUUID, principalEndpoint.Relation)
+	s.addCharmRelation(c, s.fakeCharmUUID2, subordinateCharmRelationUUID, subordinateEndpoint.Relation)
+	s.addApplicationEndpoint(c, principalApplicationEndpointUUID, s.fakeApplicationUUID1, principalCharmRelationUUID)
+	s.addApplicationEndpoint(c, subordinateApplicationEndpointUUID, s.fakeApplicationUUID2, subordinateCharmRelationUUID)
+	s.addRelation(c, relationUUID.String())
+	s.addRelationEndpoint(c, principalRelationEndpointUUID, relationUUID.String(), principalApplicationEndpointUUID)
+	s.addRelationEndpoint(c, subordinateRelationEndpointUUID, relationUUID.String(), subordinateApplicationEndpointUUID)
+
+	// Act:
+	obtainedUUID, err := s.state.GetPrincipalApplicationID(context.Background(),
+		coreapplication.ID(subordinateUUID))
+
+	// Assert:
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(obtainedUUID, gc.Equals, coreapplication.ID(principalUUID))
+}
+
+func (s *relationSuite) TestGetPrincipalApplicationIDError(c *gc.C) {
+	// Arrange:
+	subordinateUUID := s.fakeApplicationUUID2
+	relationUUID := corerelationtesting.GenRelationUUID(c)
+	principalRelationEndpointUUID := uuid.MustNewUUID().String()
+	principalApplicationEndpointUUID := uuid.MustNewUUID().String()
+	principalCharmRelationUUID := uuid.MustNewUUID().String()
+	principalEndpoint := relation.Endpoint{
+		ApplicationName: s.fakeApplicationName1,
+		Relation: internalcharm.Relation{
+			Name:      "fake-endpoint-name-1",
+			Role:      internalcharm.RoleProvider,
+			Interface: "database",
+			Optional:  true,
+			Limit:     20,
+			Scope:     internalcharm.ScopeGlobal,
+		},
+	}
+
+	subordinateCharmRelationUUID := uuid.MustNewUUID().String()
+	subordinateApplicationEndpointUUID := uuid.MustNewUUID().String()
+	subordinateRelationEndpointUUID := uuid.MustNewUUID().String()
+	subordinateEndpoint := relation.Endpoint{
+		ApplicationName: s.fakeApplicationName2,
+		Relation: internalcharm.Relation{
+			Name:      "fake-endpoint-name-2",
+			Role:      internalcharm.RoleRequirer,
+			Interface: "database",
+			Optional:  false,
+			Limit:     10,
+			Scope:     internalcharm.ScopeContainer,
+		},
+	}
+	s.addCharmMetadata(c, s.fakeCharmUUID1, false)
+	s.addCharmMetadata(c, s.fakeCharmUUID2, false)
+	s.addCharmRelation(c, s.fakeCharmUUID1, principalCharmRelationUUID, principalEndpoint.Relation)
+	s.addCharmRelation(c, s.fakeCharmUUID2, subordinateCharmRelationUUID, subordinateEndpoint.Relation)
+	s.addApplicationEndpoint(c, principalApplicationEndpointUUID, s.fakeApplicationUUID1, principalCharmRelationUUID)
+	s.addApplicationEndpoint(c, subordinateApplicationEndpointUUID, s.fakeApplicationUUID2, subordinateCharmRelationUUID)
+	s.addRelation(c, relationUUID.String())
+	s.addRelationEndpoint(c, principalRelationEndpointUUID, relationUUID.String(), principalApplicationEndpointUUID)
+	s.addRelationEndpoint(c, subordinateRelationEndpointUUID, relationUUID.String(), subordinateApplicationEndpointUUID)
+
+	// Act:
+	_, err := s.state.GetPrincipalApplicationID(context.Background(),
+		coreapplication.ID(subordinateUUID))
+
+	// Assert:
+	c.Assert(err, jc.ErrorIs, relationerrors.ApplicationNotSubordinate)
+}
+
+func (s *relationSuite) TestGetOtherRelatedEndpointApplicationData(c *gc.C) {
+	// Arrange:
+	relationUUID := corerelationtesting.GenRelationUUID(c)
+	relationEndpointUUID1 := uuid.MustNewUUID().String()
+	applicationEndpointUUID1 := uuid.MustNewUUID().String()
+	charmRelationUUID1 := uuid.MustNewUUID().String()
+	endpoint1 := relation.Endpoint{
+		ApplicationName: s.fakeApplicationName1,
+		Relation: internalcharm.Relation{
+			Name:      "fake-endpoint-name-1",
+			Role:      internalcharm.RoleProvider,
+			Interface: "database",
+			Optional:  true,
+			Limit:     20,
+			Scope:     internalcharm.ScopeGlobal,
+		},
+	}
+
+	charmRelationUUID2 := uuid.MustNewUUID().String()
+	applicationEndpointUUID2 := uuid.MustNewUUID().String()
+	relationEndpointUUID2 := uuid.MustNewUUID().String()
+	endpoint2 := relation.Endpoint{
+		ApplicationName: s.fakeApplicationName2,
+		Relation: internalcharm.Relation{
+			Name:      "fake-endpoint-name-2",
+			Role:      internalcharm.RoleRequirer,
+			Interface: "database",
+			Optional:  false,
+			Limit:     10,
+			Scope:     internalcharm.ScopeGlobal,
+		},
+	}
+	s.addCharmMetadata(c, s.fakeCharmUUID1, true)
+	s.addCharmMetadata(c, s.fakeCharmUUID2, false)
+	s.addCharmRelation(c, s.fakeCharmUUID1, charmRelationUUID1, endpoint1.Relation)
+	s.addCharmRelation(c, s.fakeCharmUUID2, charmRelationUUID2, endpoint2.Relation)
+	s.addApplicationEndpoint(c, applicationEndpointUUID1, s.fakeApplicationUUID1, charmRelationUUID1)
+	s.addApplicationEndpoint(c, applicationEndpointUUID2, s.fakeApplicationUUID2, charmRelationUUID2)
+	s.addRelation(c, relationUUID.String())
+	s.addRelationEndpoint(c, relationEndpointUUID1, relationUUID.String(), applicationEndpointUUID1)
+	s.addRelationEndpoint(c, relationEndpointUUID2, relationUUID.String(), applicationEndpointUUID2)
+
+	// Act:
+	result, err := s.state.GetOtherRelatedEndpointApplicationData(context.TODO(),
+		coreapplication.ID(s.fakeApplicationUUID1))
+
+	// Assert:
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(result, gc.HasLen, 1)
+	c.Check(result[0], gc.DeepEquals, relation.OtherApplicationForWatcher{
+		ApplicationID: coreapplication.ID(s.fakeApplicationUUID2),
+		Subordinate:   false,
+	})
+}
+
+func (s *relationSuite) TestGetRelationEndpointScope(c *gc.C) {
+	// Arrange:
+	relationUUID := corerelationtesting.GenRelationUUID(c)
+	relationEndpointUUID1 := uuid.MustNewUUID().String()
+	applicationEndpointUUID1 := uuid.MustNewUUID().String()
+	charmRelationUUID1 := uuid.MustNewUUID().String()
+	endpoint1 := relation.Endpoint{
+		ApplicationName: s.fakeApplicationName1,
+		Relation: internalcharm.Relation{
+			Name:      "fake-endpoint-name-1",
+			Role:      internalcharm.RoleProvider,
+			Interface: "database",
+			Optional:  true,
+			Limit:     20,
+			Scope:     internalcharm.ScopeContainer,
+		},
+	}
+
+	s.addCharmMetadata(c, s.fakeCharmUUID1, false)
+	s.addCharmRelation(c, s.fakeCharmUUID1, charmRelationUUID1, endpoint1.Relation)
+	s.addApplicationEndpoint(c, applicationEndpointUUID1, s.fakeApplicationUUID1, charmRelationUUID1)
+	s.addRelation(c, relationUUID.String())
+	s.addRelationEndpoint(c, relationEndpointUUID1, relationUUID.String(), applicationEndpointUUID1)
+
+	// Act:
+	obtainedScope, err := s.state.GetRelationEndpointScope(context.Background(),
+		relationUUID, coreapplication.ID(s.fakeApplicationUUID1))
+
+	// Assert:
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(obtainedScope, gc.Equals, internalcharm.ScopeContainer)
+}
+
+func (s *relationSuite) TestGetRelationEndpointScopeRelationNotFound(c *gc.C) {
+	// Arrange:
+	relationUUID := corerelationtesting.GenRelationUUID(c)
+	applicationUUID := coreapplicationtesting.GenApplicationUUID(c)
+
+	// Act:
+	_, err := s.state.GetRelationEndpointScope(context.Background(),
+		relationUUID, applicationUUID)
+
+	// Assert:
+	c.Assert(err, jc.ErrorIs, relationerrors.RelationNotFound)
+}
+
+// addApplication adds a new application to the database with the specified RelationUUID and name.
 func (s *relationSuite) addApplication(c *gc.C, charmUUID, appUUID, appName string) {
 	s.query(c, `
 INSERT INTO application (uuid, name, life_id, charm_uuid, space_uuid) 
@@ -800,7 +1087,7 @@ VALUES (?, ?, ?, ?, ?)
 }
 
 // addUnit adds a new unit to the specified application in the database with
-// the given UUID and name.
+// the given RelationUUID and name.
 func (s *relationSuite) addUnit(c *gc.C, unitUUID, unitName, appUUID string) {
 	fakeNetNodeUUID := "fake-net-node-uuid"
 	s.query(c, `
@@ -822,9 +1109,9 @@ VALUES (?, ?, ?, ?)
 `, applicationEndpointUUID, applicationUUID, charmRelationUUID, network.AlphaSpaceId)
 }
 
-// addCharm inserts a new charm into the database with the given UUID.
+// addCharm inserts a new charm into the database with the given RelationUUID.
 func (s *relationSuite) addCharm(c *gc.C, charmUUID string) {
-	// The UUID is also used as the reference_name as there is a unique
+	// The RelationUUID is also used as the reference_name as there is a unique
 	// constraint on the reference_name, revision and source_id.
 	s.query(c, `
 INSERT INTO charm (uuid, reference_name, architecture_id) 
@@ -832,7 +1119,7 @@ VALUES (?, ?, 0)
 `, charmUUID, charmUUID)
 }
 
-// addCharmRelationWithDefaults inserts a new charm relation into the database with the given UUID and predefined attributes.
+// addCharmRelationWithDefaults inserts a new charm relation into the database with the given RelationUUID and predefined attributes.
 func (s *relationSuite) addCharmRelationWithDefaults(c *gc.C, charmUUID, charmRelationUUID string) {
 	s.query(c, `
 INSERT INTO charm_relation (uuid, charm_uuid, kind_id, name) 
@@ -840,12 +1127,19 @@ VALUES (?, ?, 0, 'fake-provides')
 `, charmRelationUUID, charmUUID)
 }
 
-// addCharmRelation inserts a new charm relation into the database with the given UUID and attributes.
+// addCharmRelation inserts a new charm relation into the database with the given RelationUUID and attributes.
 func (s *relationSuite) addCharmRelation(c *gc.C, charmUUID, charmRelationUUID string, r internalcharm.Relation) {
 	s.query(c, `
 INSERT INTO charm_relation (uuid, charm_uuid, kind_id, name, role_id, interface, optional, capacity, scope_id) 
 VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?)
 `, charmRelationUUID, charmUUID, r.Name, s.encodeRoleID(r.Role), r.Interface, r.Optional, r.Limit, s.encodeScopeID(r.Scope))
+}
+
+func (s *relationSuite) addCharmMetadata(c *gc.C, charmUUID string, subordinate bool) {
+	s.query(c, `
+INSERT INTO charm_metadata (charm_uuid, name, subordinate) 
+VALUES (?, ?, ?)
+`, charmUUID, charmUUID, subordinate)
 }
 
 // encodeRoleID returns the ID used in the database for the given charm role. This
@@ -879,7 +1173,7 @@ func (s *relationSuite) encodeScopeID(role internalcharm.RelationScope) int {
 	}[role]
 }
 
-// addRelation inserts a new relation into the database with the given UUID and default relation and life IDs.
+// addRelation inserts a new relation into the database with the given RelationUUID and default relation and life IDs.
 func (s *relationSuite) addRelation(c *gc.C, relationUUID string) {
 	s.query(c, `
 INSERT INTO relation (uuid, life_id, relation_id) 
@@ -888,7 +1182,7 @@ VALUES (?,0,?)
 }
 
 // addRelationWithID inserts a new relation into the database with the given
-// UUID, ID, and default life ID.
+// RelationUUID, ID, and default life ID.
 func (s *relationSuite) addRelationWithID(c *gc.C, relationUUID string, relationID int) {
 	s.query(c, `
 INSERT INTO relation (uuid, life_id, relation_id) 

@@ -58,7 +58,7 @@ func (s *relationServiceSuite) TestGetRelationEndpointUUID(c *gc.C) {
 }
 
 // TestGetRelationEndpointUUIDApplicationIDNotValid tests the failure case
-// where the ApplicationID is not a valid UUID.
+// where the ApplicationID is not a valid RelationUUID.
 func (s *relationServiceSuite) TestGetRelationEndpointUUIDApplicationIDNotValid(c *gc.C) {
 	// Arrange
 	defer s.setupMocks(c).Finish()
