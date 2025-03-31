@@ -262,3 +262,33 @@ SELECT
 FROM application AS a
 JOIN charm AS c ON a.charm_uuid = c.uuid
 JOIN charm_metadata AS cm ON c.uuid = cm.charm_uuid;
+
+-- v_principal_subordinate returns the uuids of an subordinate application
+-- and its principal application. A principal application may multiple
+-- subordinates as a subordinate may be related to multiple principals.
+-- Find the specific principal application for a unit in the unit_principal
+-- table.
+CREATE VIEW v_principal_subordinate AS
+SELECT
+      p.application_uuid AS principal_uuid,
+      s.application_uuid AS subordinate_uuid
+FROM  v_application_subordinate AS p
+JOIN  v_application_subordinate AS s ON p.relation_uuid = s.relation_uuid
+WHERE p.subordinate = FALSE
+AND   s.subordinate = TRUE;
+
+-- v_application_subordinate provides the data points on a single
+-- application necessary to find principal subordinate pairs. It is
+-- a helper for v_principal_subordinate.
+CREATE VIEW v_application_subordinate AS
+SELECT
+      a.uuid AS application_uuid,
+      cm.subordinate AS subordinate,
+      re.relation_uuid AS relation_uuid
+FROM  application AS a
+JOIN  charm AS c ON a.charm_uuid = c.uuid
+JOIN  charm_metadata AS cm ON c.uuid = cm.charm_uuid
+JOIN  charm_relation AS cr ON c.uuid = cr.charm_uuid
+JOIN  application_endpoint AS ae ON cr.uuid = ae.charm_relation_uuid
+JOIN  relation_endpoint AS re ON ae.uuid = re.endpoint_uuid;
+--WHERE a.uuid = ae.application_uuid;

@@ -300,6 +300,8 @@ func (s *modelSchemaSuite) TestModelViews(c *gc.C) {
 		"v_application_platform_channel",
 		"v_application_resource",
 		"v_application_storage_directive",
+		"v_principal_subordinate",
+		"v_application_subordinate",
 		"v_charm_annotation_index",
 		"v_charm_config",
 		"v_charm_container",
