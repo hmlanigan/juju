@@ -5,8 +5,10 @@ package apiserver
 
 import (
 	"context"
+	"runtime/debug"
 
 	"github.com/juju/errors"
+	"github.com/juju/loggo/v2"
 	"github.com/juju/worker/v4"
 
 	"github.com/juju/juju/apiserver/common"
@@ -131,6 +133,7 @@ func newStringsWatcher(_ context.Context, context facade.ModelContext) (facade.F
 	}
 	watcher, ok := w.(corewatcher.StringsWatcher)
 	if !ok {
+		loggo.GetLogger("hml").Criticalf("Not a StringsWatcher fail with %w: %s", apiservererrors.ErrUnknownWatcher, debug.Stack())
 		return nil, apiservererrors.ErrUnknownWatcher
 	}
 	return &srvStringsWatcher{
@@ -173,6 +176,7 @@ func newRelationUnitsWatcher(_ context.Context, context facade.ModelContext) (fa
 	}
 	watcher, ok := w.(common.RelationUnitsWatcher)
 	if !ok {
+		loggo.GetLogger("hml").Criticalf("Not a RelationUnitsWatcher fail with %w: %s", apiservererrors.ErrUnknownWatcher, debug.Stack())
 		return nil, apiservererrors.ErrUnknownWatcher
 	}
 	return &srvRelationUnitsWatcher{
