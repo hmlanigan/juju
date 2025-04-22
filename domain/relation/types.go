@@ -263,6 +263,7 @@ type ImportRelationsArgs []ImportRelationArg
 // ImportRelationArg is a single argument for the ImportRelation method.
 type ImportRelationArg struct {
 	ID        int
+	Key       corerelation.Key
 	Endpoints []ImportEndpoint
 }
 
@@ -273,4 +274,3 @@ type ImportEndpoint struct {
 	UnitSettings        map[string]map[string]interface{}
 	ApplicationSettings map[string]interface{}
 }
-
