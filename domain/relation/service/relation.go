@@ -41,7 +41,7 @@ type State interface {
 	AddRelationWithID(
 		ctx context.Context,
 		ep1, ep2 relation.CandidateEndpointIdentifier,
-		id int,
+		id uint64,
 	) (corerelation.UUID, error)
 
 	// NeedsSubordinateUnit checks if there is a subordinate application
