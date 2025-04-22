@@ -93,7 +93,7 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 	}
 	err := i.service.ImportRelations(ctx, args)
 	if err != nil {
-		return errors.Errorf("setting resources: %w", err)
+		return errors.Errorf("setting relations: %w", err)
 	}
 	return nil
 }

@@ -56,7 +56,7 @@ func (st *State) insertPeerRelations(ctx context.Context, tx *sqlair.TX, appUUID
 	if err != nil {
 		return errors.Errorf("getting peer endpoints: %w", err)
 	}
-
+	st.logger.Criticalf(ctx, "insertPeerRelations(%+v)", peerEndpoints)
 	for _, peer := range peerEndpoints {
 		// Insert a new relation with a new relation UUID.
 		relUUID, err := st.insertNewRelation(ctx, tx)

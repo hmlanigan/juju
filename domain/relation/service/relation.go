@@ -233,11 +233,6 @@ type State interface {
 	//     unit is not part of the relation.
 	GetRelationUnitSettings(ctx context.Context, relationUnitUUID corerelation.UnitUUID) (map[string]string, error)
 
-	// ImportRelations sets relations imported in migration. It first builds all the
-	// relations to insert from the arguments, then inserts them at the end so as to
-	// wait as long as possible before turning into a write transaction.
-	ImportRelations(ctx context.Context, args relation.ImportRelationsArgs) error
-
 	// InitialWatchLifeSuspendedStatus returns the two tables to watch for
 	// a relation's Life and Suspended status when the relation contains
 	// the provided application and the initial namespace query.
@@ -950,13 +945,14 @@ func (s *Service) ImportRelations(ctx context.Context, args relation.ImportRelat
 			}
 		}
 	}
-	return s.st.ImportRelations(ctx, args)
+	return nil
 }
 
 func (s *Service) importRelation(ctx context.Context, arg relation.ImportRelationArg) (corerelation.UUID, error) {
 	var relUUID corerelation.UUID
 
 	eps := arg.Key.EndpointIdentifiers()
+	s.logger.Criticalf(ctx, "importRelation(%d): %+v", arg.ID, eps)
 
 	switch len(eps) {
 	case 1:
@@ -965,7 +961,7 @@ func (s *Service) importRelation(ctx context.Context, arg relation.ImportRelatio
 		var err error
 		relUUID, err = s.st.GetPeerRelationUUIDByEndpointIdentifiers(ctx, eps[0])
 		if err != nil {
-			return relUUID, errors.Capture(err)
+			return relUUID, errors.Errorf("getting peer relation %d by endpoint %q: %w", arg.ID, eps[0], err)
 		}
 	case 2:
 		idep1, err := relation.NewCandidateEndpointIdentifier(eps[0].String())

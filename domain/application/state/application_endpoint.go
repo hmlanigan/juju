@@ -55,6 +55,7 @@ func (st *State) insertApplicationEndpoints(ctx context.Context, tx *sqlair.TX, 
 		return internalerrors.Errorf("getting charm relation names: %w", err)
 	}
 
+	st.logger.Criticalf(ctx, "insertApplicationEndpoints(%+v)", relations)
 	// Get extra bindings
 	extrabindings, err := st.getCharmExtraBindings(ctx, tx, charmUUID)
 	if err != nil {

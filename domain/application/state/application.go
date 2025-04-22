@@ -90,6 +90,7 @@ func (st *State) CreateApplication(
 	args application.AddApplicationArg,
 	units []application.AddUnitArg,
 ) (coreapplication.ID, error) {
+	st.logger.Criticalf(ctx, "CreateApplication(%q)", name)
 	db, err := st.DB()
 	if err != nil {
 		return "", errors.Capture(err)

@@ -2549,20 +2549,6 @@ WHERE  r.uuid = $watcherMapperData.uuid
 	}, nil
 }
 
-// ImportRelations sets relations imported in migration. It first builds all the
-// relations to insert from the arguments, then inserts them at the end so as to
-// wait as long as possible before turning into a write transaction.
-func (st *State) ImportRelations(ctx context.Context, args relation.ImportRelationsArgs) error {
-	db, err := st.DB()
-	if err != nil {
-		return errors.Capture(err)
-	}
-	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
-		return nil
-	})
-	return nil
-}
-
 //machine-0: 22:10:54 ERROR juju.apiserver import failed: execute operation import relations: setting resources: unexpected number of endpoints 0 for ""
 //machine-0: 22:10:54 INFO juju.apiserver rolling back operation: import relations
 //machine-0: 22:10:54 ERROR juju.database constraint error deleting relations: FOREIGN KEY constraint failed - running queries:
@@ -2620,7 +2606,7 @@ DELETE FROM relation_unit_settings
 		return errors.Capture(err)
 	}
 	err = tx.Query(ctx, deleteUnitSettingsStmt).Run()
-	if !errors.Is(err, sqlair.ErrNoRows) {
+	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
 		return errors.Errorf("deleting unit settings: %w", err)
 	}
 
@@ -2631,7 +2617,7 @@ DELETE FROM relation_unit_settings_hash
 		return errors.Capture(err)
 	}
 	err = tx.Query(ctx, deleteUnitSettingsHashStmt).Run()
-	if !errors.Is(err, sqlair.ErrNoRows) {
+	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
 		return errors.Errorf("deleting unit settings hash: %w", err)
 	}
 
@@ -2642,7 +2628,7 @@ DELETE FROM relation_unit
 		return errors.Capture(err)
 	}
 	err = tx.Query(ctx, deleteRelationUnitStmt).Run()
-	if !errors.Is(err, sqlair.ErrNoRows) {
+	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
 		return errors.Errorf("deleting relation units: %w", err)
 	}
 	return nil
@@ -2656,9 +2642,7 @@ DELETE FROM relation_application_settings
 		return errors.Capture(err)
 	}
 	err = tx.Query(ctx, deleteAppSettingsStmt).Run()
-	if errors.Is(err, sqlair.ErrNoRows) {
-		return nil
-	} else if err != nil {
+	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
 		return errors.Errorf("deleting application settings: %w", err)
 	}
 
@@ -2669,9 +2653,7 @@ DELETE FROM relation_application_settings_hash
 		return errors.Capture(err)
 	}
 	err = tx.Query(ctx, deleteAppSettingsHashStmt).Run()
-	if errors.Is(err, sqlair.ErrNoRows) {
-		return nil
-	} else if err != nil {
+	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
 		return errors.Errorf("deleting application settings hash: %w", err)
 	}
 
@@ -2682,7 +2664,7 @@ DELETE FROM relation_endpoint
 		return errors.Capture(err)
 	}
 	err = tx.Query(ctx, deleteRelationEndpointStmt).Run()
-	if !errors.Is(err, sqlair.ErrNoRows) {
+	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
 		return errors.Errorf("deleting relation endpoints: %w", err)
 	}
 	return nil
