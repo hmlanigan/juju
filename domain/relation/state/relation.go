@@ -2563,6 +2563,19 @@ func (st *State) ImportRelations(ctx context.Context, args relation.ImportRelati
 	return nil
 }
 
+//machine-0: 22:10:54 ERROR juju.apiserver import failed: execute operation import relations: setting resources: unexpected number of endpoints 0 for ""
+//machine-0: 22:10:54 INFO juju.apiserver rolling back operation: import relations
+//machine-0: 22:10:54 ERROR juju.database constraint error deleting relations: FOREIGN KEY constraint failed - running queries:
+//BEGIN
+//
+//DELETE FROM relation_unit_settings
+//
+//
+//DELETE FROM relation_application_settings
+//
+//
+//DELETE FROM relation
+
 // DeleteImportedRelations deletes all imported relations in a model during
 // an import rollback.
 func (st *State) DeleteImportedRelations(

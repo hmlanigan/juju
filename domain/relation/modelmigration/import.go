@@ -11,6 +11,7 @@ import (
 
 	"github.com/juju/juju/core/logger"
 	"github.com/juju/juju/core/modelmigration"
+	relation2 "github.com/juju/juju/core/relation"
 	"github.com/juju/juju/domain/relation"
 	"github.com/juju/juju/domain/relation/service"
 	"github.com/juju/juju/domain/relation/state"
@@ -98,9 +99,15 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 }
 
 func (i *importOperation) importRelation(rel description.Relation) (relation.ImportRelationArg, error) {
+	key, err := relation2.NewKeyFromString(rel.Key())
+	if err != nil {
+		return relation.ImportRelationArg{}, err
+	}
+
 	arg := relation.ImportRelationArg{
 		Endpoints: []relation.ImportEndpoint{},
 		ID:        rel.Id(),
+		Key:       key,
 	}
 	for _, v := range rel.Endpoints() {
 		endpoint := relation.ImportEndpoint{

@@ -936,6 +936,7 @@ func (s *Service) SetRelationUnitSettings(
 // relations to insert from the arguments, then inserts them at the end so as to
 // wait as long as possible before turning into a write transaction.
 func (s *Service) ImportRelations(ctx context.Context, args relation.ImportRelationsArgs) error {
+	s.logger.Criticalf(ctx, "ImportRelations(%+v)", args)
 	for _, arg := range args {
 		relUUID, err := s.importRelation(ctx, arg)
 		if err != nil {
