@@ -976,7 +976,7 @@ func (s *Service) importRelation(ctx context.Context, arg relation.ImportRelatio
 			return relUUID, errors.Errorf("parsing endpoint identifier %q: %w", eps[2].String(), err)
 		}
 
-		relUUID, err = s.st.AddRelationWithID(ctx, idep1, idep2, arg.ID)
+		relUUID, err = s.st.AddRelationWithID(ctx, idep1, idep2, uint64(arg.ID))
 		if err != nil {
 			return relUUID, errors.Capture(err)
 		}
