@@ -40,6 +40,12 @@ type State interface {
 		principalUnitName unit.Name,
 	) (*application.ID, error)
 
+	// DeleteImportedRelations deletes all imported relations in a model during
+	// an import rollback.
+	DeleteImportedRelations(
+		ctx context.Context,
+	) error
+
 	// EnterScope indicates that the provided unit has joined the relation.
 	// When the unit has already entered its relation scope, EnterScope will report
 	// success but make no changes to state. The unit's settings are created or
@@ -211,6 +217,11 @@ type State interface {
 	//   - [relationerrors.RelationUnitNotFound] is returned if the
 	//     unit is not part of the relation.
 	GetRelationUnitSettings(ctx context.Context, relationUnitUUID corerelation.UnitUUID) (map[string]string, error)
+
+	// ImportRelations sets relations imported in migration. It first builds all the
+	// relations to insert from the arguments, then inserts them at the end so as to
+	// wait as long as possible before turning into a write transaction.
+	ImportRelations(ctx context.Context, args relation.ImportRelationsArgs) error
 
 	// InitialWatchLifeSuspendedStatus returns the two tables to watch for
 	// a relation's Life and Suspended status when the relation contains
@@ -904,4 +915,28 @@ func (s *Service) SetRelationUnitSettings(
 			"%w:%w", relationerrors.RelationUUIDNotValid, err)
 	}
 	return s.st.SetRelationUnitSettings(ctx, relationUnitUUID, settings)
+}
+
+// ImportRelations sets relations imported in migration. It first builds all the
+// relations to insert from the arguments, then inserts them at the end so as to
+// wait as long as possible before turning into a write transaction.
+func (s *Service) ImportRelations(ctx context.Context, args relation.ImportRelationsArgs) error {
+	return s.st.ImportRelations(ctx, args)
+}
+
+// DeleteImportedRelations deletes all imported relations in a model during
+// an import rollback.
+func (s *Service) DeleteImportedRelations(
+	ctx context.Context,
+) error {
+	return s.st.DeleteImportedRelations(ctx)
+}
+
+// ExportResources returns the list of application and unit resources to
+// export for the given application.
+//
+// If the application exists but doesn't have any resources, no error are
+// returned, the result just contains an empty list.
+func (s *Service) ExportRelations(ctx context.Context, name string) error {
+	return coreerrors.NotImplemented
 }

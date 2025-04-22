@@ -257,3 +257,20 @@ type SubordinateCreator interface {
 	CreateSubordinate(ctx context.Context, subordinateAppID application.ID, principalUnitName unit.Name) error
 }
 
+// ImportRelationsArgs are the arguments for ImportRelation.
+type ImportRelationsArgs []ImportRelationArg
+
+// ImportRelationArg is a single argument for the ImportRelation method.
+type ImportRelationArg struct {
+	ID        int
+	Endpoints []ImportEndpoint
+}
+
+// ImportEndpoint is a data to import for a single endpoint.
+type ImportEndpoint struct {
+	ApplicationName     string
+	EndpointName        string
+	UnitSettings        map[string]map[string]interface{}
+	ApplicationSettings map[string]interface{}
+}
+

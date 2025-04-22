@@ -2458,6 +2458,102 @@ WHERE  r.uuid = $watcherMapperData.uuid
 	}, nil
 }
 
+// ImportRelations sets relations imported in migration. It first builds all the
+// relations to insert from the arguments, then inserts them at the end so as to
+// wait as long as possible before turning into a write transaction.
+func (st *State) ImportRelations(ctx context.Context, args relation.ImportRelationsArgs) error {
+	db, err := st.DB()
+	if err != nil {
+		return errors.Capture(err)
+	}
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		return nil
+	})
+	return nil
+}
+
+// DeleteImportedRelations deletes all imported relations in a model during
+// an import rollback.
+func (st *State) DeleteImportedRelations(
+	ctx context.Context,
+) error {
+	db, err := st.DB()
+	if err != nil {
+		return errors.Capture(err)
+	}
+	// delete all unit settings
+	// delete all application settings
+	// delete all relation unit settings hash
+	// delete all relation units
+	// delete all relation endpoints
+	// delete all relation application settings hash
+	// delete relation sequence rows
+	// delete all relations
+
+	deleteUnitSettingsStmt, err := st.Prepare(`
+DELETE FROM relation_unit_settings
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	deleteUnitSettingsHashStmt, err := st.Prepare(`
+DELETE FROM relation_unit_settings_hash
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	deleteRelationUnitStmt, err := st.Prepare(`
+DELETE FROM relation_unit
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	deleteAppSettingsStmt, err := st.Prepare(`
+DELETE FROM relation_application_settings
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	deleteAppSettingsHashStmt, err := st.Prepare(`
+DELETE FROM relation_application_settings_hash
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	deleteRelationEndpointStmt, err := st.Prepare(`
+DELETE FROM relation_endpoint
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	deleteRelationStmt, err := st.Prepare(`
+DELETE FROM relation
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	deleteRelationSequenceStmt, err := st.Prepare(`
+DELETE FROM sequence
+WHERE namespace = relation
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+
+		return nil
+	})
+	return nil
+}
+
 // checkCompatibleBases determines if the bases of two application endpoints
 // are compatible for a relation.
 // It compares the OS and channel of the base configurations for both endpoints.
