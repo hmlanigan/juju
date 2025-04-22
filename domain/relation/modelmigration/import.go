@@ -94,7 +94,6 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 	if err != nil {
 		return errors.Errorf("setting resources: %w", err)
 	}
-	// TODO: SetSequence value for relations.
 	return nil
 }
 
@@ -117,7 +116,10 @@ func (i *importOperation) importRelation(rel description.Relation) (relation.Imp
 
 // Rollback the resource import operation by deleting all imported resources
 // associated with the imported applications.
-func (i *importOperation) Rollback(ctx context.Context, _ description.Model) error {
+func (i *importOperation) Rollback(ctx context.Context, model description.Model) error {
+	if len(model.Relations()) == 0 {
+		return nil
+	}
 	err := i.service.DeleteImportedRelations(ctx)
 	if err != nil {
 		return errors.Errorf("resource import rollback failed: %w", err)

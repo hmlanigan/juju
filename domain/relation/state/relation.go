@@ -2481,56 +2481,6 @@ func (st *State) DeleteImportedRelations(
 	if err != nil {
 		return errors.Capture(err)
 	}
-	// delete all unit settings
-	// delete all application settings
-	// delete all relation unit settings hash
-	// delete all relation units
-	// delete all relation endpoints
-	// delete all relation application settings hash
-	// delete relation sequence rows
-	// delete all relations
-
-	deleteUnitSettingsStmt, err := st.Prepare(`
-DELETE FROM relation_unit_settings
-`)
-	if err != nil {
-		return errors.Capture(err)
-	}
-
-	deleteUnitSettingsHashStmt, err := st.Prepare(`
-DELETE FROM relation_unit_settings_hash
-`)
-	if err != nil {
-		return errors.Capture(err)
-	}
-
-	deleteRelationUnitStmt, err := st.Prepare(`
-DELETE FROM relation_unit
-`)
-	if err != nil {
-		return errors.Capture(err)
-	}
-
-	deleteAppSettingsStmt, err := st.Prepare(`
-DELETE FROM relation_application_settings
-`)
-	if err != nil {
-		return errors.Capture(err)
-	}
-
-	deleteAppSettingsHashStmt, err := st.Prepare(`
-DELETE FROM relation_application_settings_hash
-`)
-	if err != nil {
-		return errors.Capture(err)
-	}
-
-	deleteRelationEndpointStmt, err := st.Prepare(`
-DELETE FROM relation_endpoint
-`)
-	if err != nil {
-		return errors.Capture(err)
-	}
 
 	deleteRelationStmt, err := st.Prepare(`
 DELETE FROM relation
@@ -2539,18 +2489,98 @@ DELETE FROM relation
 		return errors.Capture(err)
 	}
 
-	deleteRelationSequenceStmt, err := st.Prepare(`
-DELETE FROM sequence
-WHERE namespace = relation
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		if err = st.deleteUnitRelations(ctx, tx); err != nil {
+		}
+
+		if err = st.deleteApplicationRelations(ctx, tx); err != nil {
+		}
+
+		err = tx.Query(ctx, deleteRelationStmt).Run()
+		if errors.Is(err, sqlair.ErrNoRows) {
+			return nil
+		} else if err != nil {
+			return errors.Errorf("deleting relations: %w", err)
+		}
+
+		return nil
+	})
+	return nil
+}
+
+func (st *State) deleteUnitRelations(ctx context.Context, tx *sqlair.TX) error {
+	deleteUnitSettingsStmt, err := st.Prepare(`
+DELETE FROM relation_unit_settings
 `)
 	if err != nil {
 		return errors.Capture(err)
 	}
+	err = tx.Query(ctx, deleteUnitSettingsStmt).Run()
+	if !errors.Is(err, sqlair.ErrNoRows) {
+		return errors.Errorf("deleting unit settings: %w", err)
+	}
 
-	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+	deleteUnitSettingsHashStmt, err := st.Prepare(`
+DELETE FROM relation_unit_settings_hash
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+	err = tx.Query(ctx, deleteUnitSettingsHashStmt).Run()
+	if !errors.Is(err, sqlair.ErrNoRows) {
+		return errors.Errorf("deleting unit settings hash: %w", err)
+	}
 
+	deleteRelationUnitStmt, err := st.Prepare(`
+DELETE FROM relation_unit
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+	err = tx.Query(ctx, deleteRelationUnitStmt).Run()
+	if !errors.Is(err, sqlair.ErrNoRows) {
+		return errors.Errorf("deleting relation units: %w", err)
+	}
+	return nil
+}
+
+func (st *State) deleteApplicationRelations(ctx context.Context, tx *sqlair.TX) error {
+	deleteAppSettingsStmt, err := st.Prepare(`
+DELETE FROM relation_application_settings
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+	err = tx.Query(ctx, deleteAppSettingsStmt).Run()
+	if errors.Is(err, sqlair.ErrNoRows) {
 		return nil
-	})
+	} else if err != nil {
+		return errors.Errorf("deleting application settings: %w", err)
+	}
+
+	deleteAppSettingsHashStmt, err := st.Prepare(`
+DELETE FROM relation_application_settings_hash
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+	err = tx.Query(ctx, deleteAppSettingsHashStmt).Run()
+	if errors.Is(err, sqlair.ErrNoRows) {
+		return nil
+	} else if err != nil {
+		return errors.Errorf("deleting application settings hash: %w", err)
+	}
+
+	deleteRelationEndpointStmt, err := st.Prepare(`
+DELETE FROM relation_endpoint
+`)
+	if err != nil {
+		return errors.Capture(err)
+	}
+	err = tx.Query(ctx, deleteRelationEndpointStmt).Run()
+	if !errors.Is(err, sqlair.ErrNoRows) {
+		return errors.Errorf("deleting relation endpoints: %w", err)
+	}
 	return nil
 }
 
