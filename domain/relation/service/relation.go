@@ -969,9 +969,9 @@ func (s *Service) importRelation(ctx context.Context, arg relation.ImportRelatio
 		if err != nil {
 			return relUUID, errors.Errorf("parsing endpoint identifier %q: %w", eps[0].String(), err)
 		}
-		idep2, err := relation.NewCandidateEndpointIdentifier(eps[2].String())
+		idep2, err := relation.NewCandidateEndpointIdentifier(eps[1].String())
 		if err != nil {
-			return relUUID, errors.Errorf("parsing endpoint identifier %q: %w", eps[2].String(), err)
+			return relUUID, errors.Errorf("parsing endpoint identifier %q: %w", eps[1].String(), err)
 		}
 
 		relUUID, err = s.st.AddRelationWithID(ctx, idep1, idep2, uint64(arg.ID))
