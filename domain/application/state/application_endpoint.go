@@ -79,6 +79,7 @@ func (st *State) insertApplicationEndpoints(ctx context.Context, tx *sqlair.TX, 
 
 	// Insert endpoints.
 	for _, relation := range relations {
+		st.logger.Criticalf(ctx, "insertApplicationEndpoints(%+v)", relation)
 		if err := st.insertApplicationEndpoint(ctx, tx, params.appID, relation, params.bindings); err != nil {
 			return internalerrors.Errorf("inserting application endpoint: %w", err)
 		}

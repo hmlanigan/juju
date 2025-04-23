@@ -963,6 +963,7 @@ func (s *Service) importRelation(ctx context.Context, arg relation.ImportRelatio
 		if err != nil {
 			return relUUID, errors.Errorf("getting peer relation %d by endpoint %q: %w", arg.ID, eps[0], err)
 		}
+		// TODO - reset the relation ID.
 	case 2:
 		idep1, err := relation.NewCandidateEndpointIdentifier(eps[0].String())
 		if err != nil {

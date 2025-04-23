@@ -63,6 +63,7 @@ func (st *State) insertPeerRelations(ctx context.Context, tx *sqlair.TX, appUUID
 		if err != nil {
 			return errors.Errorf("inserting new relation for peer endpoint %q: %w", peer.Name, err)
 		}
+		st.logger.Criticalf(ctx, "insertPeerRelations(%+v) %q", peer, relUUID)
 
 		// Insert relation status.
 		if err := st.insertNewRelationStatus(ctx, tx, relUUID); err != nil {

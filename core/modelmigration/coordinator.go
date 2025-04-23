@@ -135,25 +135,25 @@ func (m *Coordinator) Len() int {
 // returned to the caller on the source, and we want them to be reflected
 // in *this* controller's logs.
 func (m *Coordinator) Perform(ctx context.Context, scope Scope, model description.Model) (err error) {
-	var current int
+	//var current int
 	defer func() {
 		if err != nil {
 			m.logger.Errorf(context.TODO(), "import failed: %s", err.Error())
 
-			for ; current >= 0; current-- {
-				op := m.operations[current]
-
-				m.logger.Infof(context.TODO(), "rolling back operation: %s", op.Name())
-				if rollbackErr := op.Rollback(ctx, model); rollbackErr != nil {
-					m.logger.Errorf(context.TODO(), "rollback operation for %s failed: %s", op.Name(), rollbackErr)
-					err = errors.Errorf("rollback operation at %d with %v: %w", current, rollbackErr, err)
-				}
-			}
+			//for ; current >= 0; current-- {
+			//	op := m.operations[current]
+			//
+			//	m.logger.Infof(context.TODO(), "rolling back operation: %s", op.Name())
+			//	if rollbackErr := op.Rollback(ctx, model); rollbackErr != nil {
+			//		m.logger.Errorf(context.TODO(), "rollback operation for %s failed: %s", op.Name(), rollbackErr)
+			//		err = errors.Errorf("rollback operation at %d with %v: %w", current, rollbackErr, err)
+			//	}
+			//}
 		}
 	}()
 
-	var op Operation
-	for current, op = range m.operations {
+	//var op Operation
+	for _, op := range m.operations {
 		opName := op.Name()
 		m.logger.Infof(context.TODO(), "running operation: %s", opName)
 
