@@ -296,8 +296,9 @@ func (s *watcherSuite) getSubordinateWatcher(principalID coreapplication.ID, sub
 		parentAppID: principalID,
 	}
 	w.lifeSuspendedStatusWatcher = lifeSuspendedStatusWatcher{
-		s:     s.service,
-		appID: subordinateID,
+		s:             s.service,
+		appID:         subordinateID,
+		processChange: w.processChange,
 	}
 	return w
 }

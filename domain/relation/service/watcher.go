@@ -116,6 +116,13 @@ type lifeSuspendedStatusWatcher struct {
 	// being watched, to check if the values have changed when the Mapper is
 	// triggered.
 	currentRelations map[corerelation.UUID]relation.RelationLifeSuspendedData
+
+	processChange func(
+		ctx context.Context,
+		relUUID corerelation.UUID,
+		relationsIgnored set.Strings,
+	) (corerelation.Key, error)
+
 	// lifeNameSpace is the namespace where the relation's life can be found.
 	lifeNameSpace string
 	// suspendedNameSpace is the namespace where relation suspension can be found.
@@ -126,7 +133,6 @@ type lifeSuspendedStatusWatcher struct {
 // GetInitialQuery returns a function to get the initial results of the
 // watcher and setups data to decide whether future notification of those
 // relations should be made.
-
 func (w *lifeSuspendedStatusWatcher) GetInitialQuery() eventsource.NamespaceQuery {
 	return func(ctx context.Context, txn database.TxnRunner) ([]string, error) {
 		ctx, span := trace.Start(ctx, trace.NameFromFunc())
@@ -158,6 +164,71 @@ func (w *lifeSuspendedStatusWatcher) GetInitialQuery() eventsource.NamespaceQuer
 	}
 }
 
+// GetMapper returns a function which decides which relations
+// the watcher should notify on for future events.
+func (w *lifeSuspendedStatusWatcher) GetMapper() eventsource.Mapper {
+	// relationsIgnored is the set of relations which are not relevant to
+	// this unit. No need to evaluate them again.
+	relationsIgnored := set.NewStrings()
+	return func(ctx context.Context, changes []changestream.ChangeEvent) ([]changestream.ChangeEvent, error) {
+		ctx, span := trace.Start(ctx, trace.NameFromFunc())
+		defer span.End()
+
+		// If there are no changes, return no changes.
+		if len(changes) == 0 {
+			return nil, nil
+		}
+		var err error
+		var changeEvents []changestream.ChangeEvent
+		changeEvents, err = w.filterChangeEvents(
+			ctx,
+			changes,
+			relationsIgnored,
+		)
+		if err != nil {
+			return nil, errors.Capture(err)
+		}
+		return changeEvents, nil
+	}
+}
+
+// continueError indicates that the caller should continue in the
+// loop rather than error or assume the happy case.
+const continueError = errors.ConstError("continue")
+
+func (w *lifeSuspendedStatusWatcher) filterChangeEvents(
+	ctx context.Context,
+	changes []changestream.ChangeEvent,
+	relationsIgnored set.Strings,
+) ([]changestream.ChangeEvent, error) {
+	var changeEvents []changestream.ChangeEvent
+
+	// 2 tables can trigger and report the same relation.
+	// Data is gathered from both tables at once, ensure
+	// to only check the data and report a change once for
+	// each relation.
+	changedRelations := make(map[corerelation.UUID]changestream.ChangeEvent)
+	for _, change := range changes {
+		changed := change.Changed()
+		if relationsIgnored.Contains(changed) {
+			continue
+		}
+		relUUID := corerelation.UUID(changed)
+		changedRelations[relUUID] = change
+	}
+	for relUUID, change := range changedRelations {
+		key, err := w.processChange(ctx, relUUID, relationsIgnored)
+		if errors.Is(err, continueError) {
+			continue
+		} else if err != nil {
+			return nil, errors.Capture(err)
+		}
+		changeEvents = append(changeEvents, newMaskedChangeIDEvent(change, key.String()))
+	}
+
+	return changeEvents, nil
+}
+
 // GetFirstFilterOption returns a predicate filter for the lifeTableNamespace.
 // Relations the Mapper has chosen to ignore will be filtered out of future
 // calls to the Mapper.
@@ -184,90 +255,45 @@ func newPrincipalLifeSuspendedStatusWatcher(s *WatchableService, appID applicati
 		s:                s,
 		appID:            appID,
 		currentRelations: make(map[corerelation.UUID]relation.RelationLifeSuspendedData),
+		processChange:    w.processChange,
 	}
 	// returns a set of relation keys if the life or suspended status has changed
 	// for any relation this application is part of.
 	w.lifeNameSpace, w.suspendedNameSpace, w.initialQuery = s.st.InitialWatchLifeSuspendedStatus(appID)
+
 	return w
 }
 
-// GetMapper returns a function which decides which relations
-// the watcher should notify on for future events.
-func (w *principalLifeSuspendedStatusWatcher) GetMapper() eventsource.Mapper {
-	// relationsIgnored is the set of relations which are not relevant to
-	// this unit. No need to evaluate them again.
-	relationsIgnored := set.NewStrings()
-	return func(ctx context.Context, changes []changestream.ChangeEvent) ([]changestream.ChangeEvent, error) {
-		ctx, span := trace.Start(ctx, trace.NameFromFunc())
-		defer span.End()
-
-		// If there are no changes, return no changes.
-		if len(changes) == 0 {
-			return nil, nil
-		}
-		var err error
-		var changeEvents []changestream.ChangeEvent
-		changeEvents, err = w.filterChangeEvents(
-			ctx,
-			changes,
-			relationsIgnored,
-		)
-		if err != nil {
-			return nil, errors.Capture(err)
-		}
-		return changeEvents, nil
-	}
-}
-
-func (w *principalLifeSuspendedStatusWatcher) filterChangeEvents(
+func (w *principalLifeSuspendedStatusWatcher) processChange(
 	ctx context.Context,
-	changes []changestream.ChangeEvent,
+	relUUID corerelation.UUID,
 	relationsIgnored set.Strings,
-) ([]changestream.ChangeEvent, error) {
-	var changeEvents []changestream.ChangeEvent
-
-	// 2 tables can trigger and report the same relation.
-	// Data is gathered from both tables at once, ensure
-	// to only check the data and report a change once for
-	// each relation.
-	changedRelations := make(map[corerelation.UUID]changestream.ChangeEvent)
-	for _, change := range changes {
-		changed := change.Changed()
-		if relationsIgnored.Contains(changed) {
-			continue
-		}
-		relUUID := corerelation.UUID(changed)
-		changedRelations[relUUID] = change
-	}
-	for relUUID, change := range changedRelations {
-		changedRelationData, err := w.s.st.GetMapperDataForWatchLifeSuspendedStatus(ctx, relUUID, w.appID)
-		if errors.Is(err, relationerrors.ApplicationNotFoundForRelation) {
-			relationsIgnored.Add(relUUID.String())
-			continue
-		} else if errors.Is(err, relationerrors.RelationNotFound) {
-			delete(w.currentRelations, relUUID)
-			continue
-		} else if err != nil {
-			return nil, errors.Capture(err)
-		}
-
-		// If this is a known relation where neither the Life nor
-		// Suspended value have changed, do not notify.
-		currentRelationData, ok := w.currentRelations[relUUID]
-		if ok && changedRelationData.Life == currentRelationData.Life &&
-			changedRelationData.Suspended == currentRelationData.Suspended {
-			continue
-		}
-
-		w.currentRelations[relUUID] = changedRelationData
-		key, err := corerelation.NewKey(changedRelationData.EndpointIdentifiers)
-		if err != nil {
-			return nil, errors.Capture(err)
-		}
-		changeEvents = append(changeEvents, newMaskedChangeIDEvent(change, key.String()))
+) (corerelation.Key, error) {
+	changedRelationData, err := w.s.st.GetMapperDataForWatchLifeSuspendedStatus(ctx, relUUID, w.appID)
+	if errors.Is(err, relationerrors.ApplicationNotFoundForRelation) {
+		relationsIgnored.Add(relUUID.String())
+		return nil, continueError
+	} else if errors.Is(err, relationerrors.RelationNotFound) {
+		delete(w.currentRelations, relUUID)
+		return nil, continueError
+	} else if err != nil {
+		return nil, errors.Capture(err)
 	}
 
-	return changeEvents, nil
+	// If this is a known relation where neither the Life nor
+	// Suspended value have changed, do not notify.
+	currentRelationData, ok := w.currentRelations[relUUID]
+	if ok && changedRelationData.Life == currentRelationData.Life &&
+		changedRelationData.Suspended == currentRelationData.Suspended {
+		return nil, continueError
+	}
+
+	w.currentRelations[relUUID] = changedRelationData
+	key, err := corerelation.NewKey(changedRelationData.EndpointIdentifiers)
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+	return key, nil
 }
 
 // subordinateLifeSuspendedStatusWatcher is the namespaceMapperWatcherMethods
@@ -288,6 +314,7 @@ func newSubordinateLifeSuspendedStatusWatcher(s *WatchableService, subordinateID
 		s:                s,
 		appID:            subordinateID,
 		currentRelations: make(map[corerelation.UUID]relation.RelationLifeSuspendedData),
+		processChange:    w.processChange,
 	}
 	// returns a set of relation keys if the life or suspended status has changed
 	// for any relation this application is part of.
@@ -295,98 +322,53 @@ func newSubordinateLifeSuspendedStatusWatcher(s *WatchableService, subordinateID
 	return w
 }
 
-// GetMapper returns a function which decides which relations
-// the watcher should notify on for future events.
-func (w *subordinateLifeSuspendedStatusWatcher) GetMapper() eventsource.Mapper {
-	// relationsIgnored is the set of relations which are not relevant to
-	// this unit. No need to evaluate them again.
-	relationsIgnored := set.NewStrings()
-	return func(ctx context.Context, changes []changestream.ChangeEvent) ([]changestream.ChangeEvent, error) {
-		ctx, span := trace.Start(ctx, trace.NameFromFunc())
-		defer span.End()
-
-		// If there are no changes, return no changes.
-		if len(changes) == 0 {
-			return nil, nil
-		}
-		changeEvents, err := w.filterChangeEvents(
-			ctx,
-			changes,
-			relationsIgnored,
-		)
-		if err != nil {
-			return nil, errors.Capture(err)
-		}
-		return changeEvents, nil
-	}
-}
-
-func (w *subordinateLifeSuspendedStatusWatcher) filterChangeEvents(
+func (w *subordinateLifeSuspendedStatusWatcher) processChange(
 	ctx context.Context,
-	changes []changestream.ChangeEvent,
+	relUUID corerelation.UUID,
 	relationsIgnored set.Strings,
-) ([]changestream.ChangeEvent, error) {
-	var changeEvents []changestream.ChangeEvent
-
-	// 2 tables can trigger and report the same relation. Data is gathered
-	// from both tables at once, ensure to only check the data and report
-	// a change once for each relation. It doesn't matter which table has
-	// changed for the notification as only the relation key is returned.
-	changedRelations := make(map[corerelation.UUID]changestream.ChangeEvent)
-	for _, change := range changes {
-		changed := change.Changed()
-		if relationsIgnored.Contains(changed) {
-			continue
-		}
-		relUUID := corerelation.UUID(changed)
-		changedRelations[relUUID] = change
+) (corerelation.Key, error) {
+	changedRelationData, err := w.s.st.GetMapperDataForWatchLifeSuspendedStatus(ctx, relUUID, w.appID)
+	if errors.Is(err, relationerrors.ApplicationNotFoundForRelation) {
+		relationsIgnored.Add(relUUID.String())
+		return nil, continueError
+	} else if errors.Is(err, relationerrors.RelationNotFound) {
+		delete(w.currentRelations, relUUID)
+		return nil, continueError
+	} else if err != nil {
+		return nil, errors.Capture(err)
 	}
 
-	for relUUID, change := range changedRelations {
-		changedRelationData, err := w.s.st.GetMapperDataForWatchLifeSuspendedStatus(ctx, relUUID, w.appID)
-		if errors.Is(err, relationerrors.ApplicationNotFoundForRelation) {
-			relationsIgnored.Add(relUUID.String())
-			continue
-		} else if errors.Is(err, relationerrors.RelationNotFound) {
-			delete(w.currentRelations, relUUID)
-			continue
-		} else if err != nil {
-			return nil, errors.Capture(err)
-		}
+	key, err := corerelation.NewKey(changedRelationData.EndpointIdentifiers)
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
 
-		key, err := corerelation.NewKey(changedRelationData.EndpointIdentifiers)
-		if err != nil {
-			return nil, errors.Capture(err)
-		}
-
-		// If this is a known relation where neither the Life nor
-		// Suspended value have changed, do not notify.
-		currentRelationData, ok := w.currentRelations[relUUID]
-		if ok && (changedRelationData.Life != currentRelationData.Life ||
-			changedRelationData.Suspended != currentRelationData.Suspended) {
-			w.currentRelations[relUUID] = changedRelationData
-			changeEvents = append(changeEvents, newMaskedChangeIDEvent(change, key.String()))
-			continue
-		} else if ok {
-			// This relation has been seen before, however neither life
-			// has changed nor has its suspended status changed.
-			continue
-		}
-
-		// There is a new relation, check whether to send a notification.
-		send, err := w.watchNewRelation(ctx, relUUID)
-		if err != nil {
-			return nil, errors.Capture(err)
-		} else if !send {
-			relationsIgnored.Add(relUUID.String())
-			continue
-		}
-
+	// If this is a known relation where neither the Life nor
+	// Suspended value have changed, do not notify.
+	currentRelationData, ok := w.currentRelations[relUUID]
+	if ok && (changedRelationData.Life != currentRelationData.Life ||
+		changedRelationData.Suspended != currentRelationData.Suspended) {
 		w.currentRelations[relUUID] = changedRelationData
-		changeEvents = append(changeEvents, newMaskedChangeIDEvent(change, key.String()))
+		//changeEvents = append(changeEvents, newMaskedChangeIDEvent(change, key.String()))
+		//continue
+		return key, nil
+	} else if ok {
+		// This relation has been seen before, however neither life
+		// has changed nor has its suspended status changed.
+		return nil, continueError
 	}
 
-	return changeEvents, nil
+	// There is a new relation, check whether to send a notification.
+	send, err := w.watchNewRelation(ctx, relUUID)
+	if err != nil {
+		return nil, errors.Capture(err)
+	} else if !send {
+		relationsIgnored.Add(relUUID.String())
+		return nil, continueError
+	}
+
+	w.currentRelations[relUUID] = changedRelationData
+	return key, nil
 }
 
 // watchNewRelation returns true if the filterChangeEvents
