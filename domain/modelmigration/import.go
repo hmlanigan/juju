@@ -74,8 +74,11 @@ func ImportOperations(
 	modelconfig.RegisterImport(coordinator, modelDefaultsProvider, logger.Child("modelconfig"))
 	access.RegisterImport(coordinator, logger.Child("access"))
 	machine.RegisterImport(coordinator, clock, logger.Child("machine"))
+	// spaces must be imported before applications.
 	network.RegisterImport(coordinator, logger.Child("network"))
 	application.RegisterImport(coordinator, storageRegistryGetter, clock, logger.Child("application"))
+	// link layer devices require both machines and applications.
+	network.RegisterLinkLayerImport(coordinator, logger.Child("linklayer"))
 	agentpassword.RegisterImport(coordinator)
 	relation.RegisterImport(coordinator, clock, logger.Child("relation"))
 	status.RegisterImport(coordinator, clock, logger.Child("status"))

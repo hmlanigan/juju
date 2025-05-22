@@ -11,11 +11,9 @@ import (
 	"github.com/juju/juju/core/logger"
 	"github.com/juju/juju/core/modelmigration"
 	corenetwork "github.com/juju/juju/core/network"
-	"github.com/juju/juju/domain/network/internal"
 	"github.com/juju/juju/domain/network/service"
 	"github.com/juju/juju/domain/network/state"
 	"github.com/juju/juju/internal/errors"
-	"github.com/juju/juju/internal/uuid"
 )
 
 // Coordinator is the interface that is used to add operations to a migration.
@@ -39,24 +37,11 @@ type ImportService interface {
 	AddSubnet(ctx context.Context, args corenetwork.SubnetInfo) (corenetwork.Id, error)
 }
 
-// MigrationService defines methods needed to import and export
-// link layer devices as part of model migration.
-type MigrationService interface {
-	// ImportLinkLayerDevices imports the given link layer device data into
-	// the model.
-	ImportLinkLayerDevices(ctx context.Context, data []internal.ImportLinkLayerDevice) error
-
-	// DeleteImportedLinkLayerDevices removes all link layer device data
-	// imported via the ImportLinkLayerDevices method.
-	DeleteImportedLinkLayerDevices(ctx context.Context) error
-}
-
 type importOperation struct {
 	modelmigration.BaseOperation
 
-	importService    ImportService
-	migrationService MigrationService
-	logger           logger.Logger
+	importService ImportService
+	logger        logger.Logger
 }
 
 // Name returns the name of this operation.
@@ -66,26 +51,20 @@ func (i *importOperation) Name() string {
 
 // Setup implements Operation.
 func (i *importOperation) Setup(scope modelmigration.Scope) error {
-	st := state.NewState(scope.ModelDB(), i.logger)
 	i.importService = service.NewService(
-		st,
+		state.NewState(scope.ModelDB(), i.logger),
 		i.logger,
 	)
-	i.migrationService = service.NewMigrationService(st, i.logger)
 	return nil
 }
 
-// Execute the import of the spaces, subnets and link layer devices
-// contained in the model.
+// Execute the import of the spaces and subnets contained in the model.
 func (i *importOperation) Execute(ctx context.Context, model description.Model) error {
 	spaceIDsMap, err := i.importSpaces(ctx, model.Spaces())
 	if err != nil {
 		return errors.Capture(err)
 	}
 	if err := i.importSubnets(ctx, model.Subnets(), spaceIDsMap); err != nil {
-		return errors.Capture(err)
-	}
-	if err := i.importLinkLayerDevices(ctx, model.LinkLayerDevices()); err != nil {
 		return errors.Capture(err)
 	}
 	return nil
@@ -96,14 +75,6 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 func (i *importOperation) Rollback(ctx context.Context, model description.Model) error {
 	// TODO: 21-May-2025 hml
 	// Implement rollback for spaces and subnets.
-
-	if len(model.LinkLayerDevices()) == 0 {
-		return nil
-	}
-	err := i.migrationService.DeleteImportedLinkLayerDevices(ctx)
-	if err != nil {
-		return errors.Errorf("link layer device import rollback failed: %w", err)
-	}
 	return nil
 }
 
@@ -169,63 +140,4 @@ func (i *importOperation) importSubnets(
 		}
 	}
 	return nil
-}
-
-func (i *importOperation) importLinkLayerDevices(ctx context.Context, modelLLD []description.LinkLayerDevice) error {
-	if len(modelLLD) == 0 {
-		return nil
-	}
-	data, err := i.transformLinkLayerDevices(modelLLD)
-	if err != nil {
-		return err
-	}
-	if err := i.migrationService.ImportLinkLayerDevices(ctx, data); err != nil {
-		return errors.Errorf("importing link layer devices: %w", err)
-	}
-	return nil
-}
-
-func (i *importOperation) transformLinkLayerDevices(modelLLD []description.LinkLayerDevice) ([]internal.ImportLinkLayerDevice, error) {
-	data := make([]internal.ImportLinkLayerDevice, len(modelLLD))
-
-	for i, lld := range modelLLD {
-		var (
-			mac        *string
-			mtu        *int64
-			providerID *string
-		)
-		if lld.ProviderID() != "" {
-			providerID = ptr(lld.ProviderID())
-		}
-		if lld.MTU() > 0 {
-			mtu = ptr(int64(lld.MTU()))
-		}
-		if lld.MACAddress() != "" {
-			mac = ptr(lld.MACAddress())
-		}
-		lldUUID, err := uuid.NewUUID()
-		if err != nil {
-			return nil, errors.Errorf("creating UUID for link layer device %q", lld.Name())
-		}
-		data[i] = internal.ImportLinkLayerDevice{
-			UUID:             lldUUID.String(),
-			Name:             lld.Name(),
-			MachineID:        lld.MachineID(),
-			MTU:              mtu,
-			MACAddress:       mac,
-			ProviderID:       providerID,
-			Type:             corenetwork.LinkLayerDeviceType(lld.Type()),
-			VirtualPortType:  corenetwork.VirtualPortType(lld.VirtualPortType()),
-			IsAutoStart:      lld.IsAutoStart(),
-			IsEnabled:        lld.IsUp(),
-			ParentDeviceName: lld.ParentName(),
-		}
-	}
-
-	return data, nil
-}
-
-// ptr returns a reference to a copied value of type T.
-func ptr[T any](i T) *T {
-	return &i
 }
