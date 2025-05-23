@@ -29,6 +29,10 @@ func RegisterLinkLayerImport(coordinator Coordinator, logger logger.Logger) {
 // MigrationService defines methods needed to import and export
 // link layer devices as part of model migration.
 type MigrationService interface {
+	// ImportCloudServicesForApplications imports the cloud service addresses
+	// for a single application.
+	ImportCloudServicesForApplications(ctx context.Context, arg internal.ImportApplicationCloudService) error
+
 	// ImportLinkLayerDevices imports the given link layer device data into
 	// the model.
 	ImportLinkLayerDevices(ctx context.Context, data []internal.ImportLinkLayerDevice) error
@@ -65,6 +69,9 @@ func (i *importLinkLayerOperation) Execute(ctx context.Context, model descriptio
 	if err := i.importLinkLayerDevices(ctx, model.LinkLayerDevices()); err != nil {
 		return errors.Capture(err)
 	}
+	if err := i.importCloudServices(ctx, model.Applications()); err != nil {
+		return errors.Capture(err)
+	}
 	return nil
 }
 
@@ -91,6 +98,26 @@ func (i *importLinkLayerOperation) importLinkLayerDevices(ctx context.Context, m
 	}
 	if err := i.migrationService.ImportLinkLayerDevices(ctx, data); err != nil {
 		return errors.Errorf("importing link layer devices: %w", err)
+	}
+	return nil
+}
+
+func (i *importLinkLayerOperation) importCloudServices(ctx context.Context, modelApps []description.Application) error {
+	if len(modelApps) == 0 {
+		return nil
+	}
+
+	for _, app := range modelApps {
+		data, err := i.transformCloudServices(app.Name(), app.CloudService())
+		if errors.Is(err, continueError) {
+			continue
+		} else if err != nil {
+			return err
+		}
+
+		if err := i.migrationService.ImportCloudServicesForApplications(ctx, data); err != nil {
+			return errors.Errorf("importing link layer devices: %w", err)
+		}
 	}
 	return nil
 }
@@ -132,6 +159,50 @@ func (i *importLinkLayerOperation) transformLinkLayerDevices(modelLLD []descript
 		}
 	}
 
+	return data, nil
+}
+
+// continueError indicates that the caller should continue in the
+// loop rather than error or assume the happy case.
+const continueError = errors.ConstError("continue")
+
+func (i *importLinkLayerOperation) transformCloudServices(
+	appName string,
+	cloudS description.CloudService,
+) (internal.ImportApplicationCloudService, error) {
+	addrsIn := cloudS.Addresses()
+	if len(addrsIn) == 0 {
+		return internal.ImportApplicationCloudService{}, continueError
+	}
+	var providerID *string
+	if cloudS.ProviderId() != "" {
+		providerID = ptr(cloudS.ProviderId())
+	}
+	data := internal.ImportApplicationCloudService{
+		Name:       appName,
+		ProviderID: providerID,
+		Addresses:  make([]internal.ImportCloudServiceAddress, len(addrsIn)),
+	}
+	for i, addr := range addrsIn {
+		addrUUID, err := uuid.NewUUID()
+		if err != nil {
+			return internal.ImportApplicationCloudService{}, errors.Errorf("creating UUID for cloud service address %q", appName)
+		}
+		deviceUUID, err := uuid.NewUUID()
+		if err != nil {
+			return internal.ImportApplicationCloudService{}, errors.Errorf("creating UUID for link layer device %q", appName)
+		}
+		csAddr := internal.ImportCloudServiceAddress{
+			UUID:       addrUUID.String(),
+			DeviceUUID: deviceUUID.String(),
+			Value:      addr.Value(),
+			Type:       corenetwork.AddressType(addr.Type()),
+			Scope:      corenetwork.Scope(addr.Scope()),
+			Origin:     corenetwork.Origin(addr.Origin()),
+			SpaceID:    addr.SpaceID(),
+		}
+		data.Addresses[i] = csAddr
+	}
 	return data, nil
 }
 

@@ -320,6 +320,44 @@ func (c *MockMigrationServiceDeleteImportedLinkLayerDevicesCall) DoAndReturn(f f
 	return c
 }
 
+// ImportCloudServicesForApplications mocks base method.
+func (m *MockMigrationService) ImportCloudServicesForApplications(arg0 context.Context, arg1 internal.ImportApplicationCloudService) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ImportCloudServicesForApplications", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ImportCloudServicesForApplications indicates an expected call of ImportCloudServicesForApplications.
+func (mr *MockMigrationServiceMockRecorder) ImportCloudServicesForApplications(arg0, arg1 any) *MockMigrationServiceImportCloudServicesForApplicationsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImportCloudServicesForApplications", reflect.TypeOf((*MockMigrationService)(nil).ImportCloudServicesForApplications), arg0, arg1)
+	return &MockMigrationServiceImportCloudServicesForApplicationsCall{Call: call}
+}
+
+// MockMigrationServiceImportCloudServicesForApplicationsCall wrap *gomock.Call
+type MockMigrationServiceImportCloudServicesForApplicationsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockMigrationServiceImportCloudServicesForApplicationsCall) Return(arg0 error) *MockMigrationServiceImportCloudServicesForApplicationsCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockMigrationServiceImportCloudServicesForApplicationsCall) Do(f func(context.Context, internal.ImportApplicationCloudService) error) *MockMigrationServiceImportCloudServicesForApplicationsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockMigrationServiceImportCloudServicesForApplicationsCall) DoAndReturn(f func(context.Context, internal.ImportApplicationCloudService) error) *MockMigrationServiceImportCloudServicesForApplicationsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // ImportLinkLayerDevices mocks base method.
 func (m *MockMigrationService) ImportLinkLayerDevices(arg0 context.Context, arg1 []internal.ImportLinkLayerDevice) error {
 	m.ctrl.T.Helper()

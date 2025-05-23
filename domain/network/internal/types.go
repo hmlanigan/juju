@@ -23,3 +23,25 @@ type ImportLinkLayerDevice struct {
 	Type             corenetwork.LinkLayerDeviceType
 	VirtualPortType  corenetwork.VirtualPortType
 }
+
+// ImportLinkLayerDevice represents a physical or virtual
+// network interface and its IP addresses.
+type ImportApplicationCloudService struct {
+	Name       string
+	ProviderID *string
+	Addresses  []ImportCloudServiceAddress
+}
+
+// ImportLinkLayerDevice represents a physical or virtual
+// network interface and its IP addresses.
+type ImportCloudServiceAddress struct {
+	// UUID is the ip address uuid
+	UUID string
+	// DeviceUUID is the link layer device uuid.
+	DeviceUUID string
+	Value      string
+	Type       corenetwork.AddressType
+	Scope      corenetwork.Scope
+	Origin     corenetwork.Origin
+	SpaceID    string
+}
