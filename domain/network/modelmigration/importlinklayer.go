@@ -170,8 +170,8 @@ func (i *importLinkLayerOperation) transformCloudServices(
 	appName string,
 	cloudS description.CloudService,
 ) (internal.ImportApplicationCloudService, error) {
-	addrsIn := cloudS.Addresses()
-	if len(addrsIn) == 0 {
+	addrs := cloudS.Addresses()
+	if len(addrs) == 0 {
 		return internal.ImportApplicationCloudService{}, continueError
 	}
 	var providerID *string
@@ -181,9 +181,9 @@ func (i *importLinkLayerOperation) transformCloudServices(
 	data := internal.ImportApplicationCloudService{
 		Name:       appName,
 		ProviderID: providerID,
-		Addresses:  make([]internal.ImportCloudServiceAddress, len(addrsIn)),
+		Addresses:  make([]internal.ImportCloudServiceAddress, len(addrs)),
 	}
-	for i, addr := range addrsIn {
+	for i, addr := range addrs {
 		addrUUID, err := uuid.NewUUID()
 		if err != nil {
 			return internal.ImportApplicationCloudService{}, errors.Errorf("creating UUID for cloud service address %q", appName)
