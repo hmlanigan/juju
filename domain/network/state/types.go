@@ -537,8 +537,8 @@ type machineInterfaceRow struct {
 	IsShadow          sql.NullBool   `db:"is_shadow"`
 }
 
-type machineNameNetNode struct {
-	MachineName string `db:"name"`
+type nameNetNode struct {
+	Name        string `db:"name"`
 	NetNodeUUID string `db:"net_node_uuid"`
 }
 

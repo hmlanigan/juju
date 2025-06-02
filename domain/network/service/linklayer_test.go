@@ -4,6 +4,8 @@
 package service
 
 import (
+	"testing"
+
 	"github.com/juju/tc"
 	"go.uber.org/mock/gomock"
 
@@ -17,7 +19,9 @@ type linkLayerSuite struct {
 	st *MockState
 }
 
-var _ = tc.Suite(&linkLayerSuite{})
+func TestLinkLayerSuite(t *testing.T) {
+	tc.Run(t, &linkLayerSuite{})
+}
 
 func (s *linkLayerSuite) TestImportLinkLayerDevices(c *tc.C) {
 	// Arrange

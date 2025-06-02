@@ -119,6 +119,13 @@ type LinkLayerDeviceState interface {
 	// method.
 	DeleteImportedLinkLayerDevices(ctx context.Context) error
 
+	// GetNetNodeUUIDByApplicationName returns the net node UUID for the named
+	// application.
+	//
+	// If the application does not exist an error satisfying
+	// [applicationerrors.ApplicationNotFound] will be returned.
+	GetNetNodeUUIDByApplicationName(ctx context.Context, name string) (string, error)
+
 	// ImportLinkLayerDevices adds link layer devices into the model as part
 	// of the migration import process.
 	ImportLinkLayerDevices(ctx context.Context, input []internal.ImportLinkLayerDevice) error

@@ -38,10 +38,11 @@ type ImportCloudServiceAddress struct {
 	// UUID is the ip address uuid
 	UUID string
 	// DeviceUUID is the link layer device uuid.
-	DeviceUUID string
-	Value      string
-	Type       corenetwork.AddressType
-	Scope      corenetwork.Scope
-	Origin     corenetwork.Origin
-	SpaceID    string
+	DeviceUUID  string
+	NetNodeUUID string
+	Value       string
+	Type        corenetwork.AddressType
+	Scope       corenetwork.Scope
+	Origin      corenetwork.Origin
+	SpaceID     string
 }

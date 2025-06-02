@@ -26,18 +26,24 @@ func (s *MigrationService) ImportCloudServicesForApplications(
 	ctx, span := trace.Start(ctx, trace.NameFromFunc())
 	defer span.End()
 
+	netNodeUUID, err := s.st.GetNetNodeUUIDByApplicationName(ctx, arg.Name)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
 	// Get application uuid
 	// Get net node uuid for application.
 
 	// ip_address
 	// link_layer_device - UUID at import.
 	// provider_ip_address???? in theory, the provider id can have multiple addresses.
+	// k8s service row - contains the provider_id (part of application)?
 
 	// Q: why does ip_address have a device_uuid AND a net_node_uuid? - each net node can have multipl
 	// lld, so which lld/device is this address linked to also. but if the device_uuid why net_node_uuid?
 	// Q: what to do with the space id?
 	// Q: where does the config_type come from? - set to unknown during migration
-	return nil
+	return s.st.ImportCloudServices(ctx, arg, netNodeUUID)
 }
 
 // ImportLinkLayerDevices is part of the [modelmigration.MigrationService]

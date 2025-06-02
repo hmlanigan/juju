@@ -11,6 +11,7 @@ import (
 	"github.com/canonical/sqlair"
 	"github.com/juju/collections/transform"
 
+	applicationerrors "github.com/juju/juju/domain/application/errors"
 	"github.com/juju/juju/domain/network/internal"
 	"github.com/juju/juju/internal/errors"
 )
@@ -44,6 +45,45 @@ func (st *State) DeleteImportedLinkLayerDevices(ctx context.Context) error {
 		return nil
 	})
 	return errors.Capture(err)
+}
+
+// GetNetNodeUUIDByApplicationName returns the net node UUID for the named
+// application.
+//
+// HEATHER: an application doesn't have a net_node - only the units
+// and the k8s_service do.
+//
+// If the application does not exist an error satisfying
+// [applicationerrors.ApplicationNotFound] will be returned.
+func (st *State) GetNetNodeUUIDByApplicationName(ctx context.Context, name string) (string, error) {
+	db, err := st.DB()
+	if err != nil {
+		return "", errors.Capture(err)
+	}
+
+	appNetNodeStmt, err := st.Prepare(`
+SELECT net_node_uuid AS &nameNetNode.*
+FROM   application
+WHERE  name = $nameNetNode.name
+`, nameNetNode{})
+	if err != nil {
+		return "", errors.Capture(err)
+	}
+
+	var nodeUUID nameNetNode
+	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		err = tx.Query(ctx, appNetNodeStmt, name).Get(&nodeUUID)
+		if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+			return errors.Capture(err)
+		} else if errors.Is(err, sqlair.ErrNoRows) {
+			return errors.Errorf("%w: %s", applicationerrors.ApplicationNotFound, name)
+		}
+		return nil
+	}); err != nil {
+		return "", errors.Capture(err)
+	}
+
+	return nodeUUID.NetNodeUUID, nil
 }
 
 // ImportLinkLayerDevices is part of the [service.LinkLayerDeviceState]
@@ -218,15 +258,15 @@ func (st *State) AllMachinesAndNetNodes(ctx context.Context) (map[string]string,
 		return nil, errors.Capture(err)
 	}
 	query := `
-SELECT &machineNameNetNode.*
+SELECT &nameNetNode.*
 FROM   machine
 `
-	stmt, err := st.Prepare(query, machineNameNetNode{})
+	stmt, err := st.Prepare(query, nameNetNode{})
 	if err != nil {
 		return nil, errors.Capture(err)
 	}
 
-	var results []machineNameNetNode
+	var results []nameNetNode
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		if err := tx.Query(ctx, stmt).GetAll(&results); err != nil {
 			if errors.Is(err, sqlair.ErrNoRows) {
@@ -240,8 +280,8 @@ FROM   machine
 		return nil, errors.Capture(err)
 	}
 
-	mapToNetNode := transform.SliceToMap(results, func(in machineNameNetNode) (string, string) {
-		return in.MachineName, in.NetNodeUUID
+	mapToNetNode := transform.SliceToMap(results, func(in nameNetNode) (string, string) {
+		return in.Name, in.NetNodeUUID
 	})
 
 	return mapToNetNode, nil
