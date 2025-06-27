@@ -422,10 +422,10 @@ WHERE controller_id = $controllerID.controller_id
 	return decodeAPIAddresses(result), nil
 }
 
-// GetAllAPIAddressesByControllerIDForAgents returns a map of controller IDs to their API
-// addresses that are available for agents. The map is keyed by controller ID,
-// and the values are slices of strings representing the API addresses for each
-// controller node.
+// GetAllAPIAddressesByControllerIDForAgents returns a map of controller IDs
+// to their API addresses that are available for agents. The map is keyed by
+// controller ID, and the values are slices of strings representing the API
+// addresses for each controller node.
 func (st *State) GetAllAPIAddressesByControllerIDForAgents(ctx context.Context) (map[string][]string, error) {
 	db, err := st.DB()
 	if err != nil {
@@ -461,6 +461,41 @@ WHERE is_agent = true
 		return nil, errors.Errorf("getting all api addresses for controller nodes: %w", err)
 	}
 	return result, nil
+}
+
+// GetAllAPIAddressesByControllerIDForClients returns a map of controller IDs
+// to their API addresses that are available for clients. The map is keyed by
+// controller ID, and the values are slices of strings representing the API
+// addresses for each controller node.
+func (st *State) GetAllAPIAddressesByControllerIDForClients(ctx context.Context) (map[string][]string, error) {
+	db, err := st.DB()
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	stmt, err := st.Prepare(`
+SELECT &controllerAPIAddress.* 
+FROM controller_api_address
+`, controllerAPIAddress{})
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	var result []controllerAPIAddress
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		err = tx.Query(ctx, stmt).GetAll(&result)
+		if errors.Is(err, sqlair.ErrNoRows) {
+			return controllernodeerrors.EmptyAPIAddresses
+		} else if err != nil {
+			return errors.Errorf("getting all api addresses for controller nodes: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	return decodeAllAPIAddresses(result), nil
 }
 
 // GetAllAPIAddressesWithScopeForAgents returns all APIAddresses available for

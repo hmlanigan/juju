@@ -198,6 +198,45 @@ func (c *MockStateGetAllAPIAddressesByControllerIDForAgentsCall) DoAndReturn(f f
 	return c
 }
 
+// GetAllAPIAddressesByControllerIDForClients mocks base method.
+func (m *MockState) GetAllAPIAddressesByControllerIDForClients(arg0 context.Context) (map[string][]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllAPIAddressesByControllerIDForClients", arg0)
+	ret0, _ := ret[0].(map[string][]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllAPIAddressesByControllerIDForClients indicates an expected call of GetAllAPIAddressesByControllerIDForClients.
+func (mr *MockStateMockRecorder) GetAllAPIAddressesByControllerIDForClients(arg0 any) *MockStateGetAllAPIAddressesByControllerIDForClientsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllAPIAddressesByControllerIDForClients", reflect.TypeOf((*MockState)(nil).GetAllAPIAddressesByControllerIDForClients), arg0)
+	return &MockStateGetAllAPIAddressesByControllerIDForClientsCall{Call: call}
+}
+
+// MockStateGetAllAPIAddressesByControllerIDForClientsCall wrap *gomock.Call
+type MockStateGetAllAPIAddressesByControllerIDForClientsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockStateGetAllAPIAddressesByControllerIDForClientsCall) Return(arg0 map[string][]string, arg1 error) *MockStateGetAllAPIAddressesByControllerIDForClientsCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockStateGetAllAPIAddressesByControllerIDForClientsCall) Do(f func(context.Context) (map[string][]string, error)) *MockStateGetAllAPIAddressesByControllerIDForClientsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockStateGetAllAPIAddressesByControllerIDForClientsCall) DoAndReturn(f func(context.Context) (map[string][]string, error)) *MockStateGetAllAPIAddressesByControllerIDForClientsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetAllAPIAddressesWithScopeForAgents mocks base method.
 func (m *MockState) GetAllAPIAddressesWithScopeForAgents(arg0 context.Context) ([]controllernode.APIAddresses, error) {
 	m.ctrl.T.Helper()

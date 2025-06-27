@@ -73,11 +73,17 @@ type State interface {
 	// controller node.
 	GetAPIAddresses(ctx context.Context, ctrlID string) ([]string, error)
 
-	// GetAllAPIAddressesByControllerIDForAgents returns a map of controller IDs to their API
-	// addresses that are available for agents. The map is keyed by controller
-	// ID, and the values are slices of strings representing the API addresses
-	// for each controller node.
+	// GetAllAPIAddressesByControllerIDForAgents returns a map of controller IDs
+	// to their API addresses that are available for agents. The map is keyed by
+	// controller ID, and the values are slices of strings representing the API
+	// addresses for each controller node.
 	GetAllAPIAddressesByControllerIDForAgents(ctx context.Context) (map[string][]string, error)
+
+	// GetAllAPIAddressesByControllerIDForClients returns a map of controller IDs
+	// to their API addresses that are available for clients. The map is keyed by
+	// controller ID, and the values are slices of strings representing the API
+	// addresses for each controller node.
+	GetAllAPIAddressesByControllerIDForClients(ctx context.Context) (map[string][]string, error)
 
 	// GetAPIAddressesForAgents returns the list of API address strings including
 	// port for the provided controller node that are available for agents.
@@ -252,12 +258,20 @@ func (s *Service) GetAPIAddresses(ctx context.Context, nodeID string) ([]string,
 	return s.st.GetAPIAddresses(ctx, nodeID)
 }
 
-// GetAllAPIAddressesByControllerIDForAgents returns a map of controller IDs to their API
-// addresses that are available for agents. The map is keyed by controller ID,
-// and the values are slices of strings representing the API addresses for each
-// controller node.
+// GetAllAPIAddressesByControllerIDForAgents returns a map of controller IDs
+// to their API addresses that are available for agents. The map is keyed by
+// controller ID, and the values are slices of strings representing the API
+// addresses for each controller node.
 func (s *Service) GetAllAPIAddressesByControllerIDForAgents(ctx context.Context) (map[string][]string, error) {
 	return s.st.GetAllAPIAddressesByControllerIDForAgents(ctx)
+}
+
+// GetAllAPIAddressesByControllerIDForClients returns a map of controller IDs
+// to their API addresses that are available for clients. The map is keyed by
+// controller ID, and the values are slices of strings representing the API
+// addresses for each controller node.
+func (s *Service) GetAllAPIAddressesByControllerIDForClients(ctx context.Context) (map[string][]string, error) {
+	return s.st.GetAllAPIAddressesByControllerIDForClients(ctx)
 }
 
 // GetAllAPIAddressesForAgents returns a string slice of api

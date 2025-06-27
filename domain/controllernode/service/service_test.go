@@ -507,6 +507,41 @@ func (s *serviceSuite) TestGetAllAPIAddressesByControllerIDForAgentsError(c *tc.
 	c.Assert(err, tc.ErrorMatches, "boom")
 }
 
+func (s *serviceSuite) TestGetAllAPIAddressesByControllerIDForClients(c *tc.C) {
+	defer s.setupMocks(c).Finish()
+	svc := NewService(s.state, loggertesting.WrapCheckLog(c))
+
+	s.state.EXPECT().GetAllAPIAddressesByControllerIDForClients(gomock.Any()).Return(map[string][]string{
+		"1": {
+			"10.0.0.1:17070",
+		},
+		"2": {
+			"10.0.0.2:17070",
+		},
+	}, nil)
+
+	apiAddrs, err := svc.GetAllAPIAddressesByControllerIDForClients(c.Context())
+	c.Assert(err, tc.ErrorIsNil)
+	c.Check(apiAddrs, tc.DeepEquals, map[string][]string{
+		"1": {
+			"10.0.0.1:17070",
+		},
+		"2": {
+			"10.0.0.2:17070",
+		},
+	})
+}
+
+func (s *serviceSuite) TestGetAllAPIAddressesByControllerIDForClientsError(c *tc.C) {
+	defer s.setupMocks(c).Finish()
+	svc := NewService(s.state, loggertesting.WrapCheckLog(c))
+
+	s.state.EXPECT().GetAllAPIAddressesByControllerIDForClients(gomock.Any()).Return(nil, internalerrors.Errorf("boom"))
+
+	_, err := svc.GetAllAPIAddressesByControllerIDForClients(c.Context())
+	c.Assert(err, tc.ErrorMatches, "boom")
+}
+
 func (s *serviceSuite) TestGetAllAPIAddressesForAgents(c *tc.C) {
 	defer s.setupMocks(c).Finish()
 	svc := NewService(s.state, loggertesting.WrapCheckLog(c))
@@ -518,9 +553,9 @@ func (s *serviceSuite) TestGetAllAPIAddressesForAgents(c *tc.C) {
 				Address: "10.0.0.1:17070",
 				Scope:   network.ScopeCloudLocal,
 			}, { // This address not in result, machine local.
-				Address: "10.0.0.2:17070",
-				Scope:   network.ScopeMachineLocal,
-			},
+			Address: "10.0.0.2:17070",
+			Scope:   network.ScopeMachineLocal,
+		},
 		}, {
 			{
 				Address: "10.0.0.43:17070",
@@ -563,9 +598,9 @@ func (s *serviceSuite) TestGetAllNoProxyAPIAddressesForAgents(c *tc.C) {
 				Address: "42.1.2.4:17070",
 				Scope:   network.ScopeMachineLocal,
 			}, {
-				Address: "10.0.0.7:17070",
-				Scope:   network.ScopeCloudLocal,
-			},
+			Address: "10.0.0.7:17070",
+			Scope:   network.ScopeCloudLocal,
+		},
 		}, {
 			{
 				Address: "10.0.0.1:17070",
@@ -608,10 +643,10 @@ func (s *serviceSuite) TestGetAllAPIAddressesForClients(c *tc.C) {
 				IsAgent: true,
 				Scope:   network.ScopeCloudLocal,
 			}, {
-				Address: "10.0.0.2:17070",
-				IsAgent: false,
-				Scope:   network.ScopePublic,
-			},
+			Address: "10.0.0.2:17070",
+			IsAgent: false,
+			Scope:   network.ScopePublic,
+		},
 		}, {
 			{
 				Address: "10.0.0.34:17070",
