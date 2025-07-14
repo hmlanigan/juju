@@ -31,6 +31,7 @@ type controllerConfigSuite struct {
 	controllerConfigService   *mocks.MockControllerConfigService
 	controllerNodeService     *common.MockAPIAddressAccessor
 	externalControllerService *mocks.MockExternalControllerService
+	modelService              *common.MockModelService
 	ctrlConfigAPI             *common.ControllerConfigAPI
 }
 
@@ -45,7 +46,13 @@ func (s *controllerConfigSuite) setup(c *tc.C) *gomock.Controller {
 	s.controllerConfigService = mocks.NewMockControllerConfigService(ctrl)
 	s.controllerNodeService = common.NewMockAPIAddressAccessor(ctrl)
 	s.externalControllerService = mocks.NewMockExternalControllerService(ctrl)
-	s.ctrlConfigAPI = common.NewControllerConfigAPI(s.st, s.controllerConfigService, s.controllerNodeService, s.externalControllerService)
+	s.ctrlConfigAPI = common.NewControllerConfigAPI(
+		s.st,
+		s.controllerConfigService,
+		s.controllerNodeService,
+		s.externalControllerService,
+		s.modelService,
+	)
 
 	c.Cleanup(func() {
 		s.st = nil
@@ -53,6 +60,7 @@ func (s *controllerConfigSuite) setup(c *tc.C) *gomock.Controller {
 		s.controllerNodeService = nil
 		s.externalControllerService = nil
 		s.ctrlConfigAPI = nil
+		s.modelService = nil
 	})
 	return ctrl
 }
@@ -88,18 +96,10 @@ func (s *controllerConfigSuite) TestControllerConfigFetchError(c *tc.C) {
 	c.Assert(err, tc.ErrorMatches, "pow")
 }
 
-func (s *controllerConfigSuite) expectControllerInfo() {
-	addrs := []string{"192.168.1.1:17070"}
-	s.controllerNodeService.EXPECT().GetAllAPIAddressesForAgents(gomock.Any()).Return(addrs, nil)
-	s.controllerConfigService.EXPECT().ControllerConfig(gomock.Any()).Return(map[string]interface{}{
-		controller.CACertKey: testing.CACert,
-	}, nil)
-}
-
-func (s *controllerConfigSuite) TestControllerInfo(c *tc.C) {
+func (s *controllerConfigSuite) TestControllerInfoLocalModel(c *tc.C) {
 	defer s.setup(c).Finish()
 
-	s.st.EXPECT().ModelExists(testing.ModelTag.Id()).Return(true, nil)
+	s.modelService.EXPECT().CheckModelExists(c.Context(), testing.ModelTag.Id()).Return(true, nil)
 	s.expectControllerInfo()
 
 	results, err := s.ctrlConfigAPI.ControllerAPIInfoForModels(c.Context(), params.Entities{
@@ -108,6 +108,36 @@ func (s *controllerConfigSuite) TestControllerInfo(c *tc.C) {
 	c.Assert(results.Results, tc.HasLen, 1)
 	c.Assert(results.Results[0].Addresses, tc.DeepEquals, []string{"192.168.1.1:17070"})
 	c.Assert(results.Results[0].CACert, tc.Equals, testing.CACert)
+}
+
+func (s *controllerConfigSuite) TestControllerInfoExternalModel(c *tc.C) {
+	modelUUID := uuid.MustNewUUID().String()
+	info := crossmodel.ControllerInfo{
+		ControllerUUID: testing.ControllerTag.Id(),
+		Addrs:          []string{"192.168.1.1:12345"},
+		CACert:         testing.CACert,
+		ModelUUIDs:     []string{modelUUID},
+	}
+	s.externalControllerService.EXPECT().ControllerForModel(c.Context(), modelUUID).Return(&info, nil)
+
+	s.modelService.EXPECT().CheckModelExists(c.Context(), modelUUID).Return(false, nil)
+
+	controllerConfig := s.ctrlConfigAPI
+	results, err := controllerConfig.ControllerAPIInfoForModels(c.Context(), params.Entities{
+		Entities: []params.Entity{{Tag: names.NewModelTag(modelUUID).String()}}})
+
+	c.Assert(err, tc.ErrorIsNil)
+	c.Assert(results.Results, tc.HasLen, 1)
+	c.Assert(results.Results[0].Addresses, tc.DeepEquals, info.Addrs)
+	c.Assert(results.Results[0].CACert, tc.Equals, info.CACert)
+}
+
+func (s *controllerConfigSuite) expectControllerInfo() {
+	addrs := []string{"192.168.1.1:17070"}
+	s.controllerNodeService.EXPECT().GetAllAPIAddressesForAgents(gomock.Any()).Return(addrs, nil)
+	s.controllerConfigService.EXPECT().ControllerConfig(gomock.Any()).Return(map[string]interface{}{
+		controller.CACertKey: testing.CACert,
+	}, nil)
 }
 
 type controllerInfoSuite struct {
@@ -136,65 +166,20 @@ func (s *controllerInfoSuite) SetUpTest(c *tc.C) {
 	s.localModel = model
 }
 
-func (s *controllerInfoSuite) TestControllerInfoLocalModel(c *tc.C) {
-	domainServices := s.ControllerDomainServices(c)
-	controllerConfig := common.NewControllerConfigAPI(
-		s.localState,
-		domainServices.ControllerConfig(),
-		domainServices.ControllerNode(),
-		domainServices.ExternalController(),
-	)
-	results, err := controllerConfig.ControllerAPIInfoForModels(c.Context(), params.Entities{
-		Entities: []params.Entity{{
-			Tag: names.NewModelTag(s.DefaultModelUUID.String()).String(),
-		}}})
-	c.Assert(err, tc.ErrorIsNil)
-	c.Assert(results.Results, tc.HasLen, 1)
-
-	// TODO: hml 18-06-2025
-	// rewrite this piece when APIHostPortsForClients changes made.
-	//systemState := s.ControllerModel(c).State()
-	//apiAddr, err := systemState.APIHostPortsForClients(testing.FakeControllerConfig())
-	//c.Assert(err, tc.ErrorIsNil)
-	//c.Assert(results.Results[0].Addresses, tc.HasLen, 1)
-	//c.Assert(results.Results[0].Addresses[0], tc.Equals, apiAddr[0][0].String())
-	//c.Assert(results.Results[0].CACert, tc.Equals, testing.CACert)
-}
-
-func (s *controllerInfoSuite) TestControllerInfoExternalModel(c *tc.C) {
-	modelUUID := uuid.MustNewUUID().String()
-	info := crossmodel.ControllerInfo{
-		ControllerUUID: testing.ControllerTag.Id(),
-		Addrs:          []string{"192.168.1.1:12345"},
-		CACert:         testing.CACert,
-		ModelUUIDs:     []string{modelUUID},
-	}
-	domainServices := s.ControllerDomainServices(c)
-	err := domainServices.ExternalController().UpdateExternalController(c.Context(), info)
-	c.Assert(err, tc.ErrorIsNil)
-
-	controllerConfig := common.NewControllerConfigAPI(
-		s.localState,
-		domainServices.ControllerConfig(),
-		domainServices.ControllerNode(),
-		domainServices.ExternalController(),
-	)
-	results, err := controllerConfig.ControllerAPIInfoForModels(c.Context(), params.Entities{
-		Entities: []params.Entity{{Tag: names.NewModelTag(modelUUID).String()}}})
-
-	c.Assert(err, tc.ErrorIsNil)
-	c.Assert(results.Results, tc.HasLen, 1)
-	c.Assert(results.Results[0].Addresses, tc.DeepEquals, info.Addrs)
-	c.Assert(results.Results[0].CACert, tc.Equals, info.CACert)
-}
-
 func (s *controllerInfoSuite) TestControllerInfoMigratedController(c *tc.C) {
+	ctrl := gomock.NewController(c)
+	defer ctrl.Finish()
+
+	modelService := common.NewMockModelService(ctrl)
+	modelService.EXPECT().CheckModelExists(gomock.Any(), gomock.Any()).Return(false, nil)
+
 	domainServices := s.ControllerDomainServices(c)
 	controllerConfig := common.NewControllerConfigAPI(
 		s.localState,
 		domainServices.ControllerConfig(),
 		domainServices.ControllerNode(),
 		domainServices.ExternalController(),
+		modelService,
 	)
 
 	// For the test to run properly with part of the model in mongo and
@@ -202,10 +187,10 @@ func (s *controllerInfoSuite) TestControllerInfoMigratedController(c *tc.C) {
 	// in both places for the test to work. Necessary after model config
 	// was move to the domain services.
 	model := s.localModel.State()
-
-	targetControllerTag := names.NewControllerTag(uuid.MustNewUUID().String())
 	defer model.Close()
 
+	targetControllerTag := names.NewControllerTag(uuid.MustNewUUID().String())
+	
 	// Migrate the model and delete it from the state
 	controllerIP := "1.2.3.4:5555"
 	mig, err := model.CreateMigration(state.MigrationSpec{
