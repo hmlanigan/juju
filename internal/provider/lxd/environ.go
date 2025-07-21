@@ -43,7 +43,6 @@ type environ struct {
 	environs.NoSpaceDiscoveryEnviron
 	environs.NoContainerAddressesEnviron
 	common.CredentialInvalidator
-	environs.NoLXDProfiler
 
 	cloud    environscloudspec.CloudSpec
 	provider *environProvider
