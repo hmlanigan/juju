@@ -361,12 +361,6 @@ func (env *environ) DeriveAvailabilityZones(
 	return []string{p.nodeName}, nil
 }
 
-// SupportsLXDProfiles indicates whether this environ supports
-// interacting with LXD Profiles.
-func (*environ) SupportsLXDProfiles() bool {
-	return true
-}
-
 // TODO: HML 2-apr-2019
 // When provisioner_task processProfileChanges() is
 // removed, maybe change to take an lxdprofile.ProfilePost as

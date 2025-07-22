@@ -67,7 +67,6 @@ func getMAASController(args gomaasapi.ControllerArgs) (gomaasapi.Controller, err
 
 type maasEnviron struct {
 	common.CredentialInvalidator
-	environs.NoLXDProfiler
 
 	name string
 	uuid string

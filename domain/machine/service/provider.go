@@ -199,11 +199,7 @@ func (s *ProviderService) UpdateLXDProfiles(ctx context.Context, modelName, mach
 	if err != nil {
 		return nil, errors.Errorf("getting provider: %w", err)
 	}
-
-	if !provider.SupportsLXDProfiles() {
-		s.logger.Tracef(ctx, "LXDProfiler not implemented by environ")
-		return nil, nil
-	}
+	// NOT supported error
 
 	profileArgs, err := s.Service.st.GetLXDProfilesForMachine(ctx, machineID)
 	if err != nil {
