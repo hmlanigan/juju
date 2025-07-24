@@ -24,8 +24,8 @@ type AuthInfo struct {
 	// helping with permission questions about the authed entity.
 	Delegator PermissionDelegator
 
-	// Entity is the user/machine/unit/etc that has authenticated.
-	Entity Entity
+	// Tag is the user/machine/unit/etc that has authenticated.
+	Tag names.Tag
 
 	// PermissionsFn is a function that can return the permissions associated
 	// with  the current AuthInfo. PermissionsFn should not be considered
@@ -138,5 +138,5 @@ func (a *AuthInfo) SubjectPermissions(ctx context.Context, subject permission.ID
 		return permission.NoAccess, fmt.Errorf("permissions delegator %w", errors.NotImplemented)
 	}
 
-	return a.Delegator.SubjectPermissions(ctx, a.Entity.Tag().Id(), subject)
+	return a.Delegator.SubjectPermissions(ctx, a.Tag.Id(), subject)
 }

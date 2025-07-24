@@ -9,12 +9,6 @@ import (
 	"github.com/juju/names/v6"
 )
 
-// Entity represents any entity that can be returned
-// by State.FindEntity. All entities have a tag.
-type Entity interface {
-	Tag() names.Tag
-}
-
 // Lifer represents an entity with a life.
 type Lifer interface {
 	Life() Life
@@ -26,7 +20,6 @@ type Lifer interface {
 // interface; for example UnitActor that implements this interface, and
 // takes a Unit and performs all these actions.
 type ActionReceiver interface {
-	Entity
 
 	// PrepareActionPayload returns the payload to use in creating an action for this receiver.
 	PrepareActionPayload(name string, payload map[string]interface{}, parallel *bool, executionGroup *string) (map[string]interface{}, bool, string, error)
@@ -60,16 +53,9 @@ type ActionReceiver interface {
 	RunningActions() ([]Action, error)
 }
 
-// GlobalEntity specifies entity.
-type GlobalEntity interface {
-	Tag() names.Tag
-}
-
 // Action represents  an instance of an action designated for a unit or machine
 // in the model.
 type Action interface {
-	Entity
-
 	// Id returns the local id of the Action.
 	Id() string
 

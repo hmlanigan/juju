@@ -95,7 +95,7 @@ func (ctxt *httpContext) authenticatedTagFromRequest(r *http.Request, kinds ...s
 	if !ok {
 		return nil, apiservererrors.ErrPerm
 	}
-	authTag := authInfo.Entity.Tag()
+	authTag := authInfo.Tag
 	if ok, err := checkPermissions(r.Context(), authTag, common.AuthAny(funcs...)); !ok {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ type tagKindAuthorizer []string
 
 // Authorize is part of the httpcontext.Authorizer interface.
 func (a tagKindAuthorizer) Authorize(_ context.Context, authInfo authentication.AuthInfo) error {
-	tagKind := authInfo.Entity.Tag().Kind()
+	tagKind := authInfo.Tag.Kind()
 	for _, kind := range a {
 		if tagKind == kind {
 			return nil
