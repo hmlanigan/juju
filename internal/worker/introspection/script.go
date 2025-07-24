@@ -142,10 +142,6 @@ juju_engine_report () {
   juju_agent depengine
 }
 
-juju_statepool_report () {
-  juju_agent statepool
-}
-
 juju_metrics () {
   juju_agent metrics
 }
@@ -227,7 +223,6 @@ if [ "$shell" = "bash" ]; then
   export -f juju_heap_profile
   export -f juju_engine_report
   export -f juju_metrics
-  export -f juju_statepool_report
   export -f juju_statetracker_report
   export -f juju_machine_lock
   export -f juju_unit_status

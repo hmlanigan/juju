@@ -539,11 +539,7 @@ func (a *MachineAgent) makeEngineCreator(
 				return nil
 			})
 		}
-
-		// statePoolReporter is an introspection.IntrospectionReporter,
-		// which is set to the current StatePool managed by the state
-		// tracker in controller agents.
-		var statePoolReporter statePoolIntrospectionReporter
+		
 		registerIntrospectionHandlers := func(handle func(path string, h http.Handler)) {
 			handle("/metrics/", promhttp.HandlerFor(a.prometheusRegistry, promhttp.HandlerOpts{}))
 		}
@@ -572,7 +568,6 @@ func (a *MachineAgent) makeEngineCreator(
 			ControllerLeaseDuration:           time.Minute,
 			TransactionPruneInterval:          time.Hour,
 			MachineLock:                       a.machineLock,
-			SetStatePool:                      statePoolReporter.Set,
 			RegisterIntrospectionHTTPHandlers: registerIntrospectionHandlers,
 			NewModelWorker:                    a.startModelWorkers,
 			MuxShutdownWait:                   1 * time.Minute,
@@ -603,7 +598,6 @@ func (a *MachineAgent) makeEngineCreator(
 		if err := addons.StartIntrospection(addons.IntrospectionConfig{
 			AgentDir:           agentConfig.Dir(),
 			Engine:             eng,
-			StatePoolReporter:  &statePoolReporter,
 			MachineLock:        a.machineLock,
 			PrometheusGatherer: a.prometheusRegistry,
 			WorkerFunc:         introspection.NewWorker,

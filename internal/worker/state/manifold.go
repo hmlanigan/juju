@@ -27,13 +27,6 @@ type ManifoldConfig struct {
 	DomainServicesName     string
 	OpenStatePool          func(context.Context, coreagent.Config, services.DomainServicesGetter) (*state.StatePool, error)
 	PingInterval           time.Duration
-
-	// SetStatePool is called with the state pool when it is created,
-	// and called again with nil just before the state pool is closed.
-	// This is used for publishing the state pool to the agent's
-	// introspection worker, which runs outside of the dependency
-	// engine; hence the manifold's Output cannot be relied upon.
-	SetStatePool func(*state.StatePool)
 }
 
 // Validate validates the manifold configuration.
@@ -49,9 +42,6 @@ func (config ManifoldConfig) Validate() error {
 	}
 	if config.OpenStatePool == nil {
 		return errors.NotValidf("nil OpenStatePool")
-	}
-	if config.SetStatePool == nil {
-		return errors.NotValidf("nil SetStatePool")
 	}
 	return nil
 }
@@ -111,7 +101,6 @@ func Manifold(config ManifoldConfig) dependency.Manifold {
 			w := &stateWorker{
 				stTracker:    stTracker,
 				pingInterval: pingInterval,
-				setStatePool: config.SetStatePool,
 			}
 			if err := catacomb.Invoke(catacomb.Plan{
 				Name: "state",

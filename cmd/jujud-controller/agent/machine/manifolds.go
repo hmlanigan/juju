@@ -215,11 +215,6 @@ type ManifoldsConfig struct {
 	// are pruned from the database.
 	TransactionPruneInterval time.Duration
 
-	// SetStatePool is used by the state worker for informing the agent of
-	// the StatePool that it creates, so we can pass it to the introspection
-	// worker running outside of the dependency engine.
-	SetStatePool func(*state.StatePool)
-
 	// RegisterIntrospectionHTTPHandlers is a function that calls the
 	// supplied function to register introspection HTTP handlers. The
 	// function will be passed a path and a handler; the function may
@@ -367,7 +362,6 @@ func commonManifolds(config ManifoldsConfig) dependency.Manifolds {
 			StateConfigWatcherName: stateConfigWatcherName,
 			DomainServicesName:     domainServicesName,
 			OpenStatePool:          config.OpenStatePool,
-			SetStatePool:           config.SetStatePool,
 		})),
 
 		// The api-config-watcher manifold monitors the API server

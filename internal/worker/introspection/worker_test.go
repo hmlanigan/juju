@@ -24,7 +24,6 @@ import (
 	"github.com/juju/juju/internal/testhelpers"
 	"github.com/juju/juju/internal/worker/introspection"
 	"github.com/juju/juju/juju/sockets"
-	_ "github.com/juju/juju/state"
 )
 
 type suite struct {
@@ -157,12 +156,6 @@ func (s *introspectionSuite) TestMissingDepEngineReporter(c *tc.C) {
 	response := s.call(c, "/depengine")
 	c.Assert(response.StatusCode, tc.Equals, http.StatusNotFound)
 	s.assertBody(c, response, "missing dependency engine reporter")
-}
-
-func (s *introspectionSuite) TestMissingStatePoolReporter(c *tc.C) {
-	response := s.call(c, "/statepool")
-	c.Assert(response.StatusCode, tc.Equals, http.StatusNotFound)
-	s.assertBody(c, response, `"State Pool" introspection not supported`)
 }
 
 func (s *introspectionSuite) TestMissingMachineLock(c *tc.C) {
