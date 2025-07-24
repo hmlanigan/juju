@@ -24,7 +24,6 @@ var ErrNoBackingVolume = errors.ConstError("filesystem has no backing volume")
 // backed by a volume, and managed by Juju; otherwise they are first-class
 // entities managed by a filesystem provider.
 type Filesystem interface {
-	GlobalEntity
 	Lifer
 	status.StatusGetter
 	status.StatusSetter

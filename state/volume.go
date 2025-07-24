@@ -16,7 +16,6 @@ import (
 
 // Volume describes a volume (disk, logical volume, etc.) in the model.
 type Volume interface {
-	GlobalEntity
 	Lifer
 	status.StatusGetter
 	status.StatusSetter
