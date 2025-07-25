@@ -7,6 +7,8 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/juju/names/v6"
+
 	"github.com/juju/juju/apiserver/facade"
 	"github.com/juju/juju/core/facades"
 	"github.com/juju/juju/core/model"
@@ -96,8 +98,11 @@ func makeFacade(
 	facadeVersions facades.FacadeVersions,
 ) (*API, error) {
 	auth := ctx.Auth()
-	st := ctx.State()
-	if err := checkAuth(stdCtx, auth, st); err != nil {
+	controllerTag, err := names.ParseControllerTag(ctx.ControllerUUID())
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+	if err := checkAuth(stdCtx, auth, controllerTag); err != nil {
 		return nil, err
 	}
 
