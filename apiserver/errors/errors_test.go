@@ -13,7 +13,6 @@ import (
 	"github.com/juju/errors"
 	"github.com/juju/names/v6"
 	"github.com/juju/tc"
-	jujutxn "github.com/juju/txn/v3"
 	"gopkg.in/macaroon.v2"
 
 	apiservererrors "github.com/juju/juju/apiserver/errors"
@@ -86,11 +85,6 @@ var errorTransformTests = []struct {
 	code:       params.CodeDead,
 	status:     http.StatusInternalServerError,
 	helperFunc: params.IsCodeDead,
-}, {
-	err:        jujutxn.ErrExcessiveContention,
-	code:       params.CodeExcessiveContention,
-	status:     http.StatusInternalServerError,
-	helperFunc: params.IsCodeExcessiveContention,
 }, {
 	err:        stateerrors.ErrUnitHasSubordinates,
 	code:       params.CodeUnitHasSubordinates,

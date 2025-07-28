@@ -405,7 +405,6 @@ func (w *SrvModelSummaryWatcher) translateMessages(messages []corewatcher.ModelS
 // srvSecretTriggerWatcher defines the API wrapping a SecretTriggerWatcher.
 type srvSecretTriggerWatcher struct {
 	watcherCommon
-	st      *state.State
 	watcher corewatcher.SecretTriggerWatcher
 }
 
@@ -424,7 +423,6 @@ func newSecretsTriggerWatcher(_ context.Context, context facade.ModelContext) (f
 	}
 	return &srvSecretTriggerWatcher{
 		watcherCommon: newWatcherCommon(context),
-		st:            context.State(),
 		watcher:       watcher,
 	}, nil
 }
