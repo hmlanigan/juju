@@ -314,7 +314,11 @@ func (a *admin) authenticate(ctx context.Context, modelExists bool, req params.L
 			return nil, fmt.Errorf("failed to authenticate request: %w", errors.Unauthorized)
 		}
 
-		if result.controllerMachineLogin && !a.root.state.IsController() {
+		modelInfo, err := a.root.DomainServices().ModelInfo().GetModelInfo(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if result.controllerMachineLogin && !modelInfo.IsControllerModel {
 			// We only need to run a pinger for controller machine
 			// agents when logging into the controller model.
 			startPinger = false
