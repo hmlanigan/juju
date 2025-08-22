@@ -85,13 +85,6 @@ type AccessService interface {
 	ReadUserAccessLevelForTarget(ctx context.Context, subject user.Name, target permission.ID) (permission.Access, error)
 }
 
-// PermissionService is the interface for the permission service.
-type PermissionService interface {
-	// AddUserPermission adds a user to the model with the given access.
-	// If the user already has the given access, this is a no-op.
-	AddUserPermission(ctx context.Context, username user.Name, access permission.Access) error
-}
-
 // Config represents configuration for the controlsocket worker.
 type Config struct {
 	// AccessService is the user access service for the model.
