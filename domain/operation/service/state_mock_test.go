@@ -13,7 +13,10 @@ import (
 	context "context"
 	reflect "reflect"
 
+	watcher "github.com/juju/juju/core/watcher"
+	eventsource "github.com/juju/juju/core/watcher/eventsource"
 	operation "github.com/juju/juju/domain/operation"
+	uuid "github.com/juju/juju/internal/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -79,6 +82,45 @@ func (c *MockStateCancelTaskCall) DoAndReturn(f func(context.Context, string) (o
 	return c
 }
 
+// GetIDsForAbortingTaskOfReceiver mocks base method.
+func (m *MockState) GetIDsForAbortingTaskOfReceiver(ctx context.Context, receiverUUID uuid.UUID) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetIDsForAbortingTaskOfReceiver", ctx, receiverUUID)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetIDsForAbortingTaskOfReceiver indicates an expected call of GetIDsForAbortingTaskOfReceiver.
+func (mr *MockStateMockRecorder) GetIDsForAbortingTaskOfReceiver(ctx, receiverUUID any) *MockStateGetIDsForAbortingTaskOfReceiverCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIDsForAbortingTaskOfReceiver", reflect.TypeOf((*MockState)(nil).GetIDsForAbortingTaskOfReceiver), ctx, receiverUUID)
+	return &MockStateGetIDsForAbortingTaskOfReceiverCall{Call: call}
+}
+
+// MockStateGetIDsForAbortingTaskOfReceiverCall wrap *gomock.Call
+type MockStateGetIDsForAbortingTaskOfReceiverCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockStateGetIDsForAbortingTaskOfReceiverCall) Return(arg0 []string, arg1 error) *MockStateGetIDsForAbortingTaskOfReceiverCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockStateGetIDsForAbortingTaskOfReceiverCall) Do(f func(context.Context, uuid.UUID) ([]string, error)) *MockStateGetIDsForAbortingTaskOfReceiverCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockStateGetIDsForAbortingTaskOfReceiverCall) DoAndReturn(f func(context.Context, uuid.UUID) ([]string, error)) *MockStateGetIDsForAbortingTaskOfReceiverCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetTask mocks base method.
 func (m *MockState) GetTask(ctx context.Context, taskID string) (operation.Task, *string, error) {
 	m.ctrl.T.Helper()
@@ -115,6 +157,150 @@ func (c *MockStateGetTaskCall) Do(f func(context.Context, string) (operation.Tas
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockStateGetTaskCall) DoAndReturn(f func(context.Context, string) (operation.Task, *string, error)) *MockStateGetTaskCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetTaskIDsByUUIDsFilteredByReceiverUUID mocks base method.
+func (m *MockState) GetTaskIDsByUUIDsFilteredByReceiverUUID(ctx context.Context, receiverUUID uuid.UUID, taskUUIDs []string) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTaskIDsByUUIDsFilteredByReceiverUUID", ctx, receiverUUID, taskUUIDs)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTaskIDsByUUIDsFilteredByReceiverUUID indicates an expected call of GetTaskIDsByUUIDsFilteredByReceiverUUID.
+func (mr *MockStateMockRecorder) GetTaskIDsByUUIDsFilteredByReceiverUUID(ctx, receiverUUID, taskUUIDs any) *MockStateGetTaskIDsByUUIDsFilteredByReceiverUUIDCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskIDsByUUIDsFilteredByReceiverUUID", reflect.TypeOf((*MockState)(nil).GetTaskIDsByUUIDsFilteredByReceiverUUID), ctx, receiverUUID, taskUUIDs)
+	return &MockStateGetTaskIDsByUUIDsFilteredByReceiverUUIDCall{Call: call}
+}
+
+// MockStateGetTaskIDsByUUIDsFilteredByReceiverUUIDCall wrap *gomock.Call
+type MockStateGetTaskIDsByUUIDsFilteredByReceiverUUIDCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockStateGetTaskIDsByUUIDsFilteredByReceiverUUIDCall) Return(arg0 []string, arg1 error) *MockStateGetTaskIDsByUUIDsFilteredByReceiverUUIDCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockStateGetTaskIDsByUUIDsFilteredByReceiverUUIDCall) Do(f func(context.Context, uuid.UUID, []string) ([]string, error)) *MockStateGetTaskIDsByUUIDsFilteredByReceiverUUIDCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockStateGetTaskIDsByUUIDsFilteredByReceiverUUIDCall) DoAndReturn(f func(context.Context, uuid.UUID, []string) ([]string, error)) *MockStateGetTaskIDsByUUIDsFilteredByReceiverUUIDCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// NamespaceForTaskAbortingWatcher mocks base method.
+func (m *MockState) NamespaceForTaskAbortingWatcher() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NamespaceForTaskAbortingWatcher")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// NamespaceForTaskAbortingWatcher indicates an expected call of NamespaceForTaskAbortingWatcher.
+func (mr *MockStateMockRecorder) NamespaceForTaskAbortingWatcher() *MockStateNamespaceForTaskAbortingWatcherCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NamespaceForTaskAbortingWatcher", reflect.TypeOf((*MockState)(nil).NamespaceForTaskAbortingWatcher))
+	return &MockStateNamespaceForTaskAbortingWatcherCall{Call: call}
+}
+
+// MockStateNamespaceForTaskAbortingWatcherCall wrap *gomock.Call
+type MockStateNamespaceForTaskAbortingWatcherCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockStateNamespaceForTaskAbortingWatcherCall) Return(arg0 string) *MockStateNamespaceForTaskAbortingWatcherCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockStateNamespaceForTaskAbortingWatcherCall) Do(f func() string) *MockStateNamespaceForTaskAbortingWatcherCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockStateNamespaceForTaskAbortingWatcherCall) DoAndReturn(f func() string) *MockStateNamespaceForTaskAbortingWatcherCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// MockWatcherFactory is a mock of WatcherFactory interface.
+type MockWatcherFactory struct {
+	ctrl     *gomock.Controller
+	recorder *MockWatcherFactoryMockRecorder
+}
+
+// MockWatcherFactoryMockRecorder is the mock recorder for MockWatcherFactory.
+type MockWatcherFactoryMockRecorder struct {
+	mock *MockWatcherFactory
+}
+
+// NewMockWatcherFactory creates a new mock instance.
+func NewMockWatcherFactory(ctrl *gomock.Controller) *MockWatcherFactory {
+	mock := &MockWatcherFactory{ctrl: ctrl}
+	mock.recorder = &MockWatcherFactoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockWatcherFactory) EXPECT() *MockWatcherFactoryMockRecorder {
+	return m.recorder
+}
+
+// NewNamespaceMapperWatcher mocks base method.
+func (m *MockWatcherFactory) NewNamespaceMapperWatcher(ctx context.Context, initialQuery eventsource.NamespaceQuery, summary string, mapper eventsource.Mapper, filterOption eventsource.FilterOption, filterOptions ...eventsource.FilterOption) (watcher.StringsWatcher, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, initialQuery, summary, mapper, filterOption}
+	for _, a := range filterOptions {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "NewNamespaceMapperWatcher", varargs...)
+	ret0, _ := ret[0].(watcher.StringsWatcher)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NewNamespaceMapperWatcher indicates an expected call of NewNamespaceMapperWatcher.
+func (mr *MockWatcherFactoryMockRecorder) NewNamespaceMapperWatcher(ctx, initialQuery, summary, mapper, filterOption any, filterOptions ...any) *MockWatcherFactoryNewNamespaceMapperWatcherCall {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, initialQuery, summary, mapper, filterOption}, filterOptions...)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewNamespaceMapperWatcher", reflect.TypeOf((*MockWatcherFactory)(nil).NewNamespaceMapperWatcher), varargs...)
+	return &MockWatcherFactoryNewNamespaceMapperWatcherCall{Call: call}
+}
+
+// MockWatcherFactoryNewNamespaceMapperWatcherCall wrap *gomock.Call
+type MockWatcherFactoryNewNamespaceMapperWatcherCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockWatcherFactoryNewNamespaceMapperWatcherCall) Return(arg0 watcher.StringsWatcher, arg1 error) *MockWatcherFactoryNewNamespaceMapperWatcherCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockWatcherFactoryNewNamespaceMapperWatcherCall) Do(f func(context.Context, eventsource.NamespaceQuery, string, eventsource.Mapper, eventsource.FilterOption, ...eventsource.FilterOption) (watcher.StringsWatcher, error)) *MockWatcherFactoryNewNamespaceMapperWatcherCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockWatcherFactoryNewNamespaceMapperWatcherCall) DoAndReturn(f func(context.Context, eventsource.NamespaceQuery, string, eventsource.Mapper, eventsource.FilterOption, ...eventsource.FilterOption) (watcher.StringsWatcher, error)) *MockWatcherFactoryNewNamespaceMapperWatcherCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
