@@ -414,7 +414,8 @@ func (api *CrossModelRelationsAPIv3) registerOneRemoteRelation(
 			OfferUUID:             offerUUID,
 			RelationUUID:          relation.RelationToken,
 			ConsumerModelUUID:     sourceModelTag.Id(),
-			// We only have the actual consumed endpoint.
+			LocalApplicationUUID:  appUUID,
+			LocalEndpointName:     relation.LocalEndpointName,
 			Endpoints: []charm.Relation{
 				{
 					Name:      relation.RemoteEndpoint.Name,
