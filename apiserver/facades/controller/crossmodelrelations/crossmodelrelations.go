@@ -410,23 +410,24 @@ func (api *CrossModelRelationsAPIv3) registerOneRemoteRelation(
 	// Insert the remote relation.
 	if err := api.crossModelRelationService.AddRemoteApplicationConsumer(ctx,
 		crossmodelrelationservice.AddRemoteApplicationConsumerArgs{
-			RemoteApplicationUUID: relation.ApplicationToken,
-			OfferUUID:             offerUUID,
-			RelationUUID:          relation.RelationToken,
-			ConsumerModelUUID:     sourceModelTag.Id(),
-			LocalApplicationUUID:  appUUID,
-			LocalEndpointName:     relation.LocalEndpointName,
-			Endpoints: []charm.Relation{
-				{
-					Name:      relation.RemoteEndpoint.Name,
-					Role:      charm.RelationRole(relation.RemoteEndpoint.Role),
-					Interface: relation.RemoteEndpoint.Interface,
-				},
+			RemoteApplicationUUID:   relation.ApplicationToken,
+			OfferUUID:               offerUUID,
+			RelationUUID:            relation.RelationToken,
+			ConsumerModelUUID:       sourceModelTag.Id(),
+			OfferingApplicationUUID: appUUID.String(),
+			OfferingEndpointName:    relation.LocalEndpointName,
+			RemoteEndpoint: charm.Relation{
+				Name:      relation.RemoteEndpoint.Name,
+				Role:      charm.RelationRole(relation.RemoteEndpoint.Role),
+				Interface: relation.RemoteEndpoint.Interface,
 			},
 		},
 	); err != nil {
 		return nil, errors.Annotate(err, "adding remote application consumer")
 	}
+
+	// HEATHER, maybe use GetRelationKeyByUUID instead?? verifies the data.
+	// Creates a proper relationMacaroon.
 
 	// Create the relation tag for the remote relation.
 	// The relation tag is based on the relation key, which is of the form

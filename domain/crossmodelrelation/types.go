@@ -210,9 +210,12 @@ type AddRemoteApplicationConsumerArgs struct {
 // AddRemoteApplicationArgs contains the parameters required to add a new remote
 // application, on any of the offering or the consuming models.
 type AddRemoteApplicationArgs struct {
+	// HEATHER - comments are sus - should be local app uuid
 	// ApplicationUUID is the UUID to assign to the synthetic application
 	// representing the remote application, on the consuming model.
 	ApplicationUUID string
+
+	ApplicationEndpointName string
 
 	// CharmUUID is the UUID to assign to the synthetic charm representing
 	// the remote application, on the consuming model.

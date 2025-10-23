@@ -221,10 +221,13 @@ func (s *Service) AddRemoteApplicationConsumer(ctx context.Context, args AddRemo
 	if !uuid.IsValidUUIDString(args.ConsumerModelUUID) {
 		return internalerrors.Errorf("consumer model UUID %q is not a valid UUID", args.ConsumerModelUUID).Add(errors.NotValid)
 	}
+	if !uuid.IsValidUUIDString(args.OfferingApplicationUUID) {
+		return internalerrors.Errorf("offer application UUID %q is not a valid UUID", args.OfferingApplicationUUID).Add(errors.NotValid)
+	}
 
 	// Construct a synthetic charm to represent the remote application charm,
 	// so we can track the endpoints it offers.
-	syntheticCharm, err := constructSyntheticCharm(synthApplicationName, args.Endpoints)
+	syntheticCharm, err := constructSyntheticCharm(synthApplicationName, []charm.Relation{args.RemoteEndpoint})
 	if err != nil {
 		return internalerrors.Capture(err)
 	}
@@ -236,14 +239,15 @@ func (s *Service) AddRemoteApplicationConsumer(ctx context.Context, args AddRemo
 
 	if err := s.modelState.AddRemoteApplicationConsumer(ctx, synthApplicationName, crossmodelrelation.AddRemoteApplicationConsumerArgs{
 		AddRemoteApplicationArgs: crossmodelrelation.AddRemoteApplicationArgs{
-			RemoteApplicationUUID: args.RemoteApplicationUUID,
 			// NOTE: We use the same UUID as in the remote (consuming) model for
 			// the synthetic application we are creating in the offering model.
-			ApplicationUUID:   args.RemoteApplicationUUID,
-			CharmUUID:         charmUUID.String(),
-			Charm:             syntheticCharm,
-			OfferUUID:         args.OfferUUID.String(),
-			ConsumerModelUUID: args.ConsumerModelUUID,
+			RemoteApplicationUUID:   args.RemoteApplicationUUID,
+			ApplicationUUID:         args.OfferingApplicationUUID,
+			ApplicationEndpointName: args.OfferingEndpointName,
+			CharmUUID:               charmUUID.String(),
+			Charm:                   syntheticCharm,
+			OfferUUID:               args.OfferUUID.String(),
+			ConsumerModelUUID:       args.ConsumerModelUUID,
 		},
 		RelationUUID: args.RelationUUID,
 	}); internalerrors.Is(err, crossmodelrelationerrors.RemoteRelationAlreadyRegistered) {

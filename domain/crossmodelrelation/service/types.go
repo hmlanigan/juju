@@ -41,7 +41,7 @@ type AddRemoteApplicationOffererArgs struct {
 // AddRemoteApplicationConsumerArgs contains the parameters required to add a
 // new remote application consumer.
 type AddRemoteApplicationConsumerArgs struct {
-	// RemoteApplicationUUID is the application UUID as as it exists in the
+	// RemoteApplicationUUID is the application UUID as it exists in the
 	// remote (consuming) model. It contains the value from the RPC param
 	// ApplicationToken.
 	RemoteApplicationUUID string
@@ -58,12 +58,16 @@ type AddRemoteApplicationConsumerArgs struct {
 	// application.
 	ConsumerModelUUID string
 
-	LocalApplicationUUID string
-	
-	LocalEndpointName string
+	// OfferingApplicationUUID is the UUID of the application offering
+	// the endpoint
+	OfferingApplicationUUID string
 
-	// Endpoints is the collection of endpoint relations offered.
-	Endpoints []charm.Relation
+	// OfferingEndpointName is the name of the endpoint to use in the
+	// relation.
+	OfferingEndpointName string
+
+	// RemoteEndpoint is the consumed endpoint relation in the relation.
+	RemoteEndpoint charm.Relation
 }
 
 // OfferFilter is used to query applications offered
