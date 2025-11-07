@@ -71,7 +71,7 @@ type ControllerState interface {
 	) ([]string, error)
 
 	// GetUserUUIDByName returns the UUID of the user provided exists, has not
-	// been removed and is not disabled.
+	// been removed, and is not disabled.
 	GetUserUUIDByName(ctx context.Context, name user.Name) (uuid.UUID, error)
 }
 

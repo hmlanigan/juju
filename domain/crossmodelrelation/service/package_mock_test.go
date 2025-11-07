@@ -813,6 +813,46 @@ func (c *MockModelStateGetOfferUUIDByRelationUUIDCall) DoAndReturn(f func(contex
 	return c
 }
 
+// GetOfferedApplication mocks base method.
+func (m *MockModelState) GetOfferedApplication(arg0 context.Context, arg1 string) (string, crossmodelrelation.OfferedApplication, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOfferedApplication", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(crossmodelrelation.OfferedApplication)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetOfferedApplication indicates an expected call of GetOfferedApplication.
+func (mr *MockModelStateMockRecorder) GetOfferedApplication(arg0, arg1 any) *MockModelStateGetOfferedApplicationCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOfferedApplication", reflect.TypeOf((*MockModelState)(nil).GetOfferedApplication), arg0, arg1)
+	return &MockModelStateGetOfferedApplicationCall{Call: call}
+}
+
+// MockModelStateGetOfferedApplicationCall wrap *gomock.Call
+type MockModelStateGetOfferedApplicationCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockModelStateGetOfferedApplicationCall) Return(arg0 string, arg1 crossmodelrelation.OfferedApplication, arg2 error) *MockModelStateGetOfferedApplicationCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockModelStateGetOfferedApplicationCall) Do(f func(context.Context, string) (string, crossmodelrelation.OfferedApplication, error)) *MockModelStateGetOfferedApplicationCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockModelStateGetOfferedApplicationCall) DoAndReturn(f func(context.Context, string) (string, crossmodelrelation.OfferedApplication, error)) *MockModelStateGetOfferedApplicationCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetOffererModelUUID mocks base method.
 func (m *MockModelState) GetOffererModelUUID(arg0 context.Context, arg1 string) (model.UUID, error) {
 	m.ctrl.T.Helper()

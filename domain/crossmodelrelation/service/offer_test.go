@@ -649,6 +649,65 @@ func (s *offerServiceSuite) TestGetConsumeDetailsOfferURLNotValid(c *tc.C) {
 	c.Assert(err, tc.ErrorIs, crossmodelrelationerrors.OfferURLNotValid)
 }
 
+func (s *offerServiceSuite) TestGetOfferedApplication(c *tc.C) {
+	defer s.setupMocks(c).Finish()
+
+	// Arrange
+	offerURL, err := crossmodel.ParseOfferURL("postgresql.db-admin")
+	c.Assert(err, tc.IsNil)
+	expected := crossmodelrelation.OfferedApplication{
+		Description: "this is a test",
+		Endpoints: []crossmodelrelation.OfferEndpoint{{
+			Name:      "test",
+			Role:      charm.RoleProvider,
+			Interface: "db",
+			Limit:     7},
+		},
+	}
+	offerUUID := tc.Must(c, offer.NewUUID).String()
+	s.modelState.EXPECT().GetOfferedApplication(gomock.Any(), offerURL.Name).Return(offerUUID, expected, nil)
+	offerUsers := map[string][]crossmodelrelation.OfferUser{
+		offerUUID: {
+			{
+				Name:   "fred",
+				Access: permission.ConsumeAccess,
+			},
+		},
+	}
+	s.controllerState.EXPECT().GetUsersForOfferUUIDs(gomock.Any(), []string{offerUUID}).Return(offerUsers, nil)
+
+	// Act
+	obtained, err := s.service(c).GetOfferedApplication(c.Context(), offerURL)
+
+	// Assert
+	c.Assert(err, tc.IsNil)
+	expected.Users = offerUsers[offerUUID]
+	c.Assert(obtained, tc.DeepEquals, expected)
+}
+
+func (s *offerServiceSuite) TestGetOfferedApplicationError(c *tc.C) {
+	defer s.setupMocks(c).Finish()
+
+	// Arrange
+	offerURL, err := crossmodel.ParseOfferURL("postgresql.db-admin")
+	c.Assert(err, tc.IsNil)
+	s.modelState.EXPECT().GetOfferedApplication(gomock.Any(), offerURL.Name).Return("", crossmodelrelation.OfferedApplication{}, crossmodelrelationerrors.OfferNotFound)
+
+	// Act
+	_, err = s.service(c).GetOfferedApplication(c.Context(), offerURL)
+
+	// Assert
+	c.Assert(err, tc.ErrorIs, crossmodelrelationerrors.OfferNotFound)
+}
+
+func (s *offerServiceSuite) TestGetOfferedApplicationOfferURLNotValid(c *tc.C) {
+	// Act
+	_, err := s.service(c).GetOfferedApplication(c.Context(), crossmodel.OfferURL{})
+
+	// Assert
+	c.Assert(err, tc.ErrorIs, crossmodelrelationerrors.OfferURLNotValid)
+}
+
 type createOfferArgsMatcher struct {
 	c        *tc.C
 	expected crossmodelrelation.CreateOfferArgs

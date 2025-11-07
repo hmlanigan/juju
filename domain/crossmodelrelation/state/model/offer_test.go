@@ -518,6 +518,64 @@ func (s *modelOfferSuite) TestGetConsumeDetailsNotFound(c *tc.C) {
 	c.Assert(err, tc.ErrorIs, crossmodelrelationerrors.OfferNotFound)
 }
 
+func (s *modelOfferSuite) TestGetOfferedApplication(c *tc.C) {
+	// Arrange
+	// Create an offer with two endpoints
+	charmUUID := s.addCharm(c)
+	description := "testing application"
+	s.addCharmMetadataWithDescription(c, charmUUID, description)
+	relation := charm.Relation{
+		Name:      "db-admin",
+		Role:      charm.RoleProvider,
+		Interface: "db",
+		Scope:     charm.ScopeGlobal,
+		Limit:     4,
+	}
+	relationUUID := s.addCharmRelation(c, charmUUID, relation)
+	relationTwo := charm.Relation{
+		Name:      "db",
+		Role:      charm.RoleProvider,
+		Interface: "other",
+		Scope:     charm.ScopeGlobal,
+	}
+	relationTwoUUID := s.addCharmRelation(c, charmUUID, relationTwo)
+
+	appName := "test-application"
+	appUUID := s.addApplication(c, charmUUID, appName)
+	appEndpointUUID := s.addApplicationEndpoint(c, appUUID, relationUUID)
+	appEndpointTwoUUID := s.addApplicationEndpoint(c, appUUID, relationTwoUUID)
+	offerName := "test-offer"
+	offerUUID := s.addOffer(c, offerName, []string{appEndpointUUID, appEndpointTwoUUID})
+
+	// Act
+	obtainedOfferUUID, obtained, err := s.state.GetOfferedApplication(c.Context(), offerName)
+
+	// Assert
+	c.Assert(err, tc.ErrorIsNil)
+	c.Check(obtainedOfferUUID, tc.Equals, offerUUID.String())
+	c.Check(obtained.Description, tc.Equals, description)
+	c.Check(obtained.Endpoints, tc.SameContents, []crossmodelrelation.OfferEndpoint{
+		{
+			Name:      relation.Name,
+			Role:      domaincharm.RoleProvider,
+			Interface: relation.Interface,
+			Limit:     4,
+		}, {
+			Name:      relationTwo.Name,
+			Role:      domaincharm.RoleProvider,
+			Interface: relationTwo.Interface,
+		},
+	})
+}
+
+func (s *modelOfferSuite) TestGetOfferedApplicationNotFound(c *tc.C) {
+	// Act
+	_, _, err := s.state.GetOfferedApplication(c.Context(), "failure")
+
+	// Assert
+	c.Assert(err, tc.ErrorIs, crossmodelrelationerrors.OfferNotFound)
+}
+
 // setupForGetOfferDetails
 func (s *modelOfferSuite) setupForGetOfferDetails(c *tc.C) []*crossmodelrelation.OfferDetail {
 	// Create an offer with one endpoint

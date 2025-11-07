@@ -42,6 +42,11 @@ type ModelOfferState interface {
 		offerName string,
 	) (crossmodelrelation.ConsumeDetails, error)
 
+	// GetOfferedApplication returns offer's UUID and its description and
+	// endpoints in a OfferedApplication struct, the user info and access
+	// is retrieved from the ControllerState.
+	GetOfferedApplication(ctx context.Context, name string) (string, crossmodelrelation.OfferedApplication, error)
+
 	// GetOfferDetails returns the OfferDetail of every offer in the model.
 	// No error is returned if offers are found.
 	GetOfferDetails(context.Context, crossmodelrelation.OfferFilter) ([]*crossmodelrelation.OfferDetail, error)
@@ -100,6 +105,38 @@ func (s *Service) GetOfferUUIDByRelationUUID(ctx context.Context, relationUUID c
 		return "", errors.Errorf("parsing offer UUID: %w", err)
 	}
 	return res, nil
+}
+
+// GetOfferedApplication returns the OfferedApplication struct for the
+// given offer URL.
+// Returns crossmodelrelationerrors.OfferNotFound if the offer is not found.
+// Returns crossmodelrelationerrors.OfferURLNotValid if the offer URL has
+// no name.
+func (s *Service) GetOfferedApplication(ctx context.Context, offerURL crossmodel.OfferURL) (crossmodelrelation.OfferedApplication, error) {
+	ctx, span := trace.Start(ctx, trace.NameFromFunc())
+	defer span.End()
+
+	if offerURL.Name == "" {
+		return crossmodelrelation.OfferedApplication{},
+			errors.Errorf("offer %q missing name: not valid", offerURL.String()).
+				Add(crossmodelrelationerrors.OfferURLNotValid)
+	}
+
+	empty := crossmodelrelation.OfferedApplication{}
+	offerUUID, offeredApp, err := s.modelState.GetOfferedApplication(ctx, offerURL.Name)
+	if err != nil {
+		return empty, errors.Errorf("getting offer application description and endpoints: %w", err)
+	}
+
+	users, err := s.controllerState.GetUsersForOfferUUIDs(ctx, []string{offerUUID})
+	if err != nil {
+		return empty, errors.Errorf("getting offer users: %w", err)
+	}
+
+	// Having no users is unexpected, but not a fatal error.
+	offeredApp.Users = users[offerUUID]
+
+	return offeredApp, nil
 }
 
 // Offer updates an existing offer, or creates a new offer if it does not exist.

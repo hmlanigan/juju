@@ -201,6 +201,61 @@ WHERE  o.name = $name.name
 	}, nil
 }
 
+// GetOfferedApplication returns offer's UUID and its description and
+// endpoints in a OfferedApplication struct, the user info and access
+// is retrieved from the ControllerState.
+func (st *State) GetOfferedApplication(
+	ctx context.Context,
+	offerName string,
+) (string, crossmodelrelation.OfferedApplication, error) {
+	var empty crossmodelrelation.OfferedApplication
+	db, err := st.DB(ctx)
+	if err != nil {
+		return "", empty, errors.Capture(err)
+	}
+
+	stmt, err := st.Prepare(`
+SELECT (o.uuid, cr.name, cr.interface, cr.capacity, cm.description) AS (&offeredApp.*),
+       crr.name AS &offeredApp.role
+FROM   offer AS o
+JOIN   offer_endpoint AS oe ON o.uuid = oe.offer_uuid
+JOIN   application_endpoint AS ae ON oe.endpoint_uuid = ae.uuid
+JOIN   application AS a ON ae.application_uuid = a.uuid
+JOIN   charm_metadata AS cm ON a.charm_uuid = cm.charm_uuid
+JOIN   charm_relation AS cr ON ae.charm_relation_uuid = cr.uuid
+JOIN   charm_relation_role AS crr ON cr.role_id = crr.id
+WHERE  o.name = $name.name
+`, offeredApp{}, name{})
+	if err != nil {
+		return "", empty, errors.Errorf("preparing offered application query: %w", err)
+	}
+
+	var details []offeredApp
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		err = tx.Query(ctx, stmt, name{Name: offerName}).GetAll(&details)
+		if errors.Is(err, sqlair.ErrNoRows) {
+			return crossmodelrelationerrors.OfferNotFound
+		}
+		return err
+	})
+	if err != nil {
+		return "", empty, errors.Errorf("fetching offered application for %q: %w", offerName, err)
+	}
+	endpoints := transform.Slice(details, func(in offeredApp) crossmodelrelation.OfferEndpoint {
+		return crossmodelrelation.OfferEndpoint{
+			Name:      in.EndpointName,
+			Role:      in.EndpointRole,
+			Interface: in.EndpointInterface,
+			Limit:     in.EndpointLimit,
+		}
+	})
+	return details[0].OfferUUID, crossmodelrelation.OfferedApplication{
+		Description: details[0].AppDescription,
+		Endpoints:   endpoints,
+	}, nil
+
+}
+
 // GetOfferDetails returns the OfferDetail of every offer in the model.
 // No error is returned if offers are found.
 func (st *State) GetOfferDetails(

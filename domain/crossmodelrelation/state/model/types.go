@@ -60,6 +60,15 @@ type consumeDetail struct {
 	EndpointLimit     int                `db:"capacity"`
 }
 
+type offeredApp struct {
+	OfferUUID         string             `db:"uuid"`
+	AppDescription    string             `db:"description"`
+	EndpointName      string             `db:"name"`
+	EndpointRole      charm.RelationRole `db:"role"`
+	EndpointInterface string             `db:"interface"`
+	EndpointLimit     int                `db:"capacity"`
+}
+
 // offerDetail contains the data necessary for create
 // OfferDetail structures
 type offerDetail struct {

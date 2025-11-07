@@ -126,6 +126,18 @@ type OfferImport struct {
 	Endpoints       []string
 }
 
+// OfferedApplication defines the serialization behaviour of an application offer.
+type OfferedApplication struct {
+	// Description is the user entered description.
+	Description string
+
+	// Endpoints list of offered application endpoints.
+	Endpoints []OfferEndpoint
+
+	// Users are the users who can access the offer.
+	Users []OfferUser
+}
+
 // RemoteApplicationConsumer represents a remote application
 // that is consuming an offer from this model.
 type RemoteApplicationConsumer struct {
