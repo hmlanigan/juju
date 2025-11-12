@@ -60,6 +60,16 @@ type CrossModelRelationService interface {
 		offerURL crossmodel.OfferURL,
 	) (crossmodelrelation.ConsumeDetails, error)
 
+	// GetOfferedApplication returns the OfferedApplication struct for the
+	// given offer URL.
+	// Returns crossmodelrelationerrors.OfferNotFound if the offer is not found.
+	// Returns crossmodelrelationerrors.OfferURLNotValid if the offer URL has
+	// no name.
+	GetOfferedApplication(
+		ctx context.Context,
+		offerURL crossmodel.OfferURL,
+	) (crossmodelrelation.OfferedApplication, error)
+
 	// GetOfferUUID returns the uuid for the provided offer URL.
 	GetOfferUUID(ctx context.Context, offerURL crossmodel.OfferURL) (offer.UUID, error)
 

@@ -402,15 +402,7 @@ func (api *OffersAPI) makeOfferParams(
 		OfferName:              offer.OfferName,
 		OfferUUID:              offer.OfferUUID,
 		ApplicationDescription: offer.ApplicationDescription,
-	}
-
-	for _, ep := range offer.Endpoints {
-		result.Endpoints = append(result.Endpoints, params.RemoteEndpoint{
-			Name:      ep.Name,
-			Interface: ep.Interface,
-			Role:      charm.RelationRole(ep.Role),
-			Limit:     ep.Limit,
-		})
+		Endpoints:              transformEndpoints(offer.Endpoints),
 	}
 
 	// All OfferUsers only provided if apiUserAccess if Admin.
@@ -423,26 +415,41 @@ func (api *OffersAPI) makeOfferParams(
 		return &result
 	}
 
+	result.Users = transformOfferUsers(apiUser.Id(), apiUserDisplayName, apiUserAccess == permission.AdminAccess, offer.OfferUsers)
+
+	return &result
+}
+
+func transformOfferUsers(apiUserName, apiUserDisplayName string, isAdmin bool, offerUsers []crossmodelrelation.OfferUser) []params.OfferUserDetails {
+	// All OfferUsers only provided if apiUserAccess if Admin.
+	if !isAdmin {
+		return []params.OfferUserDetails{{
+			UserName:    apiUserName,
+			DisplayName: apiUserDisplayName,
+			Access:      findOfferUserAccess(apiUserName, offerUsers).String(),
+		}}
+	}
+
+	result := make([]params.OfferUserDetails, 0, len(offerUsers)+1)
 	var apiUserFound bool
-	for _, offerUser := range offer.OfferUsers {
-		if offerUser.Name == apiUser.Id() {
+	for _, offerUser := range offerUsers {
+		if offerUser.Name == apiUserName {
 			apiUserFound = true
 		}
-		result.Users = append(result.Users, params.OfferUserDetails{
+		result = append(result, params.OfferUserDetails{
 			UserName:    offerUser.Name,
 			DisplayName: offerUser.DisplayName,
 			Access:      offerUser.Access.String(),
 		})
 	}
 	if !apiUserFound {
-		result.Users = append(result.Users, params.OfferUserDetails{
-			UserName:    apiUser.Id(),
+		result = append(result, params.OfferUserDetails{
+			UserName:    apiUserName,
 			DisplayName: apiUserDisplayName,
 			Access:      permission.AdminAccess.String(),
 		})
 	}
-
-	return &result
+	return result
 }
 
 func findOfferUserAccess(userName string, in []crossmodelrelation.OfferUser) permission.Access {
@@ -728,51 +735,70 @@ func (api *OffersAPI) ApplicationOffers(ctx context.Context, urls params.OfferUR
 func (api *OffersAPI) getApplicationOffers(ctx context.Context, apiUser names.UserTag, urls params.OfferURLs) ([]params.ApplicationOfferResult, error) {
 	results := make([]params.ApplicationOfferResult, len(urls.OfferURLs))
 
-	var filters []params.OfferFilter
-	// fullURLs contains the URL strings mapped to the result index
-	// from the url args, with any optional parts like model owner
-	// filled in. It is used to process the result offers.
-	fullURLs := make(map[string]int)
-
-	for i, urlStr := range urls.OfferURLs {
-		url, filter, err := applicationOfferURLAndFilter(urlStr, apiUser)
-		if err != nil {
-			results[i].Error = err
-			continue
-		}
-		filters = append(filters, filter)
-		fullURLs[url] = i
-	}
-
-	if len(filters) == 0 {
-		return results, nil
-	}
-
-	offers, err := api.getApplicationOffersDetails(ctx, apiUser, permission.ReadAccess, params.OfferFilters{Filters: filters})
+	// Get the apiUserDisplayName, it'll be the same for all models.
+	apiUserDisplayName, err := api.userDisplayName(ctx, apiUser)
 	if err != nil {
-		return results, apiservererrors.ServerError(err)
+		return nil, errors.Capture(err)
 	}
 
-	offersByURL := transform.SliceToMap(offers, func(in params.ApplicationOfferAdminDetailsV5) (string, params.ApplicationOfferAdminDetailsV5) {
-		return in.OfferURL, in
-	})
+	offerURLs, errorResults := parseOfferURLs(apiUser, urls.OfferURLs)
 
-	// getApplicationOffersDetails does not return an error if any filter
-	// criteria is not met. Ensure that all requested offers were found, or
-	// return a NotFound error.
-	for urlStr, i := range fullURLs {
-		if results[i].Error != nil {
+	// Per the facade the caller can provide more than one OfferURL, practically
+	// only one is given at a time. No need to be more efficient finding the offers.
+	// TODO: address in the client API changes.
+	for i, offerURL := range offerURLs {
+		if errorResults[i].Error != nil {
+			results[i].Error = errorResults[i].Error
 			continue
 		}
-		offer, ok := offersByURL[urlStr]
-		if !ok {
-			results[i].Error = &params.Error{
-				Code:    params.CodeNotFound,
-				Message: fmt.Sprintf("application offer %q", urlStr),
+
+		model, err := api.modelForName(ctx, offerURL.ModelName, offerURL.ModelQualifier)
+		if err != nil {
+			results[i].Error = apiservererrors.ServerError(err)
+			continue
+		}
+
+		modelAdmin := true
+		err = api.checkAPIUserAdmin(ctx, model.UUID)
+		if err != nil && !errors.Is(err, authentication.ErrorEntityMissingPermission) {
+			results[i].Error = apiservererrors.ServerError(err)
+			continue
+		} else if err != nil {
+			// The user isn't admin on the model, they must have read access.
+			err = api.authorizer.EntityHasPermission(ctx, apiUser, permission.ReadAccess, names.NewModelTag(model.UUID.String()))
+			if err != nil {
+				results[i].Error = apiservererrors.ServerError(err)
+				continue
+			}
+			modelAdmin = false
+		}
+
+		crossModelRelationService, err := api.crossModelRelationServiceGetter(ctx, model.UUID)
+		if err != nil {
+			results[i].Error = apiservererrors.ServerError(err)
+			continue
+		}
+
+		offeredApplication, err := crossModelRelationService.GetOfferedApplication(ctx, offerURL)
+		if err != nil {
+			if errors.Is(err, crossmodelrelationerrors.OfferNotFound) {
+				results[i].Error = apiservererrors.ParamsErrorf(
+					params.CodeNotFound,
+					"application offer %q not found", offerURL,
+				)
+			} else {
+				results[i].Error = apiservererrors.ServerError(err)
 			}
 			continue
 		}
-		results[i].Result = &offer
+
+		results[i].Result = &params.ApplicationOfferAdminDetailsV5{
+			ApplicationOfferDetailsV5: params.ApplicationOfferDetailsV5{
+				ApplicationDescription: offeredApplication.Description,
+				Endpoints:              transformEndpoints(offeredApplication.Endpoints),
+				Users:                  transformOfferUsers(apiUser.Id(), apiUserDisplayName, modelAdmin, offeredApplication.Users),
+			},
+		}
 	}
 	return results, nil
 }
@@ -1007,14 +1033,7 @@ func (api *OffersAPI) getConsumeDetails(
 			continue
 		}
 
-		endpoints := transform.Slice(details.Endpoints, func(in crossmodelrelation.OfferEndpoint) params.RemoteEndpoint {
-			return params.RemoteEndpoint{
-				Name:      in.Name,
-				Interface: in.Interface,
-				Role:      charm.RelationRole(in.Role),
-				Limit:     in.Limit,
-			}
-		})
+		endpoints := transformEndpoints(details.Endpoints)
 		results[i].ConsumeOfferDetails = params.ConsumeOfferDetails{
 			Offer: &params.ApplicationOfferDetailsV5{
 				SourceModelTag: names.NewModelTag(model.UUID.String()).String(),
@@ -1030,6 +1049,17 @@ func (api *OffersAPI) getConsumeDetails(
 	return params.ConsumeOfferDetailsResults{
 		Results: results,
 	}, nil
+}
+
+func transformEndpoints(domainEndpoints []crossmodelrelation.OfferEndpoint) []params.RemoteEndpoint {
+	return transform.Slice(domainEndpoints, func(in crossmodelrelation.OfferEndpoint) params.RemoteEndpoint {
+		return params.RemoteEndpoint{
+			Name:      in.Name,
+			Interface: in.Interface,
+			Role:      charm.RelationRole(in.Role),
+			Limit:     in.Limit,
+		}
+	})
 }
 
 // RemoteApplicationInfo returns information about the requested remote application.
