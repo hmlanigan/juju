@@ -2808,14 +2808,8 @@ func (u *UniterAPI) commitHookChangesForOneUnit(
 		return internalerrors.Errorf("parsing unit name: %w", err)
 	}
 	arg := unitstate.CommitHookChangesArg{
-		UnitName: unitName,
-	}
-
-	if changes.UpdateNetworkInfo {
-		err := u.setUnitRelationNetworks(ctx, unitName)
-		if err != nil {
-			return internalerrors.Errorf("updating network info: %w", err)
-		}
+		UpdateNetworkInfo: changes.UpdateNetworkInfo,
+		UnitName:          unitName,
 	}
 
 	relationUnitSettings := make([]unitstate.RelationSettings, 0, len(changes.RelationUnitSettings))
