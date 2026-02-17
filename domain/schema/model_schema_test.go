@@ -400,7 +400,6 @@ func (s *modelSchemaSuite) TestModelViews(c *tc.C) {
 
 	// Ensure that each view is present.
 	expected := set.NewStrings(
-		"v_address",
 		"v_application_charm_download_info",
 		"v_application_config",
 		"v_application_constraint",
@@ -821,6 +820,8 @@ func (s *modelSchemaSuite) TestModelTriggers(c *tc.C) {
 
 		"trg_log_custom_relation_life_suspended_update",
 		"trg_log_custom_relation_life_suspended_delete",
+
+		"trg_custom_relation_uuid_empty_constraint",
 	)
 
 	got := readEntityNames(c, s.DB(), "trigger")
