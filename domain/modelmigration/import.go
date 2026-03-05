@@ -8,6 +8,7 @@ import (
 
 	"github.com/juju/juju/core/logger"
 	"github.com/juju/juju/core/modelmigration"
+	"github.com/juju/juju/core/providertracker"
 	corestorage "github.com/juju/juju/core/storage"
 	access "github.com/juju/juju/domain/access/modelmigration"
 	agentpassword "github.com/juju/juju/domain/agentpassword/modelmigration"
@@ -35,6 +36,7 @@ import (
 	status "github.com/juju/juju/domain/status/modelmigration"
 	storage "github.com/juju/juju/domain/storage/modelmigration"
 	unitstate "github.com/juju/juju/domain/unitstate/modelmigration"
+	internalstorage "github.com/juju/juju/internal/storage"
 )
 
 // Coordinator is the interface that is used to add operations to a migration.
@@ -50,6 +52,8 @@ func ImportOperations(
 	coordinator Coordinator,
 	modelDefaultsProvider modelconfigservice.ModelDefaultsProvider,
 	storageRegistryGetter corestorage.ModelStorageRegistryGetter,
+	providerFactory providertracker.EphemeralProviderFactory,
+	configGetter providertracker.EphemeralProviderConfigGetter,
 	clock clock.Clock,
 	logger logger.Logger,
 ) {
@@ -81,7 +85,12 @@ func ImportOperations(
 	blockdevice.RegisterImport(coordinator, logger.Child("blockdevice"))
 	// Storage requires machines and units (via the application domain) to be
 	// imported first. Volumes require block devices to be imported first.
-	storage.RegisterImport(coordinator, storageRegistryGetter, logger.Child("storage"))
+	storage.RegisterImport(
+		coordinator,
+		storageRegistryGetter,
+		providertracker.EphemeralProviderRunnerFromConfig[internalstorage.FilesystemModelMigration](
+			providerFactory, configGetter),
+		logger.Child("storage"))
 	network.RegisterImportCloudService(coordinator, logger.Child("cloudservice"))
 	agentpassword.RegisterImport(coordinator)
 	crossmodelrelation.RegisterImport(coordinator, clock, logger.Child("crossmodelrelation"))
