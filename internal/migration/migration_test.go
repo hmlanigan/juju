@@ -62,6 +62,7 @@ func (s *ImportSuite) TestBadBytes(c *tc.C) {
 		corestorage.ConstModelStorageRegistry(func() storage.ProviderRegistry {
 			return nil
 		}),
+		"controller-uuid",
 		loggertesting.WrapCheckLog(c),
 		clock.WallClock,
 	)

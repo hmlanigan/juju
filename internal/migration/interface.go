@@ -16,6 +16,9 @@ import (
 	"github.com/juju/juju/core/unit"
 	"github.com/juju/juju/domain/modelmigration"
 	"github.com/juju/juju/domain/relation"
+	"github.com/juju/juju/environs/config"
+	internalerrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/services"
 )
 
 // ModelService provides access to the model service.
@@ -101,4 +104,55 @@ type MachineService interface {
 type CloudService interface {
 	// ListAll returns all the clouds.
 	ListAll(ctx context.Context) ([]cloud.Cloud, error)
+}
+
+// ControllerCloudService provides access to the cloud service from the
+// controller.
+type ControllerCloudService interface {
+	// Cloud returns the named cloud.
+	Cloud(ctx context.Context, name string) (*cloud.Cloud, error)
+}
+
+// ModelConfigService provides access to the model config.
+type ModelConfigService interface {
+	ModelConfig(ctx context.Context) (*config.Config, error)
+}
+
+// ProviderConfigServicesGetter provides access to the services being
+// imported.
+type ProviderConfigServicesGetter interface {
+	ServicesForModel(ctx context.Context, modelUUID coremodel.UUID) (ProviderConfigServices, error)
+}
+
+// ProviderConfigServices provides access to the services necessary to
+// create an emphemeral provider config.
+type ProviderConfigServices interface {
+	Config() ModelConfigService
+	Cloud() ControllerCloudService
+}
+
+type getterShim struct {
+	servicesGetter         services.DomainServicesGetter
+	controllerCloudService ControllerCloudService
+}
+
+func (g getterShim) ServicesForModel(ctx context.Context, modelUUID coremodel.UUID) (ProviderConfigServices, error) {
+	svcs, err := g.servicesGetter.ServicesForModel(ctx, modelUUID)
+	if err != nil {
+		return nil, internalerrors.Capture(internalerrors.Errorf("services for model %q: %w", modelUUID, err))
+	}
+	return &servicesShim{DomainServices: svcs, controllerCloudService: g.controllerCloudService}, nil
+}
+
+type servicesShim struct {
+	services.DomainServices
+	controllerCloudService ControllerCloudService
+}
+
+func (s servicesShim) Config() ModelConfigService {
+	return s.DomainServices.Config()
+}
+
+func (s servicesShim) Cloud() ControllerCloudService {
+	return s.controllerCloudService
 }

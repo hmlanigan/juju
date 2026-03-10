@@ -13,9 +13,11 @@ import (
 	"github.com/juju/description/v11"
 	"github.com/juju/errors"
 
+	jujucloud "github.com/juju/juju/cloud"
 	corelogger "github.com/juju/juju/core/logger"
 	coremodel "github.com/juju/juju/core/model"
 	"github.com/juju/juju/core/modelmigration"
+	"github.com/juju/juju/core/providertracker"
 	"github.com/juju/juju/core/resource"
 	"github.com/juju/juju/core/semversion"
 	corestorage "github.com/juju/juju/core/storage"
@@ -24,11 +26,13 @@ import (
 	"github.com/juju/juju/domain/modeldefaults"
 	migrations "github.com/juju/juju/domain/modelmigration"
 	"github.com/juju/juju/environs"
+	"github.com/juju/juju/environs/cloudspec"
 	"github.com/juju/juju/environs/config"
 	internalerrors "github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/naturalsort"
 	"github.com/juju/juju/internal/services"
 	"github.com/juju/juju/internal/tools"
+	"github.com/juju/juju/internal/uuid"
 )
 
 // OperationExporter describes the interface for running the ExportOpertions
@@ -57,13 +61,14 @@ type ConfigSchemaSourceProvider = func(environs.CloudService) config.ConfigSchem
 
 // ModelImporter represents a model migration that implements Import.
 type ModelImporter struct {
-	controllerConfigService ControllerConfigService
-	domainServices          services.DomainServicesGetter
-	storageRegistryGetter   corestorage.ModelStorageRegistryGetter
+	cloudService          ControllerCloudService
+	domainServices        services.DomainServicesGetter
+	storageRegistryGetter corestorage.ModelStorageRegistryGetter
 
-	scope  modelmigration.ScopeForModel
-	logger corelogger.Logger
-	clock  clock.Clock
+	controllerUUID string
+	scope          modelmigration.ScopeForModel
+	logger         corelogger.Logger
+	clock          clock.Clock
 }
 
 // NewModelImporter returns a new ModelImporter that encapsulates the
@@ -71,19 +76,21 @@ type ModelImporter struct {
 // needed until the migration to dqlite is complete.
 func NewModelImporter(
 	scope modelmigration.ScopeForModel,
-	controllerConfigService ControllerConfigService,
+	cloudService ControllerCloudService,
 	domainServices services.DomainServicesGetter,
 	storageRegistryGetter corestorage.ModelStorageRegistryGetter,
+	controllerUUID string,
 	logger corelogger.Logger,
 	clock clock.Clock,
 ) *ModelImporter {
 	return &ModelImporter{
-		scope:                   scope,
-		controllerConfigService: controllerConfigService,
-		domainServices:          domainServices,
-		storageRegistryGetter:   storageRegistryGetter,
-		logger:                  logger,
-		clock:                   clock,
+		scope:                 scope,
+		cloudService:          cloudService,
+		controllerUUID:        controllerUUID,
+		domainServices:        domainServices,
+		storageRegistryGetter: storageRegistryGetter,
+		logger:                logger,
+		clock:                 clock,
 	}
 }
 
@@ -97,24 +104,94 @@ func (i *ModelImporter) ImportModel(ctx context.Context, bytes []byte) error {
 	}
 
 	modelUUID := coremodel.UUID(model.UUID())
+	creds := model.CloudCredential()
+	namedCreds := jujucloud.NewNamedCredential(creds.Name(), jujucloud.AuthType(creds.AuthType()), creds.Attributes(), false)
+
+	ephemeralConfigProvider := &ephemeralProviderConfigProvider{
+		cloudName:        model.Cloud(),
+		cloudRegion:      model.CloudRegion(),
+		cloudCredentials: &namedCreds,
+		controllerUUID:   i.controllerUUID,
+		modelUUID:        modelUUID,
+		modelType:        model.Type(),
+		servicesGetter:   getterShim{servicesGetter: i.domainServices, controllerCloudService: i.cloudService},
+	}
 
 	// The domain services are not available during the import, until the
 	// model is created and activated. The model defaults provider is used
 	// to provide the model defaults during the migration, so we allow access
 	// but in a lazy way.
-
 	modelDefaultsProvider := modelDefaultsProvider{
 		modelUUID:      modelUUID,
 		servicesGetter: i.domainServices,
 	}
 
 	coordinator := modelmigration.NewCoordinator(i.logger)
-	migrations.ImportOperations(coordinator, modelDefaultsProvider, i.storageRegistryGetter, i.clock, i.logger)
+	migrations.ImportOperations(
+		coordinator,
+		modelDefaultsProvider,
+		i.storageRegistryGetter,
+		i.scope(modelUUID).EphemeralProviderFactory(),
+		ephemeralConfigProvider,
+		i.clock,
+		i.logger)
 	if err := coordinator.Perform(ctx, i.scope(modelUUID), model); err != nil {
 		return errors.Trace(err)
 	}
 
 	return nil
+}
+
+// ephemeralProviderConfigProvider implements the [providertracker.EphemeralProviderConfigGetter]
+// interface for use during model import.
+type ephemeralProviderConfigProvider struct {
+	cloudCredentials *jujucloud.Credential
+	cloudName        string
+	cloudRegion      string
+	controllerUUID   string
+	modelType        string
+	modelUUID        coremodel.UUID
+
+	servicesGetter ProviderConfigServicesGetter
+}
+
+// GetEphemeralProviderConfig returns the ephemeral provider config for the
+// model being imported. This model is not yet active, thus cannot be found
+// by the provider tracker during import.
+func (p *ephemeralProviderConfigProvider) GetEphemeralProviderConfig(
+	ctx context.Context,
+) (providertracker.EphemeralProviderConfig, error) {
+	domainServices, err := p.servicesGetter.ServicesForModel(ctx, p.modelUUID)
+	if err != nil {
+		return providertracker.EphemeralProviderConfig{}, internalerrors.Errorf("services for model: %w", err)
+	}
+
+	cloud, err := domainServices.Cloud().Cloud(ctx, p.cloudName)
+	if err != nil {
+		return providertracker.EphemeralProviderConfig{}, internalerrors.Errorf("cloud: %w", err)
+	}
+
+	modelCfg, err := domainServices.Config().ModelConfig(ctx)
+	if err != nil {
+		return providertracker.EphemeralProviderConfig{}, internalerrors.Errorf("model config: %w", err)
+	}
+
+	cUUID, err := uuid.UUIDFromString(p.controllerUUID)
+	if err != nil {
+		return providertracker.EphemeralProviderConfig{}, internalerrors.Errorf("controller uuid from string: %w", err)
+	}
+
+	spec, err := cloudspec.MakeCloudSpec(*cloud, p.cloudRegion, p.cloudCredentials)
+	if err != nil {
+		return providertracker.EphemeralProviderConfig{}, internalerrors.Errorf("make cloud spec: %w", err)
+	}
+
+	return providertracker.EphemeralProviderConfig{
+		CloudSpec:      spec,
+		ControllerUUID: cUUID,
+		ModelConfig:    modelCfg,
+		ModelType:      coremodel.ModelType(p.modelType),
+	}, nil
 }
 
 type modelDefaultsProvider struct {
@@ -127,6 +204,7 @@ func (p modelDefaultsProvider) ModelDefaults(ctx context.Context) (modeldefaults
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
+
 	modelDefaults := domainServices.ModelDefaults()
 	fn := modelDefaults.ModelDefaultsProvider(p.modelUUID)
 	return fn(ctx)
