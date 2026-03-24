@@ -27,10 +27,6 @@ func (st *State) CommitHookChanges(ctx context.Context, arg internal.CommitHookC
 		// TODO: (hml) 31-Mar-2026
 		// Validate incoming UUIDs still exist.
 
-		if err := st.updateNetworkInfo(ctx, tx, arg.UpdateNetworkInfo); err != nil {
-			return errors.Errorf("update network info: %v", err)
-		}
-
 		if err := st.updateRelationSettings(ctx, tx, unitUUID, arg.RelationSettings); err != nil {
 			return errors.Errorf("update relation settings: %v", err)
 		}
@@ -71,10 +67,6 @@ func (st *State) CommitHookChanges(ctx context.Context, arg internal.CommitHookC
 		// Implement storage
 		return nil
 	})
-}
-
-func (st *State) updateNetworkInfo(ctx context.Context, tx *sqlair.TX, info bool) error {
-	return nil
 }
 
 func (st *State) updateRelationSettings(
