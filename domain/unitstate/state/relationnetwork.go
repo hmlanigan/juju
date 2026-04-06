@@ -536,3 +536,53 @@ LIMIT 1
 
 	return address.Value, nil
 }
+
+// GetRelationsEgressSubnets retrieves the egress subnets for all specified
+// relations the specific unit is in scope for, grouped by relation UUID.
+func (st *State) GetRelationsEgressSubnetsByUnitUUID(
+	ctx context.Context, unitUUID coreunit.UUID, relationUUIDs []relation.UUID,
+) (map[relation.UUID][]string, error) {
+	db, err := st.DB(ctx)
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	relUUIDs := transform.Slice(relationUUIDs, func(in relation.UUID) string { return in.String() })
+
+	ident := entityUUID{UUID: unitUUID.String()}
+	stmt, err := st.Prepare(`
+SELECT DISTINCT rne.* AS &egressCIDRAndRelationUUID.*
+FROM   relation_network_egress AS rne
+JOIN   relation AS r ON rne.relation_uuid = r.uuid
+JOIN   relation_endpoint AS re ON r.uuid = re.relation_uuid
+JOIN   relation_unit AS ru ON re.uuid = ru.relation_endpoint_uuid
+WHERE  ru.unit_uuid = $entityUUID.uuid
+AND    r.uuid IN ($uuids[:])
+`, egressCIDRAndRelationUUID{}, entityUUID{}, uuids{})
+	if err != nil {
+		return nil, errors.Errorf("preparing select unit's relations egress subnets statement: %w", err)
+	}
+
+	var cidrs []egressCIDRAndRelationUUID
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		err := tx.Query(ctx, stmt, ident, uuids(relUUIDs)).GetAll(&cidrs)
+		if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+			return errors.Errorf("querying unit's relations egress subnets: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	if len(cidrs) == 0 {
+		return nil, nil
+	}
+
+	result := make(map[relation.UUID][]string, 0)
+	for _, c := range cidrs {
+		result[relation.UUID(c.RelationUUID)] = append(result[relation.UUID(c.RelationUUID)], c.CIDR)
+	}
+
+	return result, nil
+}

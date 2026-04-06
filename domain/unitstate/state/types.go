@@ -39,6 +39,11 @@ type egressCIDR struct {
 	CIDR string `db:"cidr"`
 }
 
+type egressCIDRAndRelationUUID struct {
+	CIDR         string `db:"cidr"`
+	RelationUUID string `db:"relation_uuid"`
+}
+
 // spaceRelation represents the relationship between a network endpoint and its
 // associated space. It maps an relation UUID to a specific space UUID.
 type spaceRelation struct {

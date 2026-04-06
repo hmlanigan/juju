@@ -720,6 +720,64 @@ func (s *infoSuite) TestGetModelEgressSubnetsEmpty(c *tc.C) {
 	c.Check(cidrs, tc.HasLen, 0)
 }
 
+func (s *infoSuite) TestGetRelationsEgressSubnetsByUnitUUID(c *tc.C) {
+	// Arrange: unit
+	charmUUID := s.addCharm(c)
+	appUUID := s.addApplication(c, charmUUID, corenetwork.AlphaSpaceId.String())
+	unitUUID := s.addUnitAndNetNode(c, "unit/7", appUUID, charmUUID)
+
+	// Arrange: add endpoints
+	endpointUUID := s.addApplicationEndpoint(c, appUUID, charmUUID, "endpoint1", corenetwork.AlphaSpaceId.String())
+	endpoint2UUID := s.addApplicationEndpoint(c, appUUID, charmUUID, "endpoint8", corenetwork.AlphaSpaceId.String())
+
+	// Arrange: add relation and join.
+	relationUUID := s.addRelation(c)
+	relationEndpointUUID := s.addRelationEndpoint(c, relationUUID.String(), endpointUUID)
+	s.addRelationUnit(c, relationEndpointUUID, unitUUID.String())
+	s.addRelationNetworkEgress(c, relationUUID.String(), "10.0.1.0/24")
+	s.addRelationNetworkEgress(c, relationUUID.String(), "10.0.2.0/24")
+
+	// Arrange: add second relation and join.
+	relation2UUID := s.addRelation(c)
+	relationEndpoint2UUID := s.addRelationEndpoint(c, relation2UUID.String(), endpoint2UUID)
+	s.addRelationUnit(c, relationEndpoint2UUID, unitUUID.String())
+	s.addRelationNetworkEgress(c, relation2UUID.String(), "10.0.4.0/24")
+
+	relUUIDS := []relation.UUID{relationUUID, relation2UUID}
+
+	// Act
+	cidrs, err := s.state.GetRelationsEgressSubnetsByUnitUUID(c.Context(), unitUUID, relUUIDS)
+
+	// Assert
+	c.Assert(err, tc.ErrorIsNil)
+	c.Check(cidrs, tc.DeepEquals, map[relation.UUID][]string{
+		relationUUID:  {"10.0.1.0/24", "10.0.2.0/24"},
+		relation2UUID: {"10.0.4.0/24"},
+	})
+}
+
+func (s *infoSuite) TestGetRelationsEgressSubnetsByUnitUUIDEmpty(c *tc.C) {
+	// Arrange: unit
+	charmUUID := s.addCharm(c)
+	appUUID := s.addApplication(c, charmUUID, corenetwork.AlphaSpaceId.String())
+	unitUUID := s.addUnitAndNetNode(c, "unit/3", appUUID, charmUUID)
+
+	// Arrange: add endpoint
+	endpointUUID := s.addApplicationEndpoint(c, appUUID, charmUUID, "endpoint1", corenetwork.AlphaSpaceId.String())
+
+	// Arrange: add relation and join.
+	relationUUID := s.addRelation(c)
+	relationEndpointUUID := s.addRelationEndpoint(c, relationUUID.String(), endpointUUID)
+	s.addRelationUnit(c, relationEndpointUUID, unitUUID.String())
+
+	// Act
+	cidrs, err := s.state.GetRelationsEgressSubnetsByUnitUUID(c.Context(), unitUUID, []relation.UUID{relationUUID})
+
+	// Assert
+	c.Assert(err, tc.ErrorIsNil)
+	c.Check(cidrs, tc.HasLen, 0)
+}
+
 // Helper methods
 
 // addApplicationEndpoint creates a charm relation and an application endpoint
