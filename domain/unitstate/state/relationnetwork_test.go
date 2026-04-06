@@ -11,7 +11,9 @@ import (
 
 	corenetwork "github.com/juju/juju/core/network"
 	"github.com/juju/juju/core/relation"
+	"github.com/juju/juju/domain/life"
 	"github.com/juju/juju/domain/unitstate/internal"
+	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/internal/uuid"
 )
 
@@ -606,6 +608,118 @@ func (s *infoSuite) TestGetUnitRelationNetworkInfosOnlyLoopbackIgnored(c *tc.C) 
 	})
 }
 
+func (s *infoSuite) TestGetUnitPublicAddressForEgress(c *tc.C) {
+	nodeUUID := s.addNetNode(c)
+	deviceUUID := s.addLinkLayerDevice(
+		c, nodeUUID, "eth0", "00:11:22:33:44:55", corenetwork.EthernetDevice,
+	)
+	spaceUUID := corenetwork.AlphaSpaceId.String()
+	subnetUUID := s.addSubnet(c, "198.51.100.0/24", spaceUUID)
+	s.addIPAddressWithSubnetAndScope(
+		c, deviceUUID, nodeUUID, subnetUUID, "10.0.0.10/24",
+		corenetwork.ScopeCloudLocal,
+	)
+	secondaryUUID := s.addIPAddressWithSubnetAndOrigin(
+		c, deviceUUID, nodeUUID, subnetUUID, "198.51.100.1/24", 1,
+	)
+	s.query(c, `
+UPDATE ip_address
+SET scope_id = (SELECT id FROM ip_address_scope WHERE name = 'public')
+WHERE uuid = ?
+`, secondaryUUID)
+	s.markIPAddressSecondary(c, secondaryUUID)
+	publicUUID := s.addIPAddressWithSubnetAndOrigin(
+		c, deviceUUID, nodeUUID, subnetUUID, "198.51.100.10/24", 1,
+	)
+	s.query(c, `
+UPDATE ip_address
+SET scope_id = (SELECT id FROM ip_address_scope WHERE name = 'public')
+WHERE uuid = ?
+`, publicUUID)
+
+	charmUUID := s.addCharm(c)
+	appUUID := s.addApplication(c, charmUUID, spaceUUID)
+	unitUUID := s.addUnit(c, appUUID, charmUUID, nodeUUID)
+
+	address, err := s.state.GetUnitPublicAddressForEgress(
+		c.Context(), unitUUID,
+	)
+
+	c.Assert(err, tc.ErrorIsNil)
+	c.Check(address, tc.Equals, "198.51.100.10/24")
+}
+
+func (s *infoSuite) TestGetUnitPublicAddressForEgressWithoutPublicAddress(c *tc.C) {
+	nodeUUID := s.addNetNode(c)
+	deviceUUID := s.addLinkLayerDevice(
+		c, nodeUUID, "eth0", "00:11:22:33:44:55", corenetwork.EthernetDevice,
+	)
+	spaceUUID := corenetwork.AlphaSpaceId.String()
+	subnetUUID := s.addSubnet(c, "10.0.0.0/24", spaceUUID)
+	s.addIPAddressWithSubnetAndScope(
+		c, deviceUUID, nodeUUID, subnetUUID, "10.0.0.10/24",
+		corenetwork.ScopeCloudLocal,
+	)
+	s.addIPAddressWithSubnetAndOrigin(
+		c, deviceUUID, nodeUUID, subnetUUID, "198.51.100.10/24", 1,
+	)
+
+	charmUUID := s.addCharm(c)
+	appUUID := s.addApplication(c, charmUUID, spaceUUID)
+	unitUUID := s.addUnit(c, appUUID, charmUUID, nodeUUID)
+
+	address, err := s.state.GetUnitPublicAddressForEgress(
+		c.Context(), unitUUID,
+	)
+
+	c.Assert(err, tc.ErrorIsNil)
+	c.Check(address, tc.Equals, "")
+}
+
+func (s *infoSuite) TestGetUnitPublicAddressForEgressDeadUnit(c *tc.C) {
+	nodeUUID := s.addNetNode(c)
+	deviceUUID := s.addLinkLayerDevice(
+		c, nodeUUID, "eth0", "00:11:22:33:44:55", corenetwork.EthernetDevice,
+	)
+	spaceUUID := corenetwork.AlphaSpaceId.String()
+	subnetUUID := s.addSubnet(c, "198.51.100.0/24", spaceUUID)
+	publicUUID := s.addIPAddressWithSubnetAndOrigin(
+		c, deviceUUID, nodeUUID, subnetUUID, "198.51.100.10/24", 1,
+	)
+	s.query(c, `
+UPDATE ip_address
+SET scope_id = (SELECT id FROM ip_address_scope WHERE name = 'public')
+WHERE uuid = ?
+`, publicUUID)
+
+	charmUUID := s.addCharm(c)
+	appUUID := s.addApplication(c, charmUUID, spaceUUID)
+	unitUUID := s.addUnit(c, appUUID, charmUUID, nodeUUID)
+	s.query(c, `UPDATE unit SET life_id = ? WHERE uuid = ?`, life.Dead, unitUUID)
+
+	address, err := s.state.GetUnitPublicAddressForEgress(
+		c.Context(), unitUUID,
+	)
+
+	c.Assert(err, tc.ErrorIsNil)
+	c.Check(address, tc.Equals, "198.51.100.10/24")
+}
+
+func (s *infoSuite) TestGetModelEgressSubnets(c *tc.C) {
+	s.query(c, `INSERT INTO model_config VALUES (?, ?)`,
+		config.EgressSubnets, "10.0.1.0/24, 10.0.2.0/24")
+
+	cidrs, err := s.state.GetModelEgressSubnets(c.Context())
+	c.Assert(err, tc.ErrorIsNil)
+	c.Check(cidrs, tc.DeepEquals, []string{"10.0.1.0/24", "10.0.2.0/24"})
+}
+
+func (s *infoSuite) TestGetModelEgressSubnetsEmpty(c *tc.C) {
+	cidrs, err := s.state.GetModelEgressSubnets(c.Context())
+	c.Assert(err, tc.ErrorIsNil)
+	c.Check(cidrs, tc.HasLen, 0)
+}
+
 // Helper methods
 
 // addApplicationEndpoint creates a charm relation and an application endpoint
@@ -657,4 +771,27 @@ func (s *infoSuite) addRelationUnit(c *tc.C, relationEndpointUUID, unitUUID stri
 func (s *infoSuite) addRelationNetworkEgress(c *tc.C, relationUUID, cidr string) {
 	s.query(c, `INSERT INTO relation_network_egress (relation_uuid, cidr) VALUES (?, ?)`,
 		relationUUID, cidr)
+}
+
+// addIPAddressWithSubnet adds an IP address to the database and returns its UUID.
+func (s *infoSuite) addIPAddressWithSubnetAndOrigin(c *tc.C, deviceUUID, netNodeUUID,
+	subnetUUID, addressValue string, origin int) string {
+
+	addressUUID := "address-" + addressValue + "-uuid"
+
+	s.query(c, `
+		INSERT INTO ip_address (uuid, device_uuid, address_value, net_node_uuid, subnet_uuid, type_id, config_type_id, origin_id, scope_id, is_secondary, is_shadow)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, addressUUID, deviceUUID, addressValue, netNodeUUID, subnetUUID, 0, 4, origin, 0,
+		false, false)
+
+	return addressUUID
+}
+
+func (s *infoSuite) markIPAddressSecondary(c *tc.C, addressUUID string) {
+	s.query(c, `
+UPDATE ip_address
+SET is_secondary = true
+WHERE uuid = ?
+`, addressUUID)
 }

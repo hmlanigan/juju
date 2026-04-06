@@ -16,6 +16,7 @@ import (
 	"github.com/juju/juju/core/network"
 	"github.com/juju/juju/core/relation"
 	coreunit "github.com/juju/juju/core/unit"
+	"github.com/juju/juju/domain/unitstate"
 	"github.com/juju/juju/domain/unitstate/internal"
 	"github.com/juju/juju/internal/errors"
 )
@@ -421,4 +422,117 @@ func accumulateToMap[F any, K comparable, V any](from []F, transform func(F) (K,
 		to[k] = append(to[k], v)
 	}
 	return to, nil
+}
+
+// GetModelEgressSubnets retrieves the egress-subnets configuration from model
+// config.
+func (st *State) GetModelEgressSubnets(ctx context.Context) ([]string, error) {
+	db, err := st.DB(ctx)
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	type modelConfigEntry struct {
+		Key   string `db:"key"`
+		Value string `db:"value"`
+	}
+
+	egressSubnetsConfig := modelConfigEntry{Key: unitstate.EgressSubnetsKey}
+	stmt, err := st.Prepare(`
+SELECT &modelConfigEntry.value
+FROM   model_config
+WHERE  key = $modelConfigEntry.key
+`, modelConfigEntry{})
+	if err != nil {
+		return nil, errors.Errorf("preparing model egress subnets statement: %w", err)
+	}
+
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		err := tx.Query(ctx, stmt, egressSubnetsConfig).Get(&egressSubnetsConfig)
+		if errors.Is(err, sqlair.ErrNoRows) {
+			return nil
+		}
+		return errors.Capture(err)
+	})
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	if egressSubnetsConfig.Value == "" {
+		return nil, nil
+	}
+
+	cidrs := strings.Split(egressSubnetsConfig.Value, ",")
+	result := make([]string, 0, len(cidrs))
+	for _, cidr := range cidrs {
+		trimmed := strings.TrimSpace(cidr)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result, nil
+}
+
+// GetUnitPublicAddressForEgress retrieves the best unit address to use when
+// deriving fallback egress subnets.
+func (st *State) GetUnitPublicAddressForEgress(
+	ctx context.Context,
+	unitUUID coreunit.UUID,
+) (string, error) {
+	db, err := st.DB(ctx)
+	if err != nil {
+		return "", errors.Capture(err)
+	}
+
+	type addressValue struct {
+		Value string `db:"address_value"`
+	}
+
+	ident := entityUUID{UUID: unitUUID.String()}
+	stmt, err := st.Prepare(`
+WITH unit_net_node AS (
+    SELECT
+        s.net_node_uuid
+    FROM unit AS u
+    JOIN application AS a ON u.application_uuid = a.uuid
+    JOIN k8s_service AS s ON a.uuid = s.application_uuid
+    WHERE u.uuid = $entityUUID.uuid
+    UNION ALL
+    SELECT
+        net_node_uuid
+    FROM unit
+    WHERE uuid = $entityUUID.uuid
+)
+SELECT address_value AS &addressValue.address_value
+FROM unit_net_node AS unn
+JOIN ip_address AS ipa ON ipa.net_node_uuid = unn.net_node_uuid
+WHERE ipa.scope_id = 1 /* public */
+ORDER BY ipa.type_id, /* ipv4 (0) before ipv6 (1) */
+         ipa.is_secondary, /* primary (0) before secondary (1) */
+         ipa.origin_id DESC, /* provider (1) before machine (0) */
+         address_value
+LIMIT 1
+`, addressValue{}, entityUUID{})
+	if err != nil {
+		return "", errors.Errorf(
+			"preparing select unit public address statement: %w", err,
+		)
+	}
+
+	var address addressValue
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		err := tx.Query(ctx, stmt, ident).Get(&address)
+		if errors.Is(err, sqlair.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return errors.Errorf("querying unit public address: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return "", errors.Capture(err)
+	}
+
+	return address.Value, nil
 }
