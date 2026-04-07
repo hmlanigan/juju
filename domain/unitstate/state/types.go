@@ -9,8 +9,6 @@ import (
 	"github.com/juju/juju/core/network"
 )
 
-type uuids []string
-
 // entityUUID identifies a unit.
 type entityUUID struct {
 	// UUID is the universally unique identifier for a unit.
@@ -42,13 +40,6 @@ type egressCIDR struct {
 type egressCIDRAndRelationUUID struct {
 	CIDR         string `db:"cidr"`
 	RelationUUID string `db:"relation_uuid"`
-}
-
-// spaceRelation represents the relationship between a network endpoint and its
-// associated space. It maps an relation UUID to a specific space UUID.
-type spaceRelation struct {
-	RelationUUID string `db:"relation_uuid"`
-	SpaceUUID    string `db:"space_uuid"`
 }
 
 // portRange represents a range of ports for a given protocol.
@@ -138,13 +129,6 @@ type relationUnitSetting struct {
 	UUID  string `db:"relation_unit_uuid"`
 	Key   string `db:"key"`
 	Value string `db:"value"`
-}
-
-// spaceEndpoint represents the relationship between a network endpoint and its
-// associated space. It maps an endpoint name to a specific space UUID.
-type spaceEndpoint struct {
-	EndpointName string `db:"endpoint_name"`
-	SpaceUUID    string `db:"space_uuid"`
 }
 
 type portRangeUUIDs []string
