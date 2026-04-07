@@ -25,6 +25,10 @@ type CommitHookState interface {
 	// completes and executes them in a single transaction.
 	CommitHookChanges(ctx context.Context, arg internal.CommitHookChangesArg) error
 
+	// GetModelEgressSubnets retrieves the egress-subnets configuration from
+	// model config.
+	GetModelEgressSubnets(ctx context.Context) ([]string, error)
+
 	// GetPeerRelationUUIDByEndpointIdentifiers gets the UUID of a peer
 	// relation specified by a single endpoint identifier.
 	//
@@ -47,21 +51,31 @@ type CommitHookState interface {
 		endpoint1, endpoint2 corerelation.EndpointIdentifier,
 	) (corerelation.UUID, error)
 
-	// GetUnitRelationNetworkInfosNetworkingNotSupported retrieves egress and
-	// ingress addresses for the specified unit by selecting the best candidate
-	// from *all* unit addresses. These addresses are linked with all relations
+	// GetRelationsEgressSubnets retrieves the egress subnets for all relations
+	// the specific unit is in scope for, grouped by relation UUID.
+	GetRelationsEgressSubnetsByUnitUUID(
+		ctx context.Context, unitUUID coreunit.UUID,
+	) (map[corerelation.UUID][]string, error)
+
+	// GetUnitRelationIngressAddress retrieves an ingress address for all the
+	// relations where the given unit is in scope.
+	GetUnitRelationIngressAddress(
+		ctx context.Context, unitUUID coreunit.UUID,
+	) (map[corerelation.UUID]string, error)
+
+	// GetUnitRelationIngressAddressNetworkingNotSupported retrieves ingress
+	// addresses for the specified unit by selecting the best candidate from
+	// *all* unit addresses. These addresses are linked with all relations
 	// where the given unit is in scope.
 	// This is used on providers that do not support networking, and therefore
 	// can not factor endpoint bindings.
-	GetUnitRelationNetworkInfosNetworkingNotSupported(
+	GetUnitRelationIngressAddressNetworkingNotSupported(
 		ctx context.Context, unitUUID coreunit.UUID,
-	) ([]internal.RelationNetworkInfo, error)
+	) (map[corerelation.UUID]string, error)
 
-	// GetUnitRelationNetworkInfos retrieves network info for all relations
-	// where the the unit is in scope.
-	GetUnitRelationNetworkInfos(
-		ctx context.Context, unitUUID coreunit.UUID,
-	) ([]internal.RelationNetworkInfo, error)
+	// GetUnitPublicAddressForEgress retrieves the best unit address to use
+	// when deriving fallback egress subnets.
+	GetUnitPublicAddressForEgress(ctx context.Context, unitUUID coreunit.UUID) (string, error)
 
 	// GetUnitUUIDByName returns the UUID for the named unit, returning an
 	// error satisfying [applicationerrors.UnitNotFound] if the unit doesn't

@@ -6,9 +6,12 @@ package service
 import (
 	"context"
 	"maps"
+	"sort"
+	"strings"
 
 	"github.com/juju/collections/transform"
 
+	corenetwork "github.com/juju/juju/core/network"
 	"github.com/juju/juju/core/relation"
 	"github.com/juju/juju/core/trace"
 	"github.com/juju/juju/core/unit"
@@ -82,12 +85,14 @@ func (s *Service) transformRelationSettings(
 	ctx context.Context, in []unitstate.RelationSettings,
 ) ([]internal.RelationSettings, error) {
 	return transform.SliceOrErr(in, func(in unitstate.RelationSettings) (internal.RelationSettings, error) {
+		// TODO HEATHER - rework to only use relations included by unit.
 		relationUUID, err := s.getRelationUUIDByKey(ctx, in.RelationKey)
 		if err != nil {
 			return internal.RelationSettings{}, errors.Capture(err)
 		}
 		settings := make(map[string]string, len(in.Settings))
 		maps.Copy(settings, in.Settings)
+		// The ingress address and egress subnets should be written only by juju.
 		delete(settings, unitstate.IngressAddressKey)
 		delete(settings, unitstate.EgressSubnetsKey)
 		return internal.RelationSettings{
@@ -143,11 +148,86 @@ func (s *LeadershipService) getUnitRelationNetworks(
 		return nil, err
 	}
 
+	var ingressAddrByRelation map[relation.UUID]string
 	if supportsNetworking {
-		return s.st.GetUnitRelationNetworkInfos(ctx, unitUUID)
+		ingressAddrByRelation, err = s.st.GetUnitRelationIngressAddress(ctx, unitUUID)
+	} else {
+		ingressAddrByRelation, err = s.st.GetUnitRelationIngressAddressNetworkingNotSupported(ctx, unitUUID)
+	}
+	if err != nil {
+		return nil, errors.Errorf("getting unit's relations ingress addresses: %w", err)
 	}
 
-	return s.st.GetUnitRelationNetworkInfosNetworkingNotSupported(ctx, unitUUID)
+	egressSubnets, err := s.st.GetRelationsEgressSubnetsByUnitUUID(ctx, unitUUID)
+	if err != nil {
+		return nil, errors.Errorf(
+			"getting egress subnets for relations of unit %q: %w", unitUUID, err,
+		)
+	}
+
+	var fallbackEgressSubnets []string
+	if len(ingressAddrByRelation) != len(egressSubnets) {
+		fallbackEgressSubnets, err = s.getFallbackEgressSubnets(ctx, unitUUID)
+		if err != nil {
+			return nil, errors.Errorf("getting fallback egress subnets: %w", err)
+		}
+	}
+
+	return transform.MapToSlice(ingressAddrByRelation, func(key relation.UUID, ingressAddr string,
+	) []internal.RelationNetworkInfo {
+		egressSubnets, ok := egressSubnets[key]
+		if !ok {
+			// fallback egress subnets are unit, not relation specific.
+			egressSubnets = fallbackEgressSubnets
+		}
+		sort.Strings(egressSubnets)
+		return []internal.RelationNetworkInfo{{
+			RelationUUID:   key,
+			IngressAddress: ingressAddr,
+			EgressSubnets:  strings.Join(egressSubnets, ", "),
+		}}
+	}), nil
+}
+
+func (s *LeadershipService) getFallbackEgressSubnets(
+	ctx context.Context,
+	unitUUID unit.UUID,
+) ([]string, error) {
+	modelEgressSubnets, err := s.st.GetModelEgressSubnets(ctx)
+	if err != nil {
+		return nil, errors.Errorf("getting model egress subnets: %w", err)
+	}
+	if len(modelEgressSubnets) > 0 {
+		return modelEgressSubnets, nil
+	}
+
+	publicEgressSubnets, err := s.getUnitPublicEgressSubnets(ctx, unitUUID)
+	if err != nil {
+		return nil, errors.Errorf(
+			"getting fallback egress subnet for unit %q: %w", unitUUID, err,
+		)
+	}
+	return publicEgressSubnets, nil
+}
+
+func (s *LeadershipService) getUnitPublicEgressSubnets(
+	ctx context.Context,
+	unitUUID unit.UUID,
+) ([]string, error) {
+	address, err := s.st.GetUnitPublicAddressForEgress(ctx, unitUUID)
+	if err != nil {
+		s.logger.Warningf(
+			ctx,
+			"getting unit public address for egress fallback for unit %q: %v",
+			unitUUID,
+			err,
+		)
+		return []string{}, nil
+	}
+	if address == "" {
+		return []string{}, nil
+	}
+	return corenetwork.SubnetsForAddresses([]string{normaliseAddress(address)}), nil
 }
 
 func (s *LeadershipService) mergeRelationSettingsAndNetworkInfo(
@@ -194,4 +274,9 @@ func (s *LeadershipService) mergeRelationSettingsAndNetworkInfo(
 	}
 
 	return result, nil
+}
+
+func normaliseAddress(address string) string {
+	before, _, _ := strings.Cut(address, "/")
+	return before
 }
