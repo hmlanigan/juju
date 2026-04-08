@@ -504,6 +504,48 @@ func (s *infoSuite) TestGetUnitNetworkInfoCaasUnit(c *tc.C) {
 	c.Check(obtainedAddress, tc.Equals, "10.0.0.2")
 }
 
+func (s *infoSuite) TestGetRelationUUIDsByUnitUUID(c *tc.C) {
+	// Arrange: unit
+	charmUUID := s.addCharm(c)
+	appUUID := s.addApplication(c, charmUUID, corenetwork.AlphaSpaceId.String())
+	unitUUID := s.addUnitAndNetNode(c, "unit/7", appUUID, charmUUID)
+
+	// Arrange: add endpoints
+	endpoint1UUID := s.addApplicationEndpoint(c, appUUID, charmUUID, "endpoint1", corenetwork.AlphaSpaceId.String())
+	endpoint2UUID := s.addApplicationEndpoint(c, appUUID, charmUUID, "endpoint8", corenetwork.AlphaSpaceId.String())
+
+	// Arrange: add relation and join.
+	relationUUID := s.addRelation(c)
+	relationEndpointUUID := s.addRelationEndpoint(c, relationUUID.String(), endpoint1UUID)
+	s.addRelationUnit(c, relationEndpointUUID, unitUUID.String())
+
+	// Arrange: add second relation and join.
+	relation2UUID := s.addRelation(c)
+	relationEndpoint2UUID := s.addRelationEndpoint(c, relation2UUID.String(), endpoint2UUID)
+	s.addRelationUnit(c, relationEndpoint2UUID, unitUUID.String())
+
+	// Act
+	obtained, err := s.state.GetRelationUUIDsByUnitUUID(c.Context(), unitUUID)
+
+	// Assert
+	c.Assert(err, tc.ErrorIsNil)
+	c.Check(obtained, tc.DeepEquals, []relation.UUID{relationUUID, relation2UUID})
+}
+
+func (s *infoSuite) TestGetRelationUUIDsByUnitUUIDEmpty(c *tc.C) {
+	// Arrange: unit
+	charmUUID := s.addCharm(c)
+	appUUID := s.addApplication(c, charmUUID, corenetwork.AlphaSpaceId.String())
+	unitUUID := s.addUnitAndNetNode(c, "unit/3", appUUID, charmUUID)
+
+	// Act
+	obtained, err := s.state.GetRelationUUIDsByUnitUUID(c.Context(), unitUUID)
+
+	// Assert
+	c.Assert(err, tc.ErrorIsNil)
+	c.Check(obtained, tc.HasLen, 0)
+}
+
 // Helper methods
 
 // addApplicationEndpoint creates a charm relation and an application endpoint

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/canonical/sqlair"
+	"github.com/juju/collections/transform"
 
 	"github.com/juju/juju/core/relation"
 	coreunit "github.com/juju/juju/core/unit"
@@ -394,4 +395,51 @@ WHERE  ru.unit_uuid = $entityUUID.uuid
 	}
 
 	return result, nil
+}
+
+// GetRelationUUIDsByUnitUUID retrieves the UUIDs of all in scope relations
+// for the specified unit.
+func (st *State) GetRelationUUIDsByUnitUUID(
+	ctx context.Context, unitUUID coreunit.UUID,
+) ([]relation.UUID, error) {
+	db, err := st.DB(ctx)
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	type relationUUIDRow struct {
+		RelationUUID string `db:"relation_uuid"`
+	}
+
+	ident := entityUUID{UUID: unitUUID.String()}
+	stmt, err := st.Prepare(`
+SELECT DISTINCT r.uuid AS &relationUUIDRow.relation_uuid
+FROM   relation AS r
+JOIN   relation_endpoint AS re ON r.uuid = re.relation_uuid
+JOIN   relation_unit AS ru ON re.uuid = ru.relation_endpoint_uuid
+WHERE  ru.unit_uuid = $entityUUID.uuid
+`, relationUUIDRow{}, entityUUID{})
+	if err != nil {
+		return nil, errors.Errorf("preparing select unit relation uuids statement: %w", err)
+	}
+
+	var rows []relationUUIDRow
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		err := tx.Query(ctx, stmt, ident).GetAll(&rows)
+		if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+			return errors.Errorf("querying unit relation uuids: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	return transform.Slice(rows, func(row relationUUIDRow) relation.UUID {
+		return relation.UUID(row.RelationUUID)
+	}), nil
 }
