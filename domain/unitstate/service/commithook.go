@@ -143,6 +143,14 @@ func (s *LeadershipService) getUnitRelationNetworks(
 	ctx context.Context,
 	unitUUID unit.UUID,
 ) ([]internal.RelationNetworkInfo, error) {
+	relationUUIDs, err := s.st.GetRelationUUIDsByUnitUUID(ctx, unitUUID)
+	if err != nil {
+		return nil, errors.Errorf("getting relation UUIDs for unit %q: %w", unitUUID, err)
+	}
+	if len(relationUUIDs) == 0 {
+		return nil, nil
+	}
+
 	supportsNetworking, err := s.supportsNetworking(ctx)
 	if err != nil {
 		return nil, err
@@ -150,9 +158,9 @@ func (s *LeadershipService) getUnitRelationNetworks(
 
 	var ingressAddrByRelation map[relation.UUID]string
 	if supportsNetworking {
-		ingressAddrByRelation, err = s.st.GetUnitRelationIngressAddress(ctx, unitUUID)
+		ingressAddrByRelation, err = s.getUnitRelationsIngressAddress(ctx, unitUUID, relationUUIDs)
 	} else {
-		ingressAddrByRelation, err = s.st.GetUnitRelationIngressAddressNetworkingNotSupported(ctx, unitUUID)
+		ingressAddrByRelation, err = s.getUnitIngressAddress(ctx, unitUUID, relationUUIDs)
 	}
 	if err != nil {
 		return nil, errors.Errorf("getting unit's relations ingress addresses: %w", err)
@@ -186,6 +194,36 @@ func (s *LeadershipService) getUnitRelationNetworks(
 			IngressAddress: ingressAddr,
 			EgressSubnets:  strings.Join(egressSubnets, ", "),
 		}}
+	}), nil
+}
+
+func (s *LeadershipService) getUnitRelationsIngressAddress(
+	ctx context.Context, unitUUID unit.UUID, relationUUIDs []relation.UUID,
+) (map[relation.UUID]string, error) {
+	ingressAddrByRelation, err := s.st.GetUnitRelationsIngressAddress(ctx, unitUUID)
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+	// ensure every relation has an ingress address, even if it's an empty string.
+	for _, relationUUID := range relationUUIDs {
+		_, ok := ingressAddrByRelation[relationUUID]
+		if !ok {
+			ingressAddrByRelation[relationUUID] = ""
+		}
+	}
+	return ingressAddrByRelation, nil
+}
+
+func (s *LeadershipService) getUnitIngressAddress(
+	ctx context.Context, unitUUID unit.UUID, relationUUIDs []relation.UUID,
+) (map[relation.UUID]string, error) {
+	unitIngressAddress, err := s.st.GetUnitIngressAddress(ctx, unitUUID)
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+	// ensure every relation has an ingress address.
+	return transform.SliceToMap(relationUUIDs, func(relationUUID relation.UUID) (relation.UUID, string) {
+		return relationUUID, unitIngressAddress
 	}), nil
 }
 
@@ -259,8 +297,12 @@ func (s *LeadershipService) mergeRelationSettingsAndNetworkInfo(
 			if set.Settings == nil {
 				set.Settings = make(map[string]string, 2)
 			}
-			set.Settings[unitstate.IngressAddressKey] = update.IngressAddress
-			set.Settings[unitstate.EgressSubnetsKey] = update.EgressSubnets
+			if update.IngressAddress != "" {
+				set.Settings[unitstate.IngressAddressKey] = update.IngressAddress
+			}
+			if update.RelationUUID != "" {
+				set.Settings[unitstate.EgressSubnetsKey] = update.EgressSubnets
+			}
 			result[i] = set
 			continue
 		}

@@ -573,6 +573,45 @@ func (c *MockStateGetRegularRelationUUIDByEndpointIdentifiersCall) DoAndReturn(f
 	return c
 }
 
+// GetRelationUUIDsByUnitUUID mocks base method.
+func (m *MockState) GetRelationUUIDsByUnitUUID(arg0 context.Context, arg1 unit.UUID) ([]relation.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRelationUUIDsByUnitUUID", arg0, arg1)
+	ret0, _ := ret[0].([]relation.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRelationUUIDsByUnitUUID indicates an expected call of GetRelationUUIDsByUnitUUID.
+func (mr *MockStateMockRecorder) GetRelationUUIDsByUnitUUID(arg0, arg1 any) *MockStateGetRelationUUIDsByUnitUUIDCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationUUIDsByUnitUUID", reflect.TypeOf((*MockState)(nil).GetRelationUUIDsByUnitUUID), arg0, arg1)
+	return &MockStateGetRelationUUIDsByUnitUUIDCall{Call: call}
+}
+
+// MockStateGetRelationUUIDsByUnitUUIDCall wrap *gomock.Call
+type MockStateGetRelationUUIDsByUnitUUIDCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockStateGetRelationUUIDsByUnitUUIDCall) Return(arg0 []relation.UUID, arg1 error) *MockStateGetRelationUUIDsByUnitUUIDCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockStateGetRelationUUIDsByUnitUUIDCall) Do(f func(context.Context, unit.UUID) ([]relation.UUID, error)) *MockStateGetRelationUUIDsByUnitUUIDCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockStateGetRelationUUIDsByUnitUUIDCall) DoAndReturn(f func(context.Context, unit.UUID) ([]relation.UUID, error)) *MockStateGetRelationUUIDsByUnitUUIDCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetRelationsEgressSubnetsByUnitUUID mocks base method.
 func (m *MockState) GetRelationsEgressSubnetsByUnitUUID(arg0 context.Context, arg1 unit.UUID) (map[relation.UUID][]string, error) {
 	m.ctrl.T.Helper()
@@ -608,6 +647,45 @@ func (c *MockStateGetRelationsEgressSubnetsByUnitUUIDCall) Do(f func(context.Con
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockStateGetRelationsEgressSubnetsByUnitUUIDCall) DoAndReturn(f func(context.Context, unit.UUID) (map[relation.UUID][]string, error)) *MockStateGetRelationsEgressSubnetsByUnitUUIDCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetUnitIngressAddress mocks base method.
+func (m *MockState) GetUnitIngressAddress(arg0 context.Context, arg1 unit.UUID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUnitIngressAddress", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUnitIngressAddress indicates an expected call of GetUnitIngressAddress.
+func (mr *MockStateMockRecorder) GetUnitIngressAddress(arg0, arg1 any) *MockStateGetUnitIngressAddressCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUnitIngressAddress", reflect.TypeOf((*MockState)(nil).GetUnitIngressAddress), arg0, arg1)
+	return &MockStateGetUnitIngressAddressCall{Call: call}
+}
+
+// MockStateGetUnitIngressAddressCall wrap *gomock.Call
+type MockStateGetUnitIngressAddressCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockStateGetUnitIngressAddressCall) Return(arg0 string, arg1 error) *MockStateGetUnitIngressAddressCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockStateGetUnitIngressAddressCall) Do(f func(context.Context, unit.UUID) (string, error)) *MockStateGetUnitIngressAddressCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockStateGetUnitIngressAddressCall) DoAndReturn(f func(context.Context, unit.UUID) (string, error)) *MockStateGetUnitIngressAddressCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -651,80 +729,41 @@ func (c *MockStateGetUnitPublicAddressForEgressCall) DoAndReturn(f func(context.
 	return c
 }
 
-// GetUnitRelationIngressAddress mocks base method.
-func (m *MockState) GetUnitRelationIngressAddress(arg0 context.Context, arg1 unit.UUID) (map[relation.UUID]string, error) {
+// GetUnitRelationsIngressAddress mocks base method.
+func (m *MockState) GetUnitRelationsIngressAddress(arg0 context.Context, arg1 unit.UUID) (map[relation.UUID]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUnitRelationIngressAddress", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetUnitRelationsIngressAddress", arg0, arg1)
 	ret0, _ := ret[0].(map[relation.UUID]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetUnitRelationIngressAddress indicates an expected call of GetUnitRelationIngressAddress.
-func (mr *MockStateMockRecorder) GetUnitRelationIngressAddress(arg0, arg1 any) *MockStateGetUnitRelationIngressAddressCall {
+// GetUnitRelationsIngressAddress indicates an expected call of GetUnitRelationsIngressAddress.
+func (mr *MockStateMockRecorder) GetUnitRelationsIngressAddress(arg0, arg1 any) *MockStateGetUnitRelationsIngressAddressCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUnitRelationIngressAddress", reflect.TypeOf((*MockState)(nil).GetUnitRelationIngressAddress), arg0, arg1)
-	return &MockStateGetUnitRelationIngressAddressCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUnitRelationsIngressAddress", reflect.TypeOf((*MockState)(nil).GetUnitRelationsIngressAddress), arg0, arg1)
+	return &MockStateGetUnitRelationsIngressAddressCall{Call: call}
 }
 
-// MockStateGetUnitRelationIngressAddressCall wrap *gomock.Call
-type MockStateGetUnitRelationIngressAddressCall struct {
+// MockStateGetUnitRelationsIngressAddressCall wrap *gomock.Call
+type MockStateGetUnitRelationsIngressAddressCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockStateGetUnitRelationIngressAddressCall) Return(arg0 map[relation.UUID]string, arg1 error) *MockStateGetUnitRelationIngressAddressCall {
+func (c *MockStateGetUnitRelationsIngressAddressCall) Return(arg0 map[relation.UUID]string, arg1 error) *MockStateGetUnitRelationsIngressAddressCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockStateGetUnitRelationIngressAddressCall) Do(f func(context.Context, unit.UUID) (map[relation.UUID]string, error)) *MockStateGetUnitRelationIngressAddressCall {
+func (c *MockStateGetUnitRelationsIngressAddressCall) Do(f func(context.Context, unit.UUID) (map[relation.UUID]string, error)) *MockStateGetUnitRelationsIngressAddressCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStateGetUnitRelationIngressAddressCall) DoAndReturn(f func(context.Context, unit.UUID) (map[relation.UUID]string, error)) *MockStateGetUnitRelationIngressAddressCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// GetUnitRelationIngressAddressNetworkingNotSupported mocks base method.
-func (m *MockState) GetUnitRelationIngressAddressNetworkingNotSupported(arg0 context.Context, arg1 unit.UUID) (map[relation.UUID]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUnitRelationIngressAddressNetworkingNotSupported", arg0, arg1)
-	ret0, _ := ret[0].(map[relation.UUID]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetUnitRelationIngressAddressNetworkingNotSupported indicates an expected call of GetUnitRelationIngressAddressNetworkingNotSupported.
-func (mr *MockStateMockRecorder) GetUnitRelationIngressAddressNetworkingNotSupported(arg0, arg1 any) *MockStateGetUnitRelationIngressAddressNetworkingNotSupportedCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUnitRelationIngressAddressNetworkingNotSupported", reflect.TypeOf((*MockState)(nil).GetUnitRelationIngressAddressNetworkingNotSupported), arg0, arg1)
-	return &MockStateGetUnitRelationIngressAddressNetworkingNotSupportedCall{Call: call}
-}
-
-// MockStateGetUnitRelationIngressAddressNetworkingNotSupportedCall wrap *gomock.Call
-type MockStateGetUnitRelationIngressAddressNetworkingNotSupportedCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockStateGetUnitRelationIngressAddressNetworkingNotSupportedCall) Return(arg0 map[relation.UUID]string, arg1 error) *MockStateGetUnitRelationIngressAddressNetworkingNotSupportedCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockStateGetUnitRelationIngressAddressNetworkingNotSupportedCall) Do(f func(context.Context, unit.UUID) (map[relation.UUID]string, error)) *MockStateGetUnitRelationIngressAddressNetworkingNotSupportedCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStateGetUnitRelationIngressAddressNetworkingNotSupportedCall) DoAndReturn(f func(context.Context, unit.UUID) (map[relation.UUID]string, error)) *MockStateGetUnitRelationIngressAddressNetworkingNotSupportedCall {
+func (c *MockStateGetUnitRelationsIngressAddressCall) DoAndReturn(f func(context.Context, unit.UUID) (map[relation.UUID]string, error)) *MockStateGetUnitRelationsIngressAddressCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

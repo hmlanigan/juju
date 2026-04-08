@@ -40,6 +40,10 @@ type CommitHookState interface {
 		endpoint corerelation.EndpointIdentifier,
 	) (corerelation.UUID, error)
 
+	// GetRelationUUIDsByUnitUUID retrieves the UUIDs of all in scope relations
+	// for the specified unit.
+	GetRelationUUIDsByUnitUUID(ctx context.Context, unitUUID coreunit.UUID) ([]corerelation.UUID, error)
+
 	// GetRegularRelationUUIDByEndpointIdentifiers gets the UUID of a regular
 	// relation specified by two endpoint identifiers.
 	//
@@ -51,31 +55,27 @@ type CommitHookState interface {
 		endpoint1, endpoint2 corerelation.EndpointIdentifier,
 	) (corerelation.UUID, error)
 
-	// GetRelationsEgressSubnets retrieves the egress subnets for all relations
-	// the specific unit is in scope for, grouped by relation UUID.
+	// GetRelationsEgressSubnetsByUnitUUID retrieves the egress subnets for all
+	// relations the specific unit is in scope for, grouped by relation UUID.
 	GetRelationsEgressSubnetsByUnitUUID(
 		ctx context.Context, unitUUID coreunit.UUID,
 	) (map[corerelation.UUID][]string, error)
 
-	// GetUnitRelationIngressAddress retrieves an ingress address for all the
-	// relations where the given unit is in scope.
-	GetUnitRelationIngressAddress(
+	// GetUnitNetworkInfo retrieves raw unit addresses and selected ingress
+	// addresses for the specified unit when provider networking is not supported.
+	GetUnitIngressAddress(
 		ctx context.Context, unitUUID coreunit.UUID,
-	) (map[corerelation.UUID]string, error)
-
-	// GetUnitRelationIngressAddressNetworkingNotSupported retrieves ingress
-	// addresses for the specified unit by selecting the best candidate from
-	// *all* unit addresses. These addresses are linked with all relations
-	// where the given unit is in scope.
-	// This is used on providers that do not support networking, and therefore
-	// can not factor endpoint bindings.
-	GetUnitRelationIngressAddressNetworkingNotSupported(
-		ctx context.Context, unitUUID coreunit.UUID,
-	) (map[corerelation.UUID]string, error)
+	) (string, error)
 
 	// GetUnitPublicAddressForEgress retrieves the best unit address to use
 	// when deriving fallback egress subnets.
 	GetUnitPublicAddressForEgress(ctx context.Context, unitUUID coreunit.UUID) (string, error)
+
+	// GetUnitRelationsIngressAddress retrieves an ingress address for all the
+	// relations where the given unit is in scope.
+	GetUnitRelationsIngressAddress(
+		ctx context.Context, unitUUID coreunit.UUID,
+	) (map[corerelation.UUID]string, error)
 
 	// GetUnitUUIDByName returns the UUID for the named unit, returning an
 	// error satisfying [applicationerrors.UnitNotFound] if the unit doesn't

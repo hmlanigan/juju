@@ -371,28 +371,6 @@ func (s *infoSuite) TestGetUnitRelationsIngressAddressesCaasUnit(c *tc.C) {
 	c.Check(addrByRelation, tc.DeepEquals, map[relation.UUID]string{relationUUID: "10.0.0.2"})
 }
 
-// TODO - resolve the problem of no Ingress Addresses found, still need the
-// full list of relation's in scope.
-//func (s *infoSuite) TestGetUnitRelationsIngressAddressesNoAddresses(c *tc.C) {
-//	nodeUUID := s.addNetNode(c)
-//	spaceUUID := s.addSpace(c)
-//
-//	charmUUID := s.addCharm(c)
-//	appUUID := s.addApplication(c, charmUUID, spaceUUID)
-//	unitUUID := s.addUnit(c, appUUID, charmUUID, nodeUUID)
-//
-//	endpointName := "endpoint1"
-//	endpointUUID := s.addApplicationEndpoint(c, appUUID, charmUUID, endpointName, spaceUUID)
-//
-//	relationUUID := s.addRelation(c)
-//	s.addRelationEndpoint(c, relationUUID.String(), endpointUUID)
-//
-//	addrByRelation, err := s.state.GetUnitRelationsIngressAddresses(c.Context(), unitUUID)
-//
-//	c.Assert(err, tc.ErrorIsNil)
-//	c.Check(addrByRelation, tc.DeepEquals, map[relation.UUID]string{relationUUID: ""})
-//}
-
 func (s *infoSuite) TestGetUnitIngressAddress(c *tc.C) {
 	nodeUUID := s.addNetNode(c)
 	ethDeviceUUID := s.addLinkLayerDevice(

@@ -61,15 +61,9 @@ func (s *commitHookSuite) TestCommitHookChangesNoLeadership(c *tc.C) {
 		gomock.Any(), eids[0], eids[1],
 	).Return(expectedRelationUUID, nil)
 
-	arg := unitstate.CommitHookChangesArg{
-		UnitName: unittesting.GenNewName(c, "test/0"),
-		RelationSettings: []unitstate.RelationSettings{{
-			RelationKey: key,
-			Settings:    map[string]string{"key": "value"},
-		}},
-	}
+	unitName := unittesting.GenNewName(c, "test/0")
 	unitUUID := tc.Must(c, coreunit.NewUUID)
-	s.st.EXPECT().GetUnitUUIDByName(c.Context(), arg.UnitName).Return(unitUUID, nil)
+	s.st.EXPECT().GetUnitUUIDByName(c.Context(), unitName).Return(unitUUID, nil)
 
 	expected := internal.CommitHookChangesArg{
 		UnitUUID: unitUUID,
@@ -80,6 +74,14 @@ func (s *commitHookSuite) TestCommitHookChangesNoLeadership(c *tc.C) {
 		},
 	}
 	s.st.EXPECT().CommitHookChanges(c.Context(), expected).Return(nil)
+
+	arg := unitstate.CommitHookChangesArg{
+		UnitName: unitName,
+		RelationSettings: []unitstate.RelationSettings{{
+			RelationKey: key,
+			Settings:    map[string]string{"key": "value"},
+		}},
+	}
 
 	// Act
 	err := s.svc.CommitHookChanges(c.Context(), arg)
@@ -132,13 +134,15 @@ func (s *commitHookSuite) TestCommitHookChangesUpdateNetworkInfo(c *tc.C) {
 		relation1UUID: "10.0.0.6",
 		relation2UUID: "10.0.1.23",
 	}
-	s.st.EXPECT().GetUnitRelationIngressAddress(c.Context(), unitUUID).Return(relationIngressAddresses, nil)
+	s.st.EXPECT().GetUnitRelationsIngressAddress(c.Context(), unitUUID).Return(relationIngressAddresses, nil)
 
 	// Arrange: GetUnitRelationEgressSubnetsByUnitUUID state call.
 	relationEgressSubnets := map[corerelation.UUID][]string{
 		relation1UUID: {"192.0.2.0/24", "192.51.100.0/24"},
 		relation2UUID: {"203.0.113.0/24"},
 	}
+	relUUIDs := []corerelation.UUID{relation1UUID, relation2UUID}
+	s.st.EXPECT().GetRelationUUIDsByUnitUUID(c.Context(), unitUUID).Return(relUUIDs, nil)
 	s.st.EXPECT().GetRelationsEgressSubnetsByUnitUUID(c.Context(), unitUUID).Return(relationEgressSubnets, nil)
 
 	// Arrange relation key
@@ -187,7 +191,7 @@ func (s *commitHookSuite) TestCommitHookChangesUpdateNetworkInfo(c *tc.C) {
 	c.Assert(err, tc.ErrorIsNil)
 }
 
-func (s *commitHookSuite) TestGetUnitRelationNetworksNetworkNotSupported(c *tc.C) {
+func (s *commitHookSuite) TestGetUnitRelationNetworksNoNetworkingSupport(c *tc.C) {
 	s.networkProviderGetter = func(context.Context) (ProviderWithNetworking, error) {
 		return nil, errors.Errorf("provider %w", coreerrors.NotSupported)
 	}
@@ -196,14 +200,12 @@ func (s *commitHookSuite) TestGetUnitRelationNetworksNetworkNotSupported(c *tc.C
 	// Arrange: Unit
 	unitUUID := tc.Must(c, coreunit.NewUUID)
 
-	// Arrange: GetUnitRelationIngressAddress state call.
+	// Arrange: GetUnitIngressAddress state call.
 	relation1UUID := tc.Must(c, corerelation.NewUUID)
 	relation2UUID := tc.Must(c, corerelation.NewUUID)
-	relationIngressAddresses := map[corerelation.UUID]string{
-		relation1UUID: "10.0.0.6",
-		relation2UUID: "10.0.1.23",
-	}
-	s.st.EXPECT().GetUnitRelationIngressAddressNetworkingNotSupported(c.Context(), unitUUID).Return(relationIngressAddresses, nil)
+	relUUIDs := []corerelation.UUID{relation1UUID, relation2UUID}
+	s.st.EXPECT().GetRelationUUIDsByUnitUUID(c.Context(), unitUUID).Return(relUUIDs, nil)
+	s.st.EXPECT().GetUnitIngressAddress(c.Context(), unitUUID).Return("10.0.0.6", nil)
 
 	// Arrange: GetUnitRelationEgressSubnetsByUnitUUID state call.
 	relationEgressSubnets := map[corerelation.UUID][]string{
@@ -220,7 +222,7 @@ func (s *commitHookSuite) TestGetUnitRelationNetworksNetworkNotSupported(c *tc.C
 			EgressSubnets:  "192.0.2.0/24, 192.51.100.0/24",
 		}, {
 			RelationUUID:   relation2UUID,
-			IngressAddress: "10.0.1.23",
+			IngressAddress: "10.0.0.6",
 			EgressSubnets:  "203.0.113.0/24",
 		},
 	}
@@ -246,7 +248,9 @@ func (s *commitHookSuite) TestGetUnitRelationNetworksUseModelEgressSubnets(c *tc
 		relation1UUID: "10.0.0.6",
 		relation2UUID: "10.0.1.23",
 	}
-	s.st.EXPECT().GetUnitRelationIngressAddress(c.Context(), unitUUID).Return(relationIngressAddresses, nil)
+	relUUIDs := []corerelation.UUID{relation1UUID, relation2UUID}
+	s.st.EXPECT().GetRelationUUIDsByUnitUUID(c.Context(), unitUUID).Return(relUUIDs, nil)
+	s.st.EXPECT().GetUnitRelationsIngressAddress(c.Context(), unitUUID).Return(relationIngressAddresses, nil)
 
 	// Arrange: setup egress addresses from relation and model
 	relationEgressSubnets := map[corerelation.UUID][]string{
@@ -282,14 +286,16 @@ func (s *commitHookSuite) TestGetUnitRelationNetworksMixEgressSubnets(c *tc.C) {
 	// Arrange: Unit
 	unitUUID := tc.Must(c, coreunit.NewUUID)
 
-	// Arrange: GetUnitRelationIngressAddress state call.
+	// Arrange: GetUnitRelationsIngressAddress state call.
 	relation1UUID := tc.Must(c, corerelation.NewUUID)
 	relation2UUID := tc.Must(c, corerelation.NewUUID)
 	relationIngressAddresses := map[corerelation.UUID]string{
 		relation1UUID: "10.0.0.6",
 		relation2UUID: "10.0.1.23",
 	}
-	s.st.EXPECT().GetUnitRelationIngressAddress(c.Context(), unitUUID).Return(relationIngressAddresses, nil)
+	relUUIDs := []corerelation.UUID{relation1UUID, relation2UUID}
+	s.st.EXPECT().GetRelationUUIDsByUnitUUID(c.Context(), unitUUID).Return(relUUIDs, nil)
+	s.st.EXPECT().GetUnitRelationsIngressAddress(c.Context(), unitUUID).Return(relationIngressAddresses, nil)
 
 	// Arrange: setup egress addresses from model
 	s.st.EXPECT().GetRelationsEgressSubnetsByUnitUUID(c.Context(), unitUUID).Return(nil, nil)
@@ -322,14 +328,16 @@ func (s *commitHookSuite) TestGetUnitRelationNetworksUseUnitPublicEgressSubnets(
 	// Arrange: Unit
 	unitUUID := tc.Must(c, coreunit.NewUUID)
 
-	// Arrange: GetUnitRelationIngressAddress state call.
+	// Arrange: GetUnitRelationsIngressAddress state call.
 	relation1UUID := tc.Must(c, corerelation.NewUUID)
 	relation2UUID := tc.Must(c, corerelation.NewUUID)
 	relationIngressAddresses := map[corerelation.UUID]string{
 		relation1UUID: "10.0.0.6",
 		relation2UUID: "10.0.1.23",
 	}
-	s.st.EXPECT().GetUnitRelationIngressAddress(c.Context(), unitUUID).Return(relationIngressAddresses, nil)
+	relUUIDs := []corerelation.UUID{relation1UUID, relation2UUID}
+	s.st.EXPECT().GetRelationUUIDsByUnitUUID(c.Context(), unitUUID).Return(relUUIDs, nil)
+	s.st.EXPECT().GetUnitRelationsIngressAddress(c.Context(), unitUUID).Return(relationIngressAddresses, nil)
 
 	// Arrange: setup egress addresses from unit public egress address
 	s.st.EXPECT().GetRelationsEgressSubnetsByUnitUUID(c.Context(), unitUUID).Return(nil, nil)
